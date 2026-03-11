@@ -2,76 +2,122 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SCiPNET - Archive</title>
+    <title>SCiPNET - Records Archive</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>CENTRAL_ARCHIVE</h1>
+    <h1>DATABASE_QUERY: SECURE_ARCHIVES</h1>
     <nav>
-        <a href="dashboard.html">DASHBOARD</a> | 
-        <a href="write.html">NEW_ENTRY</a>
+        <a href="dashboard.html">RETURN_TO_DASHBOARD</a>
+        <div id="overseer-filters" style="display:none; margin-top:10px; border:1px solid gold; padding:5px;">
+            <span style="color:gold">OVERSEER_VIEW:</span>
+            <select id="dept-filter" onchange="fetchReports()">
+                <option value="ALL">ALL_DEPARTMENTS</option>
+                <option value="ScD">SCIENTIFIC (ScD)</option>
+                <option value="MD">MEDICAL (MD)</option>
+                <option value="SD">SECURITY (SD)</option>
+                <option value="EcD">ENGINEERING (EcD)</option>
+                <option value="RAISA">INFOSEC (RAISA)</option>
+                <option value="AD">ADMINISTRATIVE (AD)</option>
+                <option value="ISD">INTELLIGENCE (ISD)</option>
+            </select>
+        </div>
     </nav>
 
-    <div id="article-list">
-        <p id="status-msg">SCANNING_DATABASE...</p>
-    </div>
+    <table id="archive-table">
+        <thead>
+            <tr>
+                <th>DATE</th>
+                <th>DEPT</th>
+                <th>CLEARANCE</th>
+                <th>DOCUMENT_TITLE</th>
+                <th>AUTHOR</th>
+                <th>ACTION</th>
+            </tr>
+        </thead>
+        <tbody id="report-list">
+        </tbody>
+    </table>
 
     <script>
-        // Force immediate execution check
-        console.log("SYSTEM_CHECK: SCRIPT_START");
+        let currentProfile = null;
+        let isElevated = false; // Terminal admin or overseer — sees all
+        let isAdmin = false;    // O5 admin — sees full department
 
-        async function loadArchive() {
-            const status = document.getElementById('status-msg');
-            
-            try {
-                console.log("SYSTEM_CHECK: ATTEMPTING_DB_CONNECTION");
-                
-                // 1. Verify _supabase exists
-                if (typeof _supabase === 'undefined') {
-                    throw new Error("SUPABASE_CLIENT_NOT_DEFINED - Check config.js");
-                }
+        async function initArchive() {
+            const auth = await requireAuth();
+            if (!auth) return;
 
-                // 2. Fetch data
-                const { data: articles, error } = await _supabase
-                    .from('articles')
-                    .select('id, title, profiles(full_name)')
-                    .order('created_at', { ascending: false });
+            currentProfile = auth.profile;
 
-                if (error) throw error;
-
-                console.log("SYSTEM_CHECK: DATA_RECEIVED", articles);
-
-                const listDiv = document.getElementById('article-list');
-                listDiv.innerHTML = ""; 
-
-                if (!articles || articles.length === 0) {
-                    listDiv.innerHTML = "<p>NO_RECORDS_FOUND_IN_ARCHIVE</p>";
-                    return;
-                }
-
-                articles.forEach(art => {
-                    const author = art.profiles ? art.profiles.full_name : "UNKNOWN";
-                    // Check if the article has a clearance column (default to 1 if not)
-                    const reqLvl = art.required_clearance || 1;
-                    
-                    listDiv.innerHTML += `
-                        <div class="scp-card">
-                            <a href="viewer.html?id=${art.id}">[LEVEL ${reqLvl}] ${art.title}</a>
-                            <small>FILED_BY: ${author}</small>
-                        </div>`;
-                });
-
-            } catch (err) {
-                console.error("SYSTEM_FAILURE:", err);
-                status.innerText = "CRITICAL_ERROR: " + err.message;
+            if (currentProfile.is_terminal_admin || currentProfile.is_overseer) {
+                isElevated = true;
+                document.getElementById('overseer-filters').style.display = 'block';
+            } else if (currentProfile.is_admin) {
+                isAdmin = true;
             }
+
+            fetchReports();
         }
 
-        // 3. Manually trigger the function
-        window.onload = loadArchive;
+        async function fetchReports() {
+            const list = document.getElementById('report-list');
+            list.innerHTML = "<tr><td colspan='6'>RETRIEVING_DATA...</td></tr>";
+
+            let query = _supabase.from('articles').select('*').order('created_at', { ascending: false });
+
+            if (!isElevated) {
+                // All non-elevated users are restricted to their own department
+                query = query.eq('department', currentProfile.department);
+
+                if (!isAdmin) {
+                    // Standard personnel also get clearance-gated
+                    query = query.lte('required_clearance', currentProfile.clearance_level);
+                }
+            } else {
+                // Elevated users can filter by department
+                const filter = document.getElementById('dept-filter')?.value;
+                if (filter && filter !== "ALL") {
+                    query = query.eq('department', filter);
+                }
+            }
+
+            const { data: reports, error } = await query;
+
+            if (error) {
+                list.innerHTML = `<tr><td colspan='6' style='color:var(--error-red)'>QUERY_ERROR: ${error.message}</td></tr>`;
+                return;
+            }
+
+            if (reports.length === 0) {
+                list.innerHTML = "<tr><td colspan='6'>NO_RECORDS_FOUND_UNDER_CURRENT_CLEARANCE</td></tr>";
+                return;
+            }
+
+            // Build rows as a string, set once
+            const rows = reports.map(report => {
+                const date = new Date(report.created_at).toLocaleDateString();
+                return `
+                    <tr>
+                        <td>${date}</td>
+                        <td>[${report.department || 'N/A'}]</td>
+                        <td>LEVEL_${report.required_clearance}</td>
+                        <td style="color:var(--terminal-green)">${report.title || 'UNTITLED_FILE'}</td>
+                        <td>${report.author || 'UNKNOWN'}</td>
+                        <td><button onclick="viewReport('${report.id}')">OPEN_FILE</button></td>
+                    </tr>`;
+            }).join('');
+            list.innerHTML = rows;
+        }
+
+        function viewReport(id) {
+            window.location.href = `view.html?id=${id}`;
+        }
+
+        window.onload = initArchive;
     </script>
 </body>
 </html>

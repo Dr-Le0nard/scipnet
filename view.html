@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCiPNET - Document Viewer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="alert.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="document-container">
+        <h1 id="title">ACCESSING_SECURE_FILE...</h1>
+        <p><strong>AUTHOR:</strong> <span id="author">---</span></p>
+        <p><strong>DEPARTMENT:</strong> <span id="dept-display">---</span></p>
+        <hr>
+        <div id="content" style="white-space: pre-wrap;"></div>
+        <hr>
+        <nav>
+            <a href="archive.html" class="btn">RETURN_TO_ARCHIVE</a>
+        </nav>
+    </div>
+
+    <script>
+        async function displayArticle() {
+            // Auth gate — no unauthenticated access to documents
+            const auth = await requireAuth();
+            if (!auth) return;
+
+            const { profile } = auth;
+
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+
+            if (!id) {
+                document.getElementById('title').innerText = "ERROR: NO_ID_PROVIDED";
+                return;
+            }
+
+            const { data: art, error } = await _supabase
+                .from('articles')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (error || !art) {
+                showAccessDenied();
+                return;
+            }
+
+            // Client-side clearance check (RLS is the real enforcer, this is UX)
+            const userIsElevated = profile.is_terminal_admin || profile.is_overseer || profile.is_admin;
+            const sameDept = art.department === profile.department;
+            const hasClauserance = profile.clearance_level >= art.required_clearance;
+
+            if (!userIsElevated && (!sameDept || !hasClauserance)) {
+                showAccessDenied();
+                return;
+            }
+
+            document.getElementById('title').innerText = art.title || "UNTITLED_FILE";
+            document.getElementById('author').innerText = art.author || "REDACTED";
+            document.getElementById('dept-display').innerText = art.department || "GENERAL";
+            document.getElementById('content').innerText = art.content || "[DATA EXPUNGED]";
+        }
+
+        function showAccessDenied() {
+            document.body.innerHTML = `
+                <div style="color: #ff0000; text-align: center; padding-top: 50px; font-family: 'VT323', monospace;">
+                    <h1 style="font-size: 3em;">[ACCESS DENIED]</h1>
+                    <p style="border: 1px solid red; display: inline-block; padding: 10px;">
+                        MEMETIC KILL AGENT ACTIVATED. <br>
+                        REMAIN CALM. DO NOT ATTEMPT TO LEAVE YOUR TERMINAL. <br>
+                        SECURITY TEAMS HAVE BEEN DISPATCHED TO YOUR LOCATION.
+                    </p>
+                    <br><br>
+                    <a href="archive.html" style="color: red; border: 1px solid red; padding: 10px;">RETURN_TO_ARCHIVE</a>
+                </div>`;
+        }
+
+        window.onload = displayArticle;
+    </script>
+</body>
+</html>

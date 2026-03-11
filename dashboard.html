@@ -5,27 +5,33 @@
     <title>SCiPNET - Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-	<script src="alert.js"></script>
+    <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="loading">INITIALIZING_SECURE_SESSION...</div>
+    <div id="loading" style="text-align: center; margin-top: 50px;">
+        <h1 class="flicker-animation">INITIALIZING_SECURE_CONNECTION...</h1>
+        <p>ESTABLISHING HANDSHAKE WITH SITE-19 SERVERS</p>
+    </div>
 
     <div id="main-content" style="display:none;">
-        <h1 id="welcome">WELCOME, [REDACTED]</h1>
-        
-        <div class="clearance-badge">
-            SECURITY_CLEARANCE: LEVEL <span id="lvl">0</span>
+        <div class="header-row">
+            <div class="identity-group">
+                <h1 id="welcome">WELCOME: [REDACTED]</h1>
+                <div class="clearance-badge" id="badge-container">
+                    SECURITY_CLEARANCE: LEVEL <span id="lvl">0</span> // <span id="dept-display">PENDING_DEPT</span>
+                </div>
+            </div>
+            <button class="terminate-btn" onclick="logout()">TERMINATE_SESSION</button>
         </div>
 
-        <nav>
+        <nav class="dashboard-nav">
             <a href="archive.html">DATABASE_ARCHIVE</a>
             <a href="personnel.html">PERSONNEL_DIRECTORY</a>
             <a href="write.html">FILE_NEW_REPORT</a>
-            <button onclick="logout()">TERMINATE_SESSION</button>
+            <a href="admin.html" id="admin-link" style="display:none;">ADMIN_OVERRIDE</a>
         </nav>
 
-        <hr>
         <div class="system-status">
             <p>SYSTEM_STATUS: <span style="color: var(--terminal-green);">STABLE</span></p>
             <p>LOCATION: SITE-19</p>
@@ -34,25 +40,140 @@
 
     <script>
         async function loadProfile() {
-            const { data: { user } } = await _supabase.auth.getUser();
-            if (!user) { window.location.href = "index.html"; return; }
+            // Use centralized auth helper
+            const auth = await requireAuth();
+            if (!auth) return;
 
-            const { data: profile, error } = await _supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single();
+            const { user, profile } = auth;
 
-            if (profile) {
-                document.getElementById('welcome').innerText = "WELCOME, " + profile.full_name;
-                document.getElementById('lvl').innerText = profile.clearance_level;
-                
-                // Hide loading, show content
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
-            } else {
-                console.error("Profile fetch error:", error);
-                document.getElementById('loading').innerText = "ERROR: PROFILE_SYNC_FAILED";
+            // --- REALTIME: watch for ban or clearance changes ---
+            _supabase.channel('public:profiles')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `id=eq.${user.id}`
+                }, (payload) => {
+                    if (payload.new.is_banned) {
+                        window.location.href = "index.html";
+                    }
+                    if (payload.new.clearance_level !== profile.clearance_level) {
+                        window.location.reload();
+                    }
+                }).subscribe();
+
+            const welcomeEl = document.getElementById('welcome');
+            const adminLink = document.getElementById('admin-link');
+            const badge = document.getElementById('badge-container');
+
+            // 1. TERMINAL ADMINISTRATOR
+            if (profile.is_terminal_admin) {
+                welcomeEl.innerText = "ACCESS_GRANTED: TERMINAL_ADMINISTRATOR";
+                welcomeEl.style.color = "var(--alert-gold)";
+                welcomeEl.style.textShadow = "0 0 15px var(--alert-gold)";
+
+                badge.innerHTML = `<span style="color: var(--alert-gold)">[ROOT_SYSTEM_ACCESS]</span> // TECHNICAL_ADMIN`;
+                badge.style.borderColor = "var(--alert-gold)";
+
+                adminLink.style.display = 'inline-flex';
+                adminLink.innerText = "SYSTEM_OVERRIDE";
+
+                renderDepartmentalMenu(profile.department, true);
+            }
+
+            // 2. O5 CHAIRMAN
+            else if (profile.is_overseer) {
+                welcomeEl.innerText = "IDENTIFIED: O5-COUNCIL_CHAIRMAN";
+                welcomeEl.style.color = "var(--error-red)";
+                welcomeEl.style.textShadow = "0 0 15px var(--error-red)";
+
+                badge.innerHTML = `LEVEL 5 // O5_COUNCIL_CHAIRMAN`;
+                badge.style.borderColor = "var(--error-red)";
+
+                adminLink.style.display = 'inline-flex';
+                adminLink.innerText = "CHAIRMAN_OVERRIDE";
+
+                renderDepartmentalMenu(profile.department, false);
+            }
+
+            // 3. O5 COUNCIL MEMBER
+            else if (profile.is_admin) {
+                welcomeEl.innerText = "IDENTIFIED: O5-COUNCIL_MEMBER";
+                welcomeEl.style.color = "gold";
+                welcomeEl.style.textShadow = "0 0 12px gold";
+
+                adminLink.style.display = 'inline-flex';
+                adminLink.innerText = "COUNCIL_OVERRIDE";
+
+                setStandardIdentity(profile);
+                renderDepartmentalMenu(profile.department, false);
+            }
+
+            // 4. STANDARD PERSONNEL
+            else {
+                if (!profile.is_approved) {
+                    showPendingScreen();
+                    return;
+                }
+                welcomeEl.innerText = "IDENTIFIED: " + (profile.full_name ? profile.full_name.toUpperCase() : "PERSONNEL");
+                setStandardIdentity(profile);
+                renderDepartmentalMenu(profile.department, false);
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+        }
+
+        function setStandardIdentity(profile) {
+            document.getElementById('lvl').innerText = profile.clearance_level;
+            document.getElementById('dept-display').innerText = profile.department || "UNASSIGNED";
+        }
+
+        function showPendingScreen() {
+            const loadEl = document.getElementById('loading');
+            loadEl.innerHTML = `
+                <h1 style="color:gold; text-shadow: 0 0 10px gold;">PENDING_COUNCIL_REVIEW</h1>
+                <p>CREDENTIALS UNDER REVIEW BY THE O5 COUNCIL.</p>
+                <button class="terminate-btn" onclick="logout()">CANCEL_REQUEST</button>`;
+        }
+
+        function renderDepartmentalMenu(dept, isTerminalAdmin) {
+            const nav = document.querySelector('.dashboard-nav');
+            if (!nav) return;
+
+            const modules = {
+                'AD':   { label: 'ADMINISTRATIVE_LOG',  type: 'admin' },
+                'RAISA':{ label: 'INFOSEC_MANIFEST',    type: 'infosec' },
+                'ScD':  { label: 'RESEARCH_TEST_LOG',   type: 'research' },
+                'MD':   { label: 'MEDICAL_RECORD',      type: 'medical' },
+                'SLMD': { label: 'MAINTENANCE_REPORT',  type: 'maintenance' },
+                'DEA':  { label: 'EXTERNAL_AFFAIRS_LOG',type: 'external' },
+                'DoA':  { label: 'ADMISSIONS_FILE',     type: 'admissions' },
+                'ITD':  { label: 'TRIBUNAL_RECORD',     type: 'tribunal' },
+                'DSIS': { label: 'INTEL_BRIEFING',      type: 'intel' }
+            };
+
+            if (isTerminalAdmin) {
+                const testContainer = document.createElement('div');
+                testContainer.style.cssText = "margin-left:10px; border-left:1px solid gold; padding-left:10px;";
+
+                let options = Object.keys(modules).map(key =>
+                    `<option value="${modules[key].type}">${modules[key].label}</option>`
+                ).join('');
+
+                testContainer.innerHTML = `
+                    <select onchange="if(this.value) window.location.href='write.html?type=' + this.value"
+                            style="width: auto; margin: 0; background: #000; color: gold; border: 1px solid gold; font-family: 'VT323';">
+                        <option value="">-- SYSTEM_MODULE_TESTER --</option>
+                        ${options}
+                    </select>
+                `;
+                nav.appendChild(testContainer);
+            } else if (dept && modules[dept]) {
+                const link = document.createElement('a');
+                link.href = `write.html?type=${modules[dept].type}`;
+                link.innerText = modules[dept].label;
+                nav.appendChild(link);
             }
         }
 

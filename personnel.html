@@ -5,13 +5,13 @@
     <title>SCiPNET - Personnel Directory</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-	<script src="alert.js"></script>
+    <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <h1>FOUNDATION_PERSONNEL_DIRECTORY</h1>
     <nav>
-        <a href="dashboard.html">DASHBOARD</a> | 
+        <a href="dashboard.html">DASHBOARD</a> |
         <a href="archive.html">ARCHIVE</a>
     </nav>
 
@@ -21,16 +21,22 @@
     </div>
 
     <div id="personnel-list">
-        <p>RETRIVING_STAFF_MANIFEST...</p>
+        <p>RETRIEVING_STAFF_MANIFEST...</p>
     </div>
 
     <script>
-        let allStaff = []; // Global store for filtering
+        let allStaff = [];
 
         async function loadPersonnel() {
+            // Auth gate — unauthenticated users get redirected
+            const auth = await requireAuth();
+            if (!auth) return;
+
             const { data: staff, error } = await _supabase
                 .from('profiles')
-                .select('full_name, clearance_level, bio')
+                .select('full_name, clearance_level, department, bio')
+                .eq('is_approved', true)       // Only show approved, active personnel
+                .eq('is_banned', false)
                 .order('clearance_level', { ascending: false });
 
             if (error) {
@@ -38,34 +44,34 @@
                 return;
             }
 
-            allStaff = staff; // Store the data
+            allStaff = staff;
             renderList(allStaff);
         }
 
         function renderList(list) {
             const listDiv = document.getElementById('personnel-list');
-            listDiv.innerHTML = "";
 
             if (list.length === 0) {
                 listDiv.innerHTML = "<p>NO_MATCHING_PERSONNEL_FOUND</p>";
                 return;
             }
 
-            list.forEach(person => {
-                listDiv.innerHTML += `
-                    <div class="scp-card">
-                        <h3>${person.full_name}</h3>
-                        <p>CLEARANCE_LEVEL: ${person.clearance_level}</p>
-                        <p><small>${person.bio || "NO_BIO_ON_RECORD"}</small></p>
-                    </div>`;
-            });
+            // Build HTML string, set once
+            listDiv.innerHTML = list.map(person => `
+                <div class="scp-card">
+                    <h3>${person.full_name}</h3>
+                    <p>CLEARANCE_LEVEL: ${person.clearance_level} // DEPT: [${person.department || 'UNASSIGNED'}]</p>
+                    <p><small>${person.bio || "NO_BIO_ON_RECORD"}</small></p>
+                </div>`
+            ).join('');
         }
 
         function filterPersonnel() {
             const query = document.getElementById('personnelSearch').value.toLowerCase();
-            const filtered = allStaff.filter(p => 
-                p.full_name.toLowerCase().includes(query) || 
-                p.clearance_level.toString().includes(query)
+            const filtered = allStaff.filter(p =>
+                p.full_name.toLowerCase().includes(query) ||
+                p.clearance_level.toString().includes(query) ||
+                (p.department && p.department.toLowerCase().includes(query))
             );
             renderList(filtered);
         }
