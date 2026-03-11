@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SCiPNET - Archive</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="alert.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>CENTRAL_ARCHIVE</h1>
+    <nav>
+        <a href="dashboard.html">DASHBOARD</a> | 
+        <a href="write.html">NEW_ENTRY</a>
+    </nav>
+
+    <div id="article-list">
+        <p id="status-msg">SCANNING_DATABASE...</p>
+    </div>
+
+    <script>
+        // Force immediate execution check
+        console.log("SYSTEM_CHECK: SCRIPT_START");
+
+        async function loadArchive() {
+            const status = document.getElementById('status-msg');
+            
+            try {
+                console.log("SYSTEM_CHECK: ATTEMPTING_DB_CONNECTION");
+                
+                // 1. Verify _supabase exists
+                if (typeof _supabase === 'undefined') {
+                    throw new Error("SUPABASE_CLIENT_NOT_DEFINED - Check config.js");
+                }
+
+                // 2. Fetch data
+                const { data: articles, error } = await _supabase
+                    .from('articles')
+                    .select('id, title, profiles(full_name)')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                console.log("SYSTEM_CHECK: DATA_RECEIVED", articles);
+
+                const listDiv = document.getElementById('article-list');
+                listDiv.innerHTML = ""; 
+
+                if (!articles || articles.length === 0) {
+                    listDiv.innerHTML = "<p>NO_RECORDS_FOUND_IN_ARCHIVE</p>";
+                    return;
+                }
+
+                articles.forEach(art => {
+                    const author = art.profiles ? art.profiles.full_name : "UNKNOWN";
+                    // Check if the article has a clearance column (default to 1 if not)
+                    const reqLvl = art.required_clearance || 1;
+                    
+                    listDiv.innerHTML += `
+                        <div class="scp-card">
+                            <a href="viewer.html?id=${art.id}">[LEVEL ${reqLvl}] ${art.title}</a>
+                            <small>FILED_BY: ${author}</small>
+                        </div>`;
+                });
+
+            } catch (err) {
+                console.error("SYSTEM_FAILURE:", err);
+                status.innerText = "CRITICAL_ERROR: " + err.message;
+            }
+        }
+
+        // 3. Manually trigger the function
+        window.onload = loadArchive;
+    </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SCiPNET - Auth</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+	<script src="alert.js"></script>
+    <link rel="stylesheet" href="style.css"> </head>
+<body>
+    <div class="login-container">
+        <h2>SCiPNET TERMINAL</h2>
+        <input type="email" id="email" placeholder="PERSONNEL_EMAIL">
+        <input type="password" id="password" placeholder="PASSWORD">
+        <button onclick="login()">AUTHENTICATE</button>
+        <p id="msg"></p>
+    </div>
+
+    <script>
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                document.getElementById('msg').innerText = "ACCESS DENIED: " + error.message;
+            } else {
+                window.location.href = "dashboard.html";
+            }
+        }
+    </script>
+</body>
+</html>
