@@ -6,12 +6,13 @@
     --dark-green: #003b00;
     --bg-black: #050505;
     --error-red: #ff3e3e;
+    --alert-gold: #ffd700;
 }
 
 body {
     background-color: var(--bg-black);
     color: var(--terminal-green);
-    font-family: 'VT323', monospace; /* Upgraded from Courier */
+    font-family: 'VT323', monospace;
     font-size: 1.2rem;
     margin: 0;
     padding: 20px;
@@ -33,95 +34,185 @@ body::before {
     pointer-events: none;
 }
 
-h1, h2, h3 {
-    border-bottom: 1px solid var(--terminal-green);
+/* --- HEADER & IDENTITY LAYOUT --- */
+h1 {
+    margin: 0;
     padding-bottom: 5px;
     text-shadow: 0 0 8px var(--terminal-green);
+    line-height: 1.4; 
+    padding-top: 10px;
 }
 
-/* Navigation Links */
-nav {
-    margin-bottom: 30px;
-    border: 1px solid var(--terminal-green);
-    padding: 10px;
-    display: inline-block;
-}
-
-nav a, button {
-    color: var(--bg-black);
-    background-color: var(--terminal-green);
-    text-decoration: none;
-    padding: 5px 15px;
-    margin-right: 10px;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-    font-family: 'Courier New', Courier, monospace;
-}
-
-nav a:hover, button:hover {
-    background-color: #00cc33;
-    box-shadow: 0 0 10px var(--terminal-green);
-}
-
-/* Input Fields */
-input, textarea {
-    background-color: #000;
-    border: 1px solid var(--terminal-green);
-    color: var(--terminal-green);
-    padding: 10px;
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 15px;
-    outline: none;
-}
-
-/* Archive Cards */
-.scp-card {
-    border: 1px dashed var(--terminal-green);
-    padding: 15px;
-    margin-bottom: 15px;
-    transition: background 0.3s;
-}
-
-.scp-card:hover {
-    background: var(--dark-green);
-}
-
-.scp-card a {
-    color: var(--terminal-green);
-    font-size: 1.2em;
-    display: block;
+    margin-bottom: 5px;
 }
 
 .clearance-badge {
     border: 2px solid var(--terminal-green);
-    display: inline-block;
-    padding: 5px 15px;
-    margin: 20px 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 35px;
+    padding: 4px 15px 0 15px;
+    margin: 5px 0;
     font-weight: bold;
     background-color: var(--dark-green);
+    width: fit-content;
 }
 
-.system-status {
-    margin-top: 50px;
-    font-size: 0.9em;
-    opacity: 0.7;
+/* --- UNIVERSAL BUTTON & INPUT CENTERING --- */
+button, input, select, .dashboard-nav a, nav:not(.dashboard-nav) a {
+    font-family: 'VT323', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 1.1rem;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px; 
+    padding: 0px 16px 0 16px;
+    box-sizing: border-box;
+    line-height: 1.5; 
 }
 
-/* Alert Flicker Animation */
+button {
+    background: var(--bg-black);
+    color: var(--terminal-green);
+    border: 1px solid var(--terminal-green);
+    cursor: pointer;
+    transition: all 0.2s;
+}
 
+button:hover:not(:disabled), button:active {
+    background: var(--terminal-green) !important;
+    color: var(--bg-black) !important;
+    box-shadow: 0 0 10px var(--terminal-green);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #444;
+    color: #444;
+}
+
+/* --- TEXTAREA FIX --- */
+textarea {
+    background-color: #000;
+    border: 1px solid var(--terminal-green);
+    color: var(--terminal-green);
+    font-family: 'VT323', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 1.1rem;
+    padding: 12px;
+    line-height: 1.4;
+    display: block;   
+    width: 100%;
+    min-height: 200px;
+    box-sizing: border-box;
+    margin-bottom: 15px;
+    outline: none;
+    resize: vertical;
+}
+
+/* --- INPUTS & SELECTS --- */
+input, select {
+    background-color: #000;
+    border: 1px solid var(--terminal-green);
+    color: var(--terminal-green);
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+/* --- NAVIGATION LAYOUTS --- */
+.dashboard-nav {
+    margin: 15px 0 30px 0;
+    border-top: 1px solid var(--terminal-green);
+    border-bottom: 1px solid var(--terminal-green);
+    padding: 10px 0;
+    display: flex;
+    gap: 10px;
+}
+
+.dashboard-nav a, 
+.dashboard-nav a:visited, 
+.dashboard-nav a:active {
+    color: var(--bg-black) !important;
+    background-color: var(--terminal-green) !important;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.dashboard-nav a:hover {
+    opacity: 0.8;
+    box-shadow: 0 0 10px var(--terminal-green);
+}
+
+nav:not(.dashboard-nav) a, 
+nav:not(.dashboard-nav) a:visited {
+    color: var(--terminal-green) !important;
+    border: 1px solid var(--terminal-green);
+    background-color: rgba(0, 255, 65, 0.1);
+    font-size: 0.9rem;
+    height: 32px; 
+}
+
+/* --- RED / TERMINATE BUTTONS --- */
+.terminate-btn, button[onclick*="revokeAccess"] {
+    color: var(--error-red) !important;
+    border-color: var(--error-red) !important;
+    background-color: transparent !important;
+}
+
+.terminate-btn:hover {
+    background-color: var(--error-red) !important;
+    color: var(--bg-black) !important;
+}
+
+/* --- UNIVERSAL LINK RESET --- */
+a, a:visited, a:active {
+    color: var(--terminal-green);
+    text-decoration: none;
+    outline: none;
+}
+
+/* --- GRID & CARDS --- */
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding-top: 20px;
+}
+
+.scp-card {
+    border: 1px dashed var(--terminal-green);
+    padding: 15px;
+    background: rgba(0, 59, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* --- SYSTEM UTILITIES --- */
+hr {
+    border: 0;
+    border-top: 1px dashed var(--terminal-green);
+    margin: 20px 0;
+}
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: var(--terminal-green); }
+
+.flicker-animation { animation: alert-flicker 0.5s infinite; }
 @keyframes alert-flicker {
     0% { opacity: 1; }
     50% { opacity: 0.5; }
     100% { opacity: 1; }
 }
-
-.flicker-animation {
-    animation: alert-flicker 0.5s infinite;
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-track { background: #000; }
-::-webkit-scrollbar-thumb { background: var(--terminal-green); }
