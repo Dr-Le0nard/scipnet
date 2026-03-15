@@ -24,7 +24,7 @@
         <div class="page-title" id="admin-header">ADMIN_TERMINAL_OVERRIDE</div>
         <div class="page-subtitle">PERSONNEL MANAGEMENT // RESTRICTED ACCESS</div>
 
-        <!-- Alert Broadcast Panel (terminal admin + overseer only) -->
+        <!-- Alert Broadcast Panel -->
         <div class="card card-gold" style="margin-bottom:32px;" id="alert-control-panel">
             <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;color:var(--gold);margin-bottom:16px;">// SITE-WIDE_ALERT_BROADCAST</div>
             <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
@@ -59,26 +59,28 @@
     </div>
 
     <script>
-        let currentUserId=null,myProfile=null;
+        let currentUserId=null, myProfile=null;
+
         async function initAdmin(){
             const auth=await requireAuth(true);if(!auth)return;
-            currentUserId=auth.user.id;myProfile=auth.profile;
+            currentUserId=auth.user.id; myProfile=auth.profile;
             if(myProfile.is_terminal_admin){
                 document.getElementById('admin-header').innerText='ROOT_SYSTEM_OVERRIDE';
                 document.getElementById('admin-header').style.color='var(--gold)';
                 document.getElementById('admin-nav-label').innerText='SYSTEM_OVERRIDE';
-                loadFlags();loadAlertStatus();
+                loadFlags(); loadAlertStatus();
             }else if(myProfile.is_overseer){
                 document.getElementById('admin-header').innerText='CHAIRMAN_OVERRIDE';
                 document.getElementById('admin-header').style.color='var(--red)';
                 document.getElementById('admin-nav-label').innerText='CHAIRMAN_OVERRIDE';
-                loadFlags();loadAlertStatus();
+                loadFlags(); loadAlertStatus();
             }else{
                 document.getElementById('alert-control-panel').style.display='none';
             }
-            loadPending();loadActiveUsers();
+            loadPending(); loadActiveUsers();
         }
 
+        // ---- ALERT CONTROL ----
         async function loadAlertStatus(){
             const{data,error}=await _supabase.from('system_status').select('*').limit(1).maybeSingle();
             const statusEl=document.getElementById('alert-current-status');
@@ -86,23 +88,38 @@
             if(data.is_active){
                 statusEl.innerHTML=`CURRENT ALERT: <span style="color:var(--gold);">${data.alert_message}</span> &nbsp;[ACTIVE]`;
                 document.getElementById('alert-message-input').value=data.alert_message||'';
-            }else{statusEl.innerText='NO ACTIVE ALERT — SYSTEM STATUS NOMINAL';}
+            }else{
+                statusEl.innerText='NO ACTIVE ALERT — SYSTEM STATUS NOMINAL';
+            }
         }
 
         async function broadcastAlert(){
             const msg=document.getElementById('alert-message-input').value.trim();
             if(!msg){toast('ALERT MESSAGE CANNOT BE EMPTY','error');return;}
-            const{error}=await _supabase.from('system_status').update({is_active:true,alert_message:msg}).neq('id','00000000-0000-0000-0000-000000000000');
-            if(error){toast('BROADCAST_FAILED: '+error.message,'error');}
-            else{toast('ALERT BROADCAST TO ALL ACTIVE TERMINALS','warning');loadAlertStatus();}
+            // Use is_active=false as filter since that's the only reliable column to match on
+            // We use a raw SQL upsert-style update on all rows
+            const{error}=await _supabase.rpc('set_system_alert',{p_message:msg,p_active:true});
+            if(error){
+                // Fallback: update without filter (works when there's exactly one row)
+                const{error:e2}=await _supabase.from('system_status').update({is_active:true,alert_message:msg}).gte('is_active',false);
+                if(e2){toast('BROADCAST_FAILED: '+e2.message,'error');return;}
+            }
+            toast('ALERT BROADCAST TO ALL ACTIVE TERMINALS','warning');
+            loadAlertStatus();
         }
 
         async function clearAlert(){
-            const{error}=await _supabase.from('system_status').update({is_active:false,alert_message:null}).neq('id','00000000-0000-0000-0000-000000000000');
-            if(error){toast('CLEAR_FAILED: '+error.message,'error');}
-            else{toast('ALERT CLEARED — SYSTEM STATUS NOMINAL','success');document.getElementById('alert-message-input').value='';loadAlertStatus();}
+            const{error}=await _supabase.rpc('set_system_alert',{p_message:null,p_active:false});
+            if(error){
+                const{error:e2}=await _supabase.from('system_status').update({is_active:false,alert_message:null}).gte('is_active',false);
+                if(e2){toast('CLEAR_FAILED: '+e2.message,'error');return;}
+            }
+            toast('ALERT CLEARED — SYSTEM STATUS NOMINAL','success');
+            document.getElementById('alert-message-input').value='';
+            loadAlertStatus();
         }
 
+        // ---- FLAGS ----
         async function loadFlags(){
             const{data:flagged,error}=await _supabase.from('profiles').select('*').not('admin_notice','is',null);
             if(error||!flagged||flagged.length===0)return;

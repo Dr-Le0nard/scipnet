@@ -50,20 +50,28 @@
     `;
     document.head.appendChild(style);
 
-    const container = document.createElement('div');
-    container.id = 'toast-container';
-    document.body.appendChild(container);
+    // Defer container creation until DOM is ready
+    function getContainer() {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+        return container;
+    }
 
     const PREFIXES  = { success:'[OK]', error:'[ERR]', warning:'[WARN]', info:'[INFO]' };
     const DURATIONS = { success:3000,   error:5000,    warning:4000,     info:3000 };
 
     window.toast = function (message, type = 'success', duration = null) {
         const ms = duration ?? DURATIONS[type] ?? 3000;
+        const container = getContainer();
+
         const el = document.createElement('div');
         el.className = `toast ${type}`;
         el.innerHTML = `<span class="toast-prefix">${PREFIXES[type]}</span>${message}`;
 
-        // Timer bar via injected keyframe
         const uid = 't' + Date.now() + Math.random().toString(36).slice(2);
         el.classList.add(uid);
         const ks = document.createElement('style');
@@ -87,11 +95,11 @@
     window.alert = function (msg) {
         const m = (msg || '').toUpperCase();
         if (m.startsWith('ERROR') || m.startsWith('FAILED') || m.startsWith('ACCESS_DENIED') || m.startsWith('CRITICAL')) {
-            toast(msg, 'error');
+            window.toast(msg, 'error');
         } else if (m.startsWith('WARNING') || m.startsWith('WARN')) {
-            toast(msg, 'warning');
+            window.toast(msg, 'warning');
         } else {
-            toast(msg, 'success');
+            window.toast(msg, 'success');
         }
     };
 })();
