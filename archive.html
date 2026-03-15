@@ -108,7 +108,7 @@
                         <td>${report.author || 'UNKNOWN'}</td>
                         <td style="display:flex; gap:5px;">
                             <button onclick="viewReport('${report.id}')">OPEN</button>
-                            ${canEdit ? `<button onclick="editReport('${report.id}')" style="color: var(--alert-gold); border-color: var(--alert-gold);">EDIT</button>` : ''}
+                            ${canEdit ? `<button class="edit-btn" onclick="editReport('${report.id}')">EDIT</button>` : ''}
                         </td>
                     </tr>`;
             }).join('');

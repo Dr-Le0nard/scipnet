@@ -188,6 +188,19 @@ nav:not(.dashboard-nav) a:visited {
     color: var(--bg-black) !important;
 }
 
+/* --- GOLD EDIT BUTTONS --- */
+button.edit-btn {
+    color: var(--alert-gold) !important;
+    border-color: var(--alert-gold) !important;
+    background-color: transparent !important;
+}
+
+button.edit-btn:hover:not(:disabled) {
+    background: var(--alert-gold) !important;
+    color: var(--bg-black) !important;
+    box-shadow: 0 0 10px var(--alert-gold) !important;
+}
+
 /* --- UNIVERSAL LINK RESET --- */
 a, a:visited, a:active {
     color: var(--terminal-green);
@@ -229,4 +242,3 @@ hr {
     50% { opacity: 0.5; }
     100% { opacity: 1; }
 }
-/* Test Update */
