@@ -44,8 +44,8 @@
 
     <script>
         let currentProfile = null;
-        let isElevated = false; // Terminal admin or overseer — sees all
-        let isAdmin = false;    // O5 admin — sees full department
+        let isElevated = false;
+        let isAdmin = false;
 
         async function initArchive() {
             const auth = await requireAuth();
@@ -70,15 +70,11 @@
             let query = _supabase.from('articles').select('*').order('created_at', { ascending: false });
 
             if (!isElevated) {
-                // All non-elevated users are restricted to their own department
                 query = query.eq('department', currentProfile.department);
-
                 if (!isAdmin) {
-                    // Standard personnel also get clearance-gated
                     query = query.lte('required_clearance', currentProfile.clearance_level);
                 }
             } else {
-                // Elevated users can filter by department
                 const filter = document.getElementById('dept-filter')?.value;
                 if (filter && filter !== "ALL") {
                     query = query.eq('department', filter);
@@ -97,9 +93,12 @@
                 return;
             }
 
-            // Build rows as a string, set once
             const rows = reports.map(report => {
                 const date = new Date(report.created_at).toLocaleDateString();
+                const isElevatedUser = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
+                const isAuthor = report.author === currentProfile.full_name;
+                const canEdit = isElevatedUser || isAuthor;
+
                 return `
                     <tr>
                         <td>${date}</td>
@@ -107,7 +106,10 @@
                         <td>LEVEL_${report.required_clearance}</td>
                         <td style="color:var(--terminal-green)">${report.title || 'UNTITLED_FILE'}</td>
                         <td>${report.author || 'UNKNOWN'}</td>
-                        <td><button onclick="viewReport('${report.id}')">OPEN_FILE</button></td>
+                        <td style="display:flex; gap:5px;">
+                            <button onclick="viewReport('${report.id}')">OPEN</button>
+                            ${canEdit ? `<button onclick="editReport('${report.id}')" style="color: var(--alert-gold); border-color: var(--alert-gold);">EDIT</button>` : ''}
+                        </td>
                     </tr>`;
             }).join('');
             list.innerHTML = rows;
@@ -115,6 +117,10 @@
 
         function viewReport(id) {
             window.location.href = `view.html?id=${id}`;
+        }
+
+        function editReport(id) {
+            window.location.href = `edit.html?id=${id}`;
         }
 
         window.onload = initArchive;
