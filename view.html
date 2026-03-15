@@ -9,72 +9,95 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="document-container">
-        <h1 id="title">ACCESSING_SECURE_FILE...</h1>
-        <p><strong>AUTHOR:</strong> <span id="author">---</span></p>
-        <p><strong>DEPARTMENT:</strong> <span id="dept-display">---</span></p>
-        <hr>
-        <div id="content" style="white-space: pre-wrap;"></div>
-        <hr>
-        <nav>
-            <a href="archive.html" class="btn">RETURN_TO_ARCHIVE</a>
-        </nav>
+
+    <div class="identity-block" style="padding: 12px 24px;">
+        <a href="dashboard.html" style="text-decoration:none;">
+            <div class="logo" style="font-family:var(--font-display);font-size:1.6rem;color:var(--green);text-shadow:0 0 12px var(--green),0 0 30px rgba(0,255,65,0.3);letter-spacing:4px;">
+                SCIPNET <span style="color:var(--text-dim);font-size:0.75rem;letter-spacing:2px;display:block;text-shadow:none;margin-top:-4px;">SECURE INTRANET // SITE-19</span>
+            </div>
+        </a>
+    </div>
+
+    <nav class="main-nav">
+        <a href="dashboard.html">DASHBOARD</a>
+        <a href="archive.html">DATABASE_ARCHIVE</a>
+        <a href="personnel.html">PERSONNEL_DIRECTORY</a>
+    </nav>
+
+    <div class="page-content page-wrapper fade-in" id="doc-wrapper">
+        <div class="page-title" id="doc-title">ACCESSING_SECURE_FILE...</div>
+        <div class="page-subtitle">DOCUMENT VIEWER // CLASSIFIED MATERIAL</div>
+
+        <div class="document-meta" id="doc-meta" style="display:none;">
+            <div class="meta-item">
+                <span class="meta-label">AUTHOR</span>
+                <span class="meta-value" id="doc-author">---</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">DEPARTMENT</span>
+                <span class="meta-value" id="doc-dept">---</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">CLEARANCE</span>
+                <span class="meta-value" id="doc-cl">---</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">FILED</span>
+                <span class="meta-value" id="doc-date">---</span>
+            </div>
+        </div>
+
+        <div class="document-body" id="doc-content">LOADING...</div>
+
+        <div class="btn-row" style="margin-top:20px;" id="doc-actions">
+            <button onclick="window.location.href='archive.html'">RETURN_TO_ARCHIVE</button>
+        </div>
     </div>
 
     <script>
         async function displayArticle() {
-            // Auth gate — no unauthenticated access to documents
             const auth = await requireAuth();
             if (!auth) return;
-
             const { profile } = auth;
 
-            const params = new URLSearchParams(window.location.search);
-            const id = params.get('id');
+            const id = new URLSearchParams(window.location.search).get('id');
+            if (!id) { document.getElementById('doc-title').innerText = 'ERROR: NO_ID_PROVIDED'; return; }
 
-            if (!id) {
-                document.getElementById('title').innerText = "ERROR: NO_ID_PROVIDED";
-                return;
+            const { data: art, error } = await _supabase.from('articles').select('*').eq('id', id).single();
+
+            if (error || !art) { showAccessDenied(); return; }
+
+            const isElevated = profile.is_terminal_admin || profile.is_overseer || profile.is_admin;
+            if (!isElevated && (art.department !== profile.department || profile.clearance_level < art.required_clearance)) {
+                showAccessDenied(); return;
             }
 
-            const { data: art, error } = await _supabase
-                .from('articles')
-                .select('*')
-                .eq('id', id)
-                .single();
+            document.getElementById('doc-title').innerText = art.title || 'UNTITLED_FILE';
+            document.getElementById('doc-author').innerText = art.author || 'REDACTED';
+            document.getElementById('doc-dept').innerText = `[${art.department || 'GENERAL'}]`;
+            document.getElementById('doc-cl').innerText = `LEVEL_${art.required_clearance}`;
+            document.getElementById('doc-date').innerText = new Date(art.created_at).toLocaleDateString();
+            document.getElementById('doc-content').innerText = art.content || '[DATA EXPUNGED]';
+            document.getElementById('doc-meta').style.display = 'grid';
 
-            if (error || !art) {
-                showAccessDenied();
-                return;
+            // Show edit button if allowed
+            const canEdit = isElevated || art.author === profile.full_name;
+            if (canEdit) {
+                const actions = document.getElementById('doc-actions');
+                actions.innerHTML += `<button class="btn-gold" onclick="window.location.href='edit.html?id=${art.id}'">EDIT_DOCUMENT</button>`;
             }
-
-            // Client-side clearance check (RLS is the real enforcer, this is UX)
-            const userIsElevated = profile.is_terminal_admin || profile.is_overseer || profile.is_admin;
-            const sameDept = art.department === profile.department;
-            const hasClauserance = profile.clearance_level >= art.required_clearance;
-
-            if (!userIsElevated && (!sameDept || !hasClauserance)) {
-                showAccessDenied();
-                return;
-            }
-
-            document.getElementById('title').innerText = art.title || "UNTITLED_FILE";
-            document.getElementById('author').innerText = art.author || "REDACTED";
-            document.getElementById('dept-display').innerText = art.department || "GENERAL";
-            document.getElementById('content').innerText = art.content || "[DATA EXPUNGED]";
         }
 
         function showAccessDenied() {
             document.body.innerHTML = `
-                <div style="color: #ff0000; text-align: center; padding-top: 50px; font-family: 'VT323', monospace;">
-                    <h1 style="font-size: 3em;">[ACCESS DENIED]</h1>
-                    <p style="border: 1px solid red; display: inline-block; padding: 10px;">
-                        MEMETIC KILL AGENT ACTIVATED. <br>
-                        REMAIN CALM. DO NOT ATTEMPT TO LEAVE YOUR TERMINAL. <br>
-                        SECURITY TEAMS HAVE BEEN DISPATCHED TO YOUR LOCATION.
-                    </p>
-                    <br><br>
-                    <a href="archive.html" style="color: red; border: 1px solid red; padding: 10px;">RETURN_TO_ARCHIVE</a>
+                <div style="background:#020000;color:var(--red);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'VT323',monospace;border:2px solid var(--red);">
+                    <div style="font-size:3rem;animation:flicker 0.5s infinite;letter-spacing:6px;">[ ACCESS_DENIED ]</div>
+                    <div style="border:1px solid var(--red);padding:20px;margin:20px;max-width:500px;background:rgba(255,0,0,0.03);">
+                        <p style="margin-bottom:12px;">MEMETIC KILL AGENT ACTIVATED.</p>
+                        <p style="margin-bottom:12px;">REMAIN CALM. DO NOT ATTEMPT TO LEAVE YOUR TERMINAL.</p>
+                        <p>SECURITY TEAMS HAVE BEEN DISPATCHED TO YOUR LOCATION.</p>
+                    </div>
+                    <a href="archive.html" style="color:var(--red);border:1px solid var(--red);padding:8px 24px;font-family:'VT323',monospace;letter-spacing:2px;font-size:1rem;">RETURN_TO_ARCHIVE</a>
                 </div>`;
         }
 

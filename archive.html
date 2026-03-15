@@ -9,11 +9,26 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>DATABASE_QUERY: SECURE_ARCHIVES</h1>
-    <nav>
-        <a href="dashboard.html">RETURN_TO_DASHBOARD</a>
-        <div id="overseer-filters" style="display:none; margin-top:10px; border:1px solid gold; padding:5px;">
-            <span style="color:gold">OVERSEER_VIEW:</span>
+
+    <div class="identity-block" style="padding: 12px 24px;">
+        <a href="dashboard.html" class="site-header" style="border:none; background:none; padding:0; position:static;">
+            <div class="logo">SCIPNET <span>SECURE INTRANET // SITE-19</span></div>
+        </a>
+    </div>
+
+    <nav class="main-nav">
+        <a href="dashboard.html">DASHBOARD</a>
+        <a href="archive.html" class="active">DATABASE_ARCHIVE</a>
+        <a href="personnel.html">PERSONNEL_DIRECTORY</a>
+        <a href="write.html">FILE_NEW_REPORT</a>
+    </nav>
+
+    <div class="page-content page-wrapper fade-in">
+        <div class="page-title">DATABASE_ARCHIVE</div>
+        <div class="page-subtitle">SECURE DOCUMENT REPOSITORY // CLEARANCE-GATED ACCESS</div>
+
+        <div class="overseer-filter" id="overseer-filters">
+            <label>OVERSEER_VIEW:</label>
             <select id="dept-filter" onchange="fetchReports()">
                 <option value="ALL">ALL_DEPARTMENTS</option>
                 <option value="ScD">SCIENTIFIC (ScD)</option>
@@ -25,102 +40,110 @@
                 <option value="ISD">INTELLIGENCE (ISD)</option>
             </select>
         </div>
-    </nav>
 
-    <table id="archive-table">
-        <thead>
-            <tr>
-                <th>DATE</th>
-                <th>DEPT</th>
-                <th>CLEARANCE</th>
-                <th>DOCUMENT_TITLE</th>
-                <th>AUTHOR</th>
-                <th>ACTION</th>
-            </tr>
-        </thead>
-        <tbody id="report-list">
-        </tbody>
-    </table>
+        <div class="filter-bar">
+            <input type="text" id="doc-search" placeholder="SEARCH DOCUMENTS..." onkeyup="filterTable()" style="max-width:360px;">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>DATE</th>
+                    <th>DEPT</th>
+                    <th>CL</th>
+                    <th>TITLE</th>
+                    <th>AUTHOR</th>
+                    <th>ACTION</th>
+                </tr>
+            </thead>
+            <tbody id="report-list">
+                <tr><td colspan="6" style="color:var(--text-dim); padding:20px;">RETRIEVING DATA...</td></tr>
+            </tbody>
+        </table>
+    </div>
 
     <script>
         let currentProfile = null;
         let isElevated = false;
         let isAdmin = false;
+        let allReports = [];
 
         async function initArchive() {
             const auth = await requireAuth();
             if (!auth) return;
-
             currentProfile = auth.profile;
 
             if (currentProfile.is_terminal_admin || currentProfile.is_overseer) {
                 isElevated = true;
-                document.getElementById('overseer-filters').style.display = 'block';
+                document.getElementById('overseer-filters').style.display = 'flex';
             } else if (currentProfile.is_admin) {
                 isAdmin = true;
             }
-
             fetchReports();
         }
 
         async function fetchReports() {
             const list = document.getElementById('report-list');
-            list.innerHTML = "<tr><td colspan='6'>RETRIEVING_DATA...</td></tr>";
+            list.innerHTML = `<tr><td colspan="6" style="color:var(--text-dim); padding:20px;">RETRIEVING DATA...</td></tr>`;
 
             let query = _supabase.from('articles').select('*').order('created_at', { ascending: false });
 
             if (!isElevated) {
                 query = query.eq('department', currentProfile.department);
-                if (!isAdmin) {
-                    query = query.lte('required_clearance', currentProfile.clearance_level);
-                }
+                if (!isAdmin) query = query.lte('required_clearance', currentProfile.clearance_level);
             } else {
                 const filter = document.getElementById('dept-filter')?.value;
-                if (filter && filter !== "ALL") {
-                    query = query.eq('department', filter);
-                }
+                if (filter && filter !== 'ALL') query = query.eq('department', filter);
             }
 
             const { data: reports, error } = await query;
 
             if (error) {
-                list.innerHTML = `<tr><td colspan='6' style='color:var(--error-red)'>QUERY_ERROR: ${error.message}</td></tr>`;
+                list.innerHTML = `<tr><td colspan="6" style="color:var(--red)">QUERY_ERROR: ${error.message}</td></tr>`;
                 return;
             }
 
+            allReports = reports;
+            renderTable(reports);
+        }
+
+        function renderTable(reports) {
+            const list = document.getElementById('report-list');
             if (reports.length === 0) {
-                list.innerHTML = "<tr><td colspan='6'>NO_RECORDS_FOUND_UNDER_CURRENT_CLEARANCE</td></tr>";
+                list.innerHTML = `<tr><td colspan="6" style="color:var(--text-dim); padding:20px;">NO RECORDS FOUND UNDER CURRENT CLEARANCE</td></tr>`;
                 return;
             }
 
-            const rows = reports.map(report => {
-                const date = new Date(report.created_at).toLocaleDateString();
-                const isElevatedUser = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
-                const isAuthor = report.author === currentProfile.full_name;
-                const canEdit = isElevatedUser || isAuthor;
+            const isElevatedUser = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
 
+            list.innerHTML = reports.map(r => {
+                const date = new Date(r.created_at).toLocaleDateString();
+                const canEdit = isElevatedUser || r.author === currentProfile.full_name;
                 return `
                     <tr>
                         <td>${date}</td>
-                        <td>[${report.department || 'N/A'}]</td>
-                        <td>LEVEL_${report.required_clearance}</td>
-                        <td style="color:var(--terminal-green)">${report.title || 'UNTITLED_FILE'}</td>
-                        <td>${report.author || 'UNKNOWN'}</td>
-                        <td style="display:flex; gap:5px;">
-                            <button onclick="viewReport('${report.id}')">OPEN</button>
-                            ${canEdit ? `<button class="edit-btn" onclick="editReport('${report.id}')">EDIT</button>` : ''}
+                        <td><span style="color:var(--text-dim)">[${r.department || 'N/A'}]</span></td>
+                        <td><span style="color:var(--text-dim)">L${r.required_clearance}</span></td>
+                        <td style="color:var(--green);">${r.title || 'UNTITLED_FILE'}</td>
+                        <td style="color:var(--text-mid);">${r.author || 'UNKNOWN'}</td>
+                        <td>
+                            <div class="btn-row">
+                                <button onclick="window.location.href='view.html?id=${r.id}'">OPEN</button>
+                                ${canEdit ? `<button class="btn-gold" onclick="window.location.href='edit.html?id=${r.id}'">EDIT</button>` : ''}
+                            </div>
                         </td>
                     </tr>`;
             }).join('');
-            list.innerHTML = rows;
         }
 
-        function viewReport(id) {
-            window.location.href = `view.html?id=${id}`;
-        }
-
-        function editReport(id) {
-            window.location.href = `edit.html?id=${id}`;
+        function filterTable() {
+            const q = document.getElementById('doc-search').value.toLowerCase();
+            const filtered = allReports.filter(r =>
+                (r.title || '').toLowerCase().includes(q) ||
+                (r.author || '').toLowerCase().includes(q) ||
+                (r.department || '').toLowerCase().includes(q)
+            );
+            renderTable(filtered);
         }
 
         window.onload = initArchive;

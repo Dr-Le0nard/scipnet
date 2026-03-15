@@ -9,48 +9,71 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1 id="admin-header">ADMIN_TERMINAL_OVERRIDE</h1>
-    <nav><a href="dashboard.html">BACK_TO_DASHBOARD</a></nav>
 
-    <section id="alert-section" style="display:none; border: 2px solid var(--alert-gold); padding: 15px; margin: 20px 0; background: rgba(255, 215, 0, 0.1);">
-        <h2 style="color: var(--alert-gold); margin-top: 0;">[!] ADMINISTRATIVE_REASSIGNMENT_ALERTS</h2>
-        <div id="flagged-list" class="admin-grid"></div>
-    </section>
+    <div class="identity-block" style="padding: 12px 24px;">
+        <a href="dashboard.html" style="text-decoration:none;">
+            <div class="logo" style="font-family:var(--font-display);font-size:1.6rem;color:var(--green);text-shadow:0 0 12px var(--green),0 0 30px rgba(0,255,65,0.3);letter-spacing:4px;">
+                SCIPNET <span style="color:var(--text-dim);font-size:0.75rem;letter-spacing:2px;display:block;text-shadow:none;margin-top:-4px;">SECURE INTRANET // SITE-19</span>
+            </div>
+        </a>
+    </div>
 
-    <section style="margin-bottom: 30px;">
-        <label>FILTER_PERSONNEL_DATABASE:</label>
-        <input type="text" id="user-search" placeholder="ENTER_NAME_OR_ID..." onkeyup="filterUsers()">
-    </section>
+    <nav class="main-nav">
+        <a href="dashboard.html">DASHBOARD</a>
+        <a href="archive.html">DATABASE_ARCHIVE</a>
+        <a href="personnel.html">PERSONNEL_DIRECTORY</a>
+        <a href="admin.html" class="active" id="admin-nav-label">ADMIN_OVERRIDE</a>
+    </nav>
 
-    <section>
-        <h2>PENDING_ACCESS_REQUESTS</h2>
-        <div id="pending-list" class="admin-grid">SCANNING_FOR_REQUESTS...</div>
-    </section>
+    <div class="page-content page-wrapper fade-in">
+        <div class="page-title" id="admin-header">ADMIN_TERMINAL_OVERRIDE</div>
+        <div class="page-subtitle">PERSONNEL MANAGEMENT // RESTRICTED ACCESS</div>
 
-    <hr style="border: 1px solid var(--terminal-green); margin: 40px 0;">
+        <!-- Flags Section -->
+        <div class="alert-section" id="alert-section" style="display:none;">
+            <div class="alert-section-title">[!] ADMINISTRATIVE_REASSIGNMENT_ALERTS</div>
+            <div class="grid" id="flagged-list"></div>
+        </div>
 
-    <section>
-        <h2>ACTIVE_PERSONNEL_MANAGEMENT</h2>
-        <div id="active-list" class="admin-grid">SCANNING_ACTIVE_USERS...</div>
-    </section>
+        <!-- Filter -->
+        <div class="filter-bar">
+            <input type="text" id="user-search" placeholder="FILTER PERSONNEL BY NAME..." onkeyup="filterUsers()">
+        </div>
+
+        <!-- Pending -->
+        <div class="section-header">PENDING_ACCESS_REQUESTS</div>
+        <div class="grid" id="pending-list">
+            <div style="color:var(--text-dim);">SCANNING FOR REQUESTS...</div>
+        </div>
+
+        <hr>
+
+        <!-- Active -->
+        <div class="section-header">ACTIVE_PERSONNEL_MANAGEMENT</div>
+        <div class="grid" id="active-list">
+            <div style="color:var(--text-dim);">SCANNING ACTIVE USERS...</div>
+        </div>
+    </div>
 
     <script>
         let currentUserId = null;
         let myProfile = null;
 
         async function initAdmin() {
-            // Use centralized auth — requireAdmin:true
             const auth = await requireAuth(true);
             if (!auth) return;
-
             currentUserId = auth.user.id;
             myProfile = auth.profile;
 
             if (myProfile.is_terminal_admin) {
-                const header = document.getElementById('admin-header');
-                header.innerText = "ROOT_SYSTEM_OVERRIDE";
-                header.style.paddingTop = "10px";
+                document.getElementById('admin-header').innerText = 'ROOT_SYSTEM_OVERRIDE';
+                document.getElementById('admin-header').style.color = 'var(--gold)';
+                document.getElementById('admin-nav-label').innerText = 'SYSTEM_OVERRIDE';
                 loadFlags();
+            } else if (myProfile.is_overseer) {
+                document.getElementById('admin-header').innerText = 'CHAIRMAN_OVERRIDE';
+                document.getElementById('admin-header').style.color = 'var(--red)';
+                document.getElementById('admin-nav-label').innerText = 'CHAIRMAN_OVERRIDE';
             }
 
             loadPending();
@@ -58,59 +81,40 @@
         }
 
         async function loadFlags() {
-            const { data: flagged, error } = await _supabase
-                .from('profiles')
-                .select('*')
-                .not('admin_notice', 'is', null);
-
+            const { data: flagged, error } = await _supabase.from('profiles').select('*').not('admin_notice', 'is', null);
             if (error || !flagged || flagged.length === 0) return;
 
-            const container = document.getElementById('flagged-list');
-            const section = document.getElementById('alert-section');
-            section.style.display = "block";
-
-            // Build HTML as a string, then set once (avoids repeated DOM thrashing)
-            const html = flagged.map(u => {
+            document.getElementById('alert-section').style.display = 'block';
+            document.getElementById('flagged-list').innerHTML = flagged.map(u => {
                 const isMe = currentUserId === u.id;
                 return `
-                    <div class="scp-card" style="border-color: var(--alert-gold);">
-                        <p style="color: var(--alert-gold);"><strong>NOTICE:</strong> ${u.admin_notice}</p>
+                    <div class="card card-gold">
+                        <p style="color:var(--gold);"><strong>NOTICE:</strong> ${u.admin_notice}</p>
                         <p><strong>USER:</strong> ${u.full_name}</p>
-                        <p><strong>CURRENT_DEPT:</strong> ${u.department || 'NONE'}</p>
-                        <button onclick="clearFlag('${u.id}')"
-                                class="flag-resolve-btn" ${isMe ? 'disabled' : ''}>
+                        <p><strong>DEPT:</strong> ${u.department || 'NONE'}</p>
+                        <button class="btn-gold" onclick="clearFlag('${u.id}')" ${isMe ? 'disabled' : ''}>
                             ${isMe ? 'EXTERNAL_CLEARANCE_REQUIRED' : 'RESOLVE_FLAG'}
                         </button>
                     </div>`;
             }).join('');
-            container.innerHTML = html;
         }
 
         async function loadPending() {
-            let query = _supabase.from('profiles').select('*')
-                .eq('is_approved', false)
-                .eq('is_banned', false);
-
-            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
-                query = query.eq('department', myProfile.department);
-            }
+            let query = _supabase.from('profiles').select('*').eq('is_approved', false).eq('is_banned', false);
+            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) query = query.eq('department', myProfile.department);
 
             const { data: pending, error } = await query;
             const container = document.getElementById('pending-list');
+            if (error) { container.innerHTML = `<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`; return; }
+            if (pending.length === 0) { container.innerHTML = `<div style="color:var(--text-dim)">NO PENDING REQUESTS IN JURISDICTION</div>`; return; }
 
-            if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
-            if (pending.length === 0) {
-                container.innerHTML = "NO_PENDING_REQUESTS_IN_JURISDICTION";
-                return;
-            }
-
-            const html = pending.map(u => {
+            container.innerHTML = pending.map(u => {
                 const isMe = currentUserId === u.id;
                 return `
-                    <div class="scp-card user-item" data-name="${u.full_name.toLowerCase()}">
-                        <p><strong>USER:</strong> ${u.full_name}</p>
-                        <p><strong>REQUESTED_DEPT:</strong> ${u.department || 'NONE'}</p>
-                        <label>VALIDATE_DEPARTMENT:</label>
+                    <div class="card user-item" data-name="${u.full_name.toLowerCase()}">
+                        <h3>${u.full_name}</h3>
+                        <p><strong>REQUESTED DEPT:</strong> ${u.department || 'NONE'}</p>
+                        <label>VALIDATE DEPARTMENT:</label>
                         <select id="dept-${u.id}">
                             <option value="ScD"  ${u.department==='ScD'  ?'selected':''}>Scientific (ScD)</option>
                             <option value="MD"   ${u.department==='MD'   ?'selected':''}>Medical (MD)</option>
@@ -120,42 +124,33 @@
                             <option value="AD"   ${u.department==='AD'   ?'selected':''}>Administrative (AD)</option>
                             <option value="ISD"  ${u.department==='ISD'  ?'selected':''}>Intelligence (ISD)</option>
                         </select>
-                        <label>ASSIGN_CLEARANCE:</label>
+                        <label>ASSIGN CLEARANCE:</label>
                         <select id="lvl-${u.id}">
                             <option value="1">Level 1</option>
                             <option value="2">Level 2</option>
                             <option value="3">Level 3</option>
                             <option value="4">Level 4</option>
                         </select>
-                        <div style="display: flex; gap: 10px; margin-top:15px; justify-content: center; align-items: center;">
+                        <div class="btn-row" style="margin-top:12px;">
                             <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
-                            <button onclick="flagUser('${u.id}', 'Departmental Misalignment Reported')"
-                                    class="flag-btn" ${isMe ? 'disabled' : ''}>
-                                ${isMe ? 'CANNOT_FLAG_SELF' : 'FLAG_FOR_REVIEW'}
+                            <button class="btn-gold" onclick="flagUser('${u.id}', 'Departmental Misalignment Reported')" ${isMe ? 'disabled' : ''}>
+                                ${isMe ? 'CANNOT_FLAG_SELF' : 'FLAG'}
                             </button>
                         </div>
                     </div>`;
             }).join('');
-            container.innerHTML = html;
         }
 
         async function loadActiveUsers() {
             let query = _supabase.from('profiles').select('*').eq('is_approved', true);
-
-            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
-                query = query.eq('department', myProfile.department);
-            }
+            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) query = query.eq('department', myProfile.department);
 
             const { data: active, error } = await query.order('full_name', { ascending: true });
             const container = document.getElementById('active-list');
+            if (error) { container.innerHTML = `<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`; return; }
+            if (active.length === 0) { container.innerHTML = `<div style="color:var(--text-dim)">NO ACTIVE USERS IN JURISDICTION</div>`; return; }
 
-            if (error) { container.innerHTML = "ERROR_FETCHING_DATA"; return; }
-            if (active.length === 0) {
-                container.innerHTML = "NO_ACTIVE_USERS_IN_JURISDICTION";
-                return;
-            }
-
-            const html = active.map(u => {
+            container.innerHTML = active.map(u => {
                 const isMe = currentUserId === u.id;
                 let canRevoke = false;
                 if (myProfile.is_terminal_admin && !isMe) canRevoke = true;
@@ -163,68 +158,57 @@
                 if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canRevoke = true;
 
                 return `
-                    <div class="scp-card user-item" data-name="${u.full_name.toLowerCase()}">
-                        <p><strong>${u.full_name}</strong> ${u.is_terminal_admin ? '<span style="color:var(--alert-gold)">[TECH_ADMIN]</span>' : ''}</p>
-                        <p>DEPT: [${u.department || 'NONE'}] | CL: [${u.clearance_level}]</p>
-                        <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-                            <button onclick="flagUser('${u.id}', 'Active Personnel Audit Required')"
-                                    class="flag-btn-small" ${isMe ? 'disabled' : ''}>
+                    <div class="card user-item" data-name="${u.full_name.toLowerCase()}">
+                        <h3>${u.full_name} ${u.is_terminal_admin ? `<span style="color:var(--gold);font-size:0.8rem;">[TECH_ADMIN]</span>` : ''}</h3>
+                        <p><strong>DEPT:</strong> [${u.department || 'NONE'}] &nbsp;|&nbsp; <strong>CL:</strong> ${u.clearance_level}</p>
+                        <div class="btn-row" style="margin-top:12px;">
+                            <button class="btn-gold" onclick="flagUser('${u.id}', 'Active Personnel Audit Required')" ${isMe ? 'disabled' : ''}>
                                 ${isMe ? 'N/A' : 'FLAG'}
                             </button>
-                            <button onclick="revokeAccess('${u.id}')" ${!canRevoke ? 'disabled' : ''}>
+                            <button class="btn-red" onclick="revokeAccess('${u.id}')" ${!canRevoke ? 'disabled' : ''}>
                                 ${isMe ? 'YOU' : 'REVOKE'}
                             </button>
                         </div>
                     </div>`;
             }).join('');
-            container.innerHTML = html;
         }
 
         async function flagUser(userId, reason) {
-            if (userId === currentUserId) {
-                alert("CRITICAL_ERROR: ADMINISTRATIVE_UNITS_CANNOT_FLAG_THEMSELVES");
-                return;
-            }
+            if (userId === currentUserId) { alert('CRITICAL_ERROR: CANNOT_FLAG_SELF'); return; }
             const { error } = await _supabase.from('profiles').update({ admin_notice: reason }).eq('id', userId);
-            if (error) alert("FLAG_FAILED: " + error.message);
-            else { alert("USER_FLAGGED: NOTIFICATION SENT TO TERMINAL ADMINISTRATOR"); location.reload(); }
+            if (error) alert('FLAG_FAILED: ' + error.message);
+            else { alert('USER_FLAGGED: NOTIFICATION SENT TO TERMINAL ADMINISTRATOR'); location.reload(); }
         }
 
         async function clearFlag(userId) {
-            if (userId === currentUserId) {
-                alert("CRITICAL_ERROR: ADMINISTRATIVE_UNITS_CANNOT_UNFLAG_THEMSELVES");
-                return;
-            }
+            if (userId === currentUserId) { alert('CRITICAL_ERROR: CANNOT_UNFLAG_SELF'); return; }
             const { error } = await _supabase.from('profiles').update({ admin_notice: null }).eq('id', userId);
-            if (error) alert("CLEAR_FAILED: " + error.message);
+            if (error) alert('CLEAR_FAILED: ' + error.message);
             else location.reload();
         }
 
         async function approveUser(userId) {
-            const selectedLevel = document.getElementById(`lvl-${userId}`).value;
-            const selectedDept = document.getElementById(`dept-${userId}`).value;
+            const level = document.getElementById(`lvl-${userId}`).value;
+            const dept  = document.getElementById(`dept-${userId}`).value;
             const { error } = await _supabase.from('profiles').update({
-                is_approved: true,
-                clearance_level: parseInt(selectedLevel),
-                department: selectedDept,
-                admin_notice: null
+                is_approved: true, clearance_level: parseInt(level), department: dept, admin_notice: null
             }).eq('id', userId);
-            if (error) alert("UPDATE_FAILED: " + error.message);
+            if (error) alert('UPDATE_FAILED: ' + error.message);
             else location.reload();
         }
 
         async function revokeAccess(userId) {
-            if (confirm("WARNING: PERMANENTLY BAN THIS USER?")) {
+            if (confirm('WARNING: PERMANENTLY BAN THIS USER?')) {
                 const { error } = await _supabase.from('profiles').update({ is_approved: false, is_banned: true }).eq('id', userId);
-                if (error) alert("BAN_FAILED: " + error.message);
+                if (error) alert('BAN_FAILED: ' + error.message);
                 else location.reload();
             }
         }
 
         function filterUsers() {
-            const query = document.getElementById('user-search').value.toLowerCase();
-            document.querySelectorAll('.user-item').forEach(user => {
-                user.style.display = user.getAttribute('data-name').includes(query) ? "flex" : "none";
+            const q = document.getElementById('user-search').value.toLowerCase();
+            document.querySelectorAll('.user-item').forEach(u => {
+                u.style.display = u.getAttribute('data-name').includes(q) ? 'flex' : 'none';
             });
         }
 
