@@ -109,10 +109,9 @@
         }
 
         async function clearAlert(){
-            const{error}=await _supabase.rpc('set_system_alert',{p_message:null,p_active:false});
+            const{error}=await _supabase.rpc('set_system_alert',{p_message:'',p_active:false});
             if(error){
-                const{error:e2}=await _supabase.from('system_status').update({is_active:false,alert_message:null}).gte('is_active',false);
-                if(e2){toast('CLEAR_FAILED: '+e2.message,'error');return;}
+                toast('CLEAR_FAILED: '+error.message,'error');return;
             }
             toast('ALERT CLEARED — SYSTEM STATUS NOMINAL','success');
             document.getElementById('alert-message-input').value='';
