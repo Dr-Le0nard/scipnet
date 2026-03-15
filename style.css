@@ -88,8 +88,8 @@ button {
     transition: all 0.2s;
 }
 
-button:hover:not(:disabled):not(.terminate-btn):not([onclick*="revokeAccess"]), 
-button:active:not(.terminate-btn):not([onclick*="revokeAccess"]) {
+button:hover:not(:disabled):not(.terminate-btn):not([onclick*="revokeAccess"]):not(.edit-btn), 
+button:active:not(.terminate-btn):not([onclick*="revokeAccess"]):not(.edit-btn) {
     background: var(--terminal-green) !important;
     color: var(--bg-black) !important;
     box-shadow: 0 0 10px var(--terminal-green);
