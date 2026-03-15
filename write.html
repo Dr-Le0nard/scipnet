@@ -6,35 +6,26 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
+    <script src="toast.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <div class="identity-block" style="padding: 12px 24px;">
-        <a href="dashboard.html" style="text-decoration:none;">
-            <div class="logo" style="font-family:var(--font-display);font-size:1.6rem;color:var(--green);text-shadow:0 0 12px var(--green),0 0 30px rgba(0,255,65,0.3);letter-spacing:4px;">
-                SCIPNET <span style="color:var(--text-dim);font-size:0.75rem;letter-spacing:2px;display:block;text-shadow:none;margin-top:-4px;">SECURE INTRANET // SITE-19</span>
-            </div>
-        </a>
+    <div class="identity-block">
+        <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
     </div>
-
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
         <a href="archive.html">DATABASE_ARCHIVE</a>
         <a href="write.html" class="active">FILE_NEW_REPORT</a>
+        <a href="profile.html">MY_PROFILE</a>
     </nav>
-
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="form-header">INITIALIZING_REPORT_MODULE</div>
         <div class="page-subtitle">SECURE DOCUMENT SUBMISSION // AUTHORIZED PERSONNEL ONLY</div>
-
-        <div style="max-width: 800px;">
-            <!-- Dynamic fields -->
+        <div style="max-width:800px;">
             <div id="dynamic-fields" style="margin-bottom:20px;"></div>
-
             <label>DOCUMENT TITLE</label>
             <input type="text" id="title" placeholder="ENTER LOG TITLE...">
-
             <label>CLEARANCE RESTRICTION</label>
             <select id="clearance_level">
                 <option value="0">LEVEL 0 — PUBLIC</option>
@@ -44,92 +35,56 @@
                 <option value="4">LEVEL 4 — TOP SECRET</option>
                 <option value="5">LEVEL 5 — O5 ONLY</option>
             </select>
-
             <label>DOCUMENT CONTENT</label>
             <textarea id="content" rows="15" placeholder="BEGIN DATA ENTRY..."></textarea>
-
             <div class="btn-row" style="margin-top:8px;">
                 <button class="btn-full" onclick="submitReport()">TRANSMIT_TO_SECURE_SERVERS</button>
             </div>
         </div>
     </div>
-
     <script>
-        let currentUserProfile = null;
-        const reportModule = new URLSearchParams(window.location.search).get('type') || 'general';
-
-        async function initializeForm() {
-            const auth = await requireAuth();
-            if (!auth) return;
-            currentUserProfile = auth.profile;
-
-            document.getElementById('form-header').innerText = `NEW_${reportModule.toUpperCase()}_ENTRY`;
+        let currentUserProfile=null;
+        const reportModule=new URLSearchParams(window.location.search).get('type')||'general';
+        async function initializeForm(){
+            const auth=await requireAuth();if(!auth)return;
+            currentUserProfile=auth.profile;
+            document.getElementById('form-header').innerText=`NEW_${reportModule.toUpperCase()}_ENTRY`;
             capClearanceOptions(currentUserProfile.clearance_level);
             setupExtraFields();
         }
-
-        function capClearanceOptions(userClearance) {
-            const isElevated = currentUserProfile.is_admin || currentUserProfile.is_overseer || currentUserProfile.is_terminal_admin;
-            if (isElevated) return;
-            Array.from(document.getElementById('clearance_level').options).forEach(opt => {
-                if (parseInt(opt.value) > userClearance) {
-                    opt.disabled = true;
-                    opt.text += ' [UNAUTHORIZED]';
-                }
+        function capClearanceOptions(userClearance){
+            const isElevated=currentUserProfile.is_admin||currentUserProfile.is_overseer||currentUserProfile.is_terminal_admin;
+            if(isElevated)return;
+            Array.from(document.getElementById('clearance_level').options).forEach(opt=>{
+                if(parseInt(opt.value)>userClearance){opt.disabled=true;opt.text+=' [UNAUTHORIZED]';}
             });
         }
-
-        function setupExtraFields() {
-            const container = document.getElementById('dynamic-fields');
-            if (reportModule === 'research') {
-                container.innerHTML = `
-                    <div style="border-left:2px solid var(--green-border); padding-left:16px; margin-bottom:20px;">
-                        <label>SUBJECT ID</label>
-                        <input type="text" id="meta_subject" placeholder="e.g. SCP-096">
-                        <label>TEST PHASE</label>
-                        <input type="text" id="meta_phase" placeholder="e.g. Initial Exposure">
-                    </div>`;
-            } else if (reportModule === 'medical') {
-                container.innerHTML = `
-                    <div style="border-left:2px solid var(--green-border); padding-left:16px; margin-bottom:20px;">
-                        <label>PATIENT ID</label>
-                        <input type="text" id="meta_patient" placeholder="e.g. D-9022">
-                    </div>`;
+        function setupExtraFields(){
+            const container=document.getElementById('dynamic-fields');
+            if(reportModule==='research'){
+                container.innerHTML=`<div style="border-left:2px solid var(--green-border);padding-left:16px;margin-bottom:20px;"><label>SUBJECT ID</label><input type="text" id="meta_subject" placeholder="e.g. SCP-096"><label>TEST PHASE</label><input type="text" id="meta_phase" placeholder="e.g. Initial Exposure"></div>`;
+            }else if(reportModule==='medical'){
+                container.innerHTML=`<div style="border-left:2px solid var(--green-border);padding-left:16px;margin-bottom:20px;"><label>PATIENT ID</label><input type="text" id="meta_patient" placeholder="e.g. D-9022"></div>`;
             }
         }
-
-        async function submitReport() {
-            const title   = document.getElementById('title').value.trim();
-            const content = document.getElementById('content').value.trim();
-            const cl      = parseInt(document.getElementById('clearance_level').value);
-
-            if (!title || !content) { alert('CRITICAL_ERROR: DATA_MISSING'); return; }
-
-            const isElevated = currentUserProfile.is_admin || currentUserProfile.is_overseer || currentUserProfile.is_terminal_admin;
-            if (!isElevated && cl > currentUserProfile.clearance_level) {
-                alert('ACCESS_DENIED: CLEARANCE_LEVEL_EXCEEDS_YOUR_AUTHORIZATION'); return;
-            }
-
-            let finalContent = '';
-            document.querySelectorAll('#dynamic-fields input').forEach(input => {
-                const lbl = input.previousElementSibling?.innerText || '';
-                if (input.value.trim()) finalContent += `${lbl} ${input.value.trim()}\n`;
+        async function submitReport(){
+            const title=document.getElementById('title').value.trim();
+            const content=document.getElementById('content').value.trim();
+            const cl=parseInt(document.getElementById('clearance_level').value);
+            if(!title||!content){toast('CRITICAL_ERROR: DATA_MISSING','error');return;}
+            const isElevated=currentUserProfile.is_admin||currentUserProfile.is_overseer||currentUserProfile.is_terminal_admin;
+            if(!isElevated&&cl>currentUserProfile.clearance_level){toast('ACCESS_DENIED: CLEARANCE_LEVEL_EXCEEDS_YOUR_AUTHORIZATION','error');return;}
+            let finalContent='';
+            document.querySelectorAll('#dynamic-fields input').forEach(input=>{
+                const lbl=input.previousElementSibling?.innerText||'';
+                if(input.value.trim())finalContent+=`${lbl} ${input.value.trim()}\n`;
             });
-            finalContent += (finalContent ? '\n' : '') + content;
-
-            const { error } = await _supabase.from('articles').insert([{
-                title,
-                content: finalContent,
-                author: currentUserProfile.full_name,
-                department: currentUserProfile.department,
-                required_clearance: cl
-            }]);
-
-            if (error) alert('TRANSMISSION_FAILED: ' + error.message);
-            else { alert('TRANSMISSION_SUCCESSFUL'); window.location.href = 'archive.html'; }
+            finalContent+=(finalContent?'\n':'')+content;
+            const{error}=await _supabase.from('articles').insert([{title,content:finalContent,author:currentUserProfile.full_name,department:currentUserProfile.department,required_clearance:cl}]);
+            if(error){toast('TRANSMISSION_FAILED: '+error.message,'error');}
+            else{toast('TRANSMISSION_SUCCESSFUL','success');setTimeout(()=>window.location.href='archive.html',1200);}
         }
-
-        window.onload = initializeForm;
+        window.onload=initializeForm;
     </script>
 </body>
 </html>

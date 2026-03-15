@@ -6,100 +6,61 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
+    <script src="toast.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <div class="identity-block" style="padding: 12px 24px;">
-        <a href="dashboard.html" style="text-decoration:none;">
-            <div class="logo" style="font-family:var(--font-display);font-size:1.6rem;color:var(--green);text-shadow:0 0 12px var(--green),0 0 30px rgba(0,255,65,0.3);letter-spacing:4px;">
-                SCIPNET <span style="color:var(--text-dim);font-size:0.75rem;letter-spacing:2px;display:block;text-shadow:none;margin-top:-4px;">SECURE INTRANET // SITE-19</span>
-            </div>
-        </a>
+    <div class="identity-block">
+        <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
     </div>
-
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
         <a href="archive.html">DATABASE_ARCHIVE</a>
         <a href="personnel.html" class="active">PERSONNEL_DIRECTORY</a>
         <a href="write.html">FILE_NEW_REPORT</a>
+        <a href="profile.html">MY_PROFILE</a>
     </nav>
-
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">PERSONNEL_DIRECTORY</div>
         <div class="page-subtitle" id="access-notice">FOUNDATION STAFF MANIFEST // LOADING...</div>
-
         <div class="filter-bar">
             <input type="text" id="personnelSearch" placeholder="SEARCH BY NAME, CLEARANCE OR DEPARTMENT..." onkeyup="filterPersonnel()" style="max-width:480px;">
         </div>
-
         <div class="grid" id="personnel-list">
             <div style="color:var(--text-dim);">RETRIEVING STAFF MANIFEST...</div>
         </div>
     </div>
-
     <script>
-        let allStaff = [];
-
-        async function loadPersonnel() {
-            const auth = await requireAuth();
-            if (!auth) return;
-            const { profile } = auth;
-
-            const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
-            const notice = document.getElementById('access-notice');
-
-            if (!isElevated) {
-                notice.innerText = `DISPLAYING PERSONNEL AT OR BELOW CLEARANCE LEVEL ${profile.clearance_level}`;
-                notice.style.color = 'var(--gold)';
-            } else {
-                notice.innerText = 'ELEVATED ACCESS // DISPLAYING ALL FOUNDATION PERSONNEL';
-            }
-
-            const { data: staff, error } = await _supabase
-                .from('profiles')
-                .select('full_name, clearance_level, department, bio')
-                .order('clearance_level', { ascending: false });
-
-            if (error) {
-                document.getElementById('personnel-list').innerHTML = `<div style="color:var(--red)">ERROR: DATABASE_ACCESS_DENIED</div>`;
-                return;
-            }
-
-            allStaff = staff;
-            renderList(allStaff);
+        let allStaff=[];
+        async function loadPersonnel(){
+            const auth=await requireAuth();if(!auth)return;
+            const{profile}=auth;
+            const isElevated=profile.is_admin||profile.is_overseer||profile.is_terminal_admin;
+            const notice=document.getElementById('access-notice');
+            if(!isElevated){notice.innerText=`DISPLAYING PERSONNEL AT OR BELOW CLEARANCE LEVEL ${profile.clearance_level}`;notice.style.color='var(--gold)';}
+            else{notice.innerText='ELEVATED ACCESS // DISPLAYING ALL FOUNDATION PERSONNEL';}
+            const{data:staff,error}=await _supabase.from('profiles').select('full_name,clearance_level,department,bio').order('clearance_level',{ascending:false});
+            if(error){document.getElementById('personnel-list').innerHTML=`<div style="color:var(--red)">ERROR: DATABASE_ACCESS_DENIED</div>`;return;}
+            allStaff=staff;renderList(allStaff);
         }
-
-        function renderList(list) {
-            const div = document.getElementById('personnel-list');
-            if (list.length === 0) {
-                div.innerHTML = `<div style="color:var(--text-dim)">NO MATCHING PERSONNEL FOUND</div>`;
-                return;
-            }
-
-            div.innerHTML = list.map(p => `
+        function renderList(list){
+            const div=document.getElementById('personnel-list');
+            if(list.length===0){div.innerHTML=`<div style="color:var(--text-dim)">NO MATCHING PERSONNEL FOUND</div>`;return;}
+            div.innerHTML=list.map(p=>`
                 <div class="card">
                     <h3>${p.full_name}</h3>
                     <p style="margin-bottom:4px;">
-                        <span class="clearance-badge" style="font-size:0.75rem; padding:2px 8px;">CL: ${p.clearance_level}</span>
-                        &nbsp;
-                        <span style="color:var(--text-dim); font-size:0.78rem;">[${p.department || 'UNASSIGNED'}]</span>
+                        <span class="clearance-badge" style="font-size:0.75rem;padding:2px 8px;">CL: ${p.clearance_level}</span>
+                        &nbsp;<span style="color:var(--text-dim);font-size:0.78rem;">[${p.department||'UNASSIGNED'}]</span>
                     </p>
-                    <p style="margin-top:8px; color:var(--text-dim); font-size:0.78rem;">${p.bio || 'NO BIO ON RECORD'}</p>
-                </div>`
-            ).join('');
+                    <p style="margin-top:8px;color:var(--text-dim);font-size:0.78rem;">${p.bio||'NO BIO ON RECORD'}</p>
+                </div>`).join('');
         }
-
-        function filterPersonnel() {
-            const q = document.getElementById('personnelSearch').value.toLowerCase();
-            renderList(allStaff.filter(p =>
-                p.full_name.toLowerCase().includes(q) ||
-                p.clearance_level.toString().includes(q) ||
-                (p.department && p.department.toLowerCase().includes(q))
-            ));
+        function filterPersonnel(){
+            const q=document.getElementById('personnelSearch').value.toLowerCase();
+            renderList(allStaff.filter(p=>p.full_name.toLowerCase().includes(q)||p.clearance_level.toString().includes(q)||(p.department&&p.department.toLowerCase().includes(q))));
         }
-
-        window.onload = loadPersonnel;
+        window.onload=loadPersonnel;
     </script>
 </body>
 </html>

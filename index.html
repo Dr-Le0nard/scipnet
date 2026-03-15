@@ -9,368 +9,76 @@
     <link rel="stylesheet" href="style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
         body {
-            background: #000;
-            color: var(--terminal-green);
-            font-family: 'VT323', monospace;
-            font-size: 1.1rem;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            overflow: hidden;
+            background: #000; color: var(--green); font-family: var(--font-display);
+            font-size: 1.1rem; min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 20px; overflow: hidden;
         }
-
-        /* Animated background grid */
         body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image: 
-                linear-gradient(rgba(0,255,65,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,255,65,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-            z-index: 0;
+            content: ''; position: fixed; inset: 0;
+            background-image: linear-gradient(rgba(0,255,65,0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0,255,65,0.03) 1px, transparent 1px);
+            background-size: 40px 40px; pointer-events: none; z-index: 0;
         }
-
-        .terminal-wrapper {
-            width: 100%;
-            max-width: 680px;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Boot sequence */
-        #boot-sequence {
-            font-size: 0.85rem;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            min-height: 120px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
+        .terminal-wrapper { width: 100%; max-width: 680px; position: relative; z-index: 1; }
+        #boot-sequence { font-size: 0.85rem; line-height: 1.6; margin-bottom: 20px; min-height: 120px; opacity: 0; transition: opacity 0.3s; font-family: var(--font-mono); }
         #boot-sequence.visible { opacity: 1; }
-
-        .boot-line {
-            display: block;
-            overflow: hidden;
-            white-space: nowrap;
-            width: 0;
-            animation: expand 0s forwards;
-        }
-
-        .boot-line.ok::after {
-            content: ' [OK]';
-            color: var(--terminal-green);
-        }
-
-        .boot-line.warn::after {
-            content: ' [WARN]';
-            color: var(--alert-gold);
-        }
-
-        .boot-line.err::after {
-            content: ' [ERR]';
-            color: var(--error-red);
-        }
-
-        @keyframes expand {
-            to { width: 100%; }
-        }
-
-        /* Main terminal box */
-        .terminal-box {
-            border: 1px solid var(--terminal-green);
-            box-shadow: 0 0 30px rgba(0,255,65,0.15), inset 0 0 30px rgba(0,255,65,0.03);
-            background: rgba(0,0,0,0.95);
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.5s, transform 0.5s;
-        }
-
-        .terminal-box.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .terminal-titlebar {
-            background: var(--terminal-green);
-            color: #000;
-            padding: 4px 12px;
-            font-size: 0.85rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            letter-spacing: 2px;
-        }
-
-        .terminal-body {
-            padding: 24px;
-        }
-
-        /* ASCII art header */
-        .ascii-header {
-            font-size: 0.7rem;
-            line-height: 1.2;
-            color: var(--terminal-green);
-            text-shadow: 0 0 10px var(--terminal-green);
-            margin-bottom: 20px;
-            text-align: center;
-            letter-spacing: 0;
-            text-transform: none;
-            opacity: 0.8;
-        }
-
-        .terminal-divider {
-            border: none;
-            border-top: 1px dashed rgba(0,255,65,0.3);
-            margin: 16px 0;
-        }
-
-        /* Prompt-style inputs */
-        .prompt-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 12px;
-            gap: 8px;
-        }
-
-        .prompt-label {
-            color: var(--terminal-green);
-            white-space: nowrap;
-            font-size: 1rem;
-            min-width: 180px;
-            opacity: 0.7;
-        }
-
-        .prompt-label::before {
-            content: '> ';
-            color: var(--terminal-green);
-        }
-
-        .prompt-input {
-            background: transparent !important;
-            border: none !important;
-            border-bottom: 1px solid rgba(0,255,65,0.4) !important;
-            border-radius: 0 !important;
-            color: var(--terminal-green) !important;
-            font-family: 'VT323', monospace !important;
-            font-size: 1rem !important;
-            padding: 2px 4px !important;
-            width: 100% !important;
-            height: auto !important;
-            margin: 0 !important;
-            outline: none !important;
-            letter-spacing: 1px;
-            caret-color: var(--terminal-green);
-        }
-
-        .prompt-input:focus {
-            border-bottom-color: var(--terminal-green) !important;
-            box-shadow: 0 2px 0 rgba(0,255,65,0.3);
-        }
-
-        .prompt-input::placeholder {
-            color: rgba(0,255,65,0.25);
-            font-style: normal;
-        }
-
-        /* Select styling */
-        .prompt-input.select-input {
-            appearance: none;
-            cursor: pointer;
-        }
-
-        /* Status line */
-        .status-line {
-            font-size: 0.85rem;
-            margin: 8px 0;
-            min-height: 20px;
-            padding-left: 8px;
-        }
-
-        .status-line.error { color: var(--error-red); }
-        .status-line.success { color: var(--terminal-green); }
-        .status-line.warning { color: var(--alert-gold); }
-
-        /* Action buttons */
-        .action-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 20px;
-            gap: 12px;
-        }
-
-        .terminal-btn {
-            background: transparent !important;
-            border: 1px solid var(--terminal-green) !important;
-            color: var(--terminal-green) !important;
-            font-family: 'VT323', monospace !important;
-            font-size: 1rem !important;
-            padding: 6px 20px !important;
-            cursor: pointer;
-            letter-spacing: 2px;
-            transition: all 0.15s;
-            height: auto !important;
-            text-transform: uppercase;
-        }
-
-        .terminal-btn:hover {
-            background: var(--terminal-green) !important;
-            color: #000 !important;
-            box-shadow: 0 0 15px rgba(0,255,65,0.5) !important;
-        }
-
-        .terminal-btn.primary {
-            border-color: var(--terminal-green) !important;
-        }
-
-        .toggle-link {
-            color: rgba(0,255,65,0.5);
-            cursor: pointer;
-            font-size: 0.85rem;
-            text-decoration: none;
-            letter-spacing: 1px;
-            transition: color 0.2s;
-            border: none;
-            background: none;
-            height: auto !important;
-            padding: 0 !important;
-        }
-
-        .toggle-link:hover {
-            color: var(--terminal-green);
-            background: transparent !important;
-            box-shadow: none !important;
-        }
-
-        /* Scan progress bar */
-        #scan-container {
-            margin: 16px 0;
-            display: none;
-        }
-
-        .scan-label {
-            font-size: 0.85rem;
-            color: rgba(0,255,65,0.6);
-            margin-bottom: 6px;
-        }
-
-        .scan-bar-outer {
-            border: 1px solid rgba(0,255,65,0.3);
-            height: 12px;
-            background: #000;
-            position: relative;
-            overflow: hidden;
-        }
-
-        #scan-bar-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--terminal-green);
-            box-shadow: 0 0 8px var(--terminal-green);
-            transition: width 0.05s linear;
-        }
-
-        .scan-bar-outer::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: repeating-linear-gradient(
-                90deg,
-                transparent,
-                transparent 8px,
-                rgba(0,0,0,0.3) 8px,
-                rgba(0,0,0,0.3) 9px
-            );
-        }
-
-        #scan-status-text {
-            font-size: 0.8rem;
-            color: rgba(0,255,65,0.5);
-            margin-top: 4px;
-            text-align: right;
-        }
-
-        /* Blinking cursor */
-        .cursor {
-            display: inline-block;
-            width: 8px;
-            height: 14px;
-            background: var(--terminal-green);
-            animation: blink 1s step-end infinite;
-            vertical-align: middle;
-            margin-left: 2px;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        /* Footer */
-        .terminal-footer {
-            font-size: 0.75rem;
-            color: rgba(0,255,65,0.3);
-            text-align: center;
-            margin-top: 12px;
-            letter-spacing: 2px;
-        }
-
-        /* Registration extra fields */
+        .boot-line { display: block; overflow: hidden; white-space: nowrap; width: 0; animation: expand 0s forwards; }
+        .boot-line.ok::after   { content: ' [OK]';   color: var(--green); }
+        .boot-line.warn::after { content: ' [WARN]'; color: var(--gold); }
+        @keyframes expand { to { width: 100%; } }
+        .terminal-box { border: 1px solid var(--green-border); box-shadow: 0 0 30px rgba(0,255,65,0.15), inset 0 0 30px rgba(0,255,65,0.03); background: rgba(0,0,0,0.95); opacity: 0; transform: translateY(10px); transition: opacity 0.5s, transform 0.5s; }
+        .terminal-box.visible { opacity: 1; transform: translateY(0); }
+        .terminal-titlebar { background: var(--green); color: #000; padding: 4px 12px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; letter-spacing: 2px; font-family: var(--font-mono); }
+        .terminal-body { padding: 24px; }
+        .ascii-header { font-size: 0.7rem; line-height: 1.2; color: var(--green); text-shadow: 0 0 10px var(--green); margin-bottom: 20px; text-align: center; letter-spacing: 0; text-transform: none; opacity: 0.8; font-family: var(--font-mono); }
+        .terminal-divider { border: none; border-top: 1px dashed rgba(0,255,65,0.3); margin: 16px 0; }
+        .prompt-row { display: flex; align-items: center; margin-bottom: 12px; gap: 8px; }
+        .prompt-label { color: var(--green); white-space: nowrap; font-size: 1rem; min-width: 180px; opacity: 0.7; font-family: var(--font-mono); }
+        .prompt-label::before { content: '> '; color: var(--green); }
+        .prompt-input { background: transparent !important; border: none !important; border-bottom: 1px solid rgba(0,255,65,0.4) !important; color: var(--green) !important; font-family: var(--font-mono) !important; font-size: 1rem !important; padding: 2px 4px !important; width: 100% !important; height: auto !important; margin: 0 !important; outline: none !important; caret-color: var(--green); }
+        .prompt-input:focus { border-bottom-color: var(--green) !important; box-shadow: 0 2px 0 rgba(0,255,65,0.3); }
+        .prompt-input::placeholder { color: rgba(0,255,65,0.25); }
+        .status-line { font-size: 0.85rem; margin: 8px 0; min-height: 20px; padding-left: 8px; font-family: var(--font-mono); }
+        .status-line.error   { color: var(--red); }
+        .status-line.success { color: var(--green); }
+        .status-line.warning { color: var(--gold); }
+        .action-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; gap: 12px; }
+        .terminal-btn { background: transparent !important; border: 1px solid var(--green-border) !important; color: var(--green) !important; font-family: var(--font-display) !important; font-size: 1rem !important; padding: 6px 20px !important; cursor: pointer; letter-spacing: 2px; transition: all 0.15s; height: auto !important; text-transform: uppercase; }
+        .terminal-btn:hover { background: var(--green-glow) !important; border-color: var(--green) !important; box-shadow: 0 0 15px rgba(0,255,65,0.3) !important; }
+        .toggle-link { color: rgba(0,255,65,0.5); cursor: pointer; font-size: 0.85rem; letter-spacing: 1px; border: none; background: none; height: auto !important; padding: 0 !important; font-family: var(--font-mono); transition: color 0.2s; }
+        .toggle-link:hover { color: var(--green); background: transparent !important; box-shadow: none !important; }
+        #scan-container { margin: 16px 0; display: none; }
+        .scan-label { font-size: 0.85rem; color: rgba(0,255,65,0.6); margin-bottom: 6px; font-family: var(--font-mono); }
+        .scan-bar-outer { border: 1px solid rgba(0,255,65,0.3); height: 12px; background: #000; position: relative; overflow: hidden; }
+        #scan-bar-fill { height: 100%; width: 0%; background: var(--green); box-shadow: 0 0 8px var(--green); transition: width 0.05s linear; }
+        .scan-bar-outer::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.3) 8px, rgba(0,0,0,0.3) 9px); }
+        #scan-status-text { font-size: 0.8rem; color: rgba(0,255,65,0.5); margin-top: 4px; text-align: right; font-family: var(--font-mono); }
+        .cursor { display: inline-block; width: 8px; height: 14px; background: var(--green); animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        .terminal-footer { font-size: 0.75rem; color: rgba(0,255,65,0.3); text-align: center; margin-top: 12px; letter-spacing: 2px; font-family: var(--font-mono); }
         #reg-fields { display: none; }
-
-        /* Banned screen */
-        .banned-overlay {
-            position: fixed;
-            inset: 0;
-            background: #0a0000;
-            color: var(--error-red);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-family: 'VT323', monospace;
-            border: 4px solid var(--error-red);
-            z-index: 99999;
-        }
     </style>
 </head>
 <body>
     <div class="terminal-wrapper">
-
-        <!-- Boot sequence -->
         <div id="boot-sequence"></div>
-
-        <!-- Main terminal -->
         <div class="terminal-box" id="terminal-box">
             <div class="terminal-titlebar">
                 <span>SCIPNET // SECURE ACCESS TERMINAL v4.2.1</span>
                 <span id="titlebar-time"></span>
             </div>
             <div class="terminal-body">
-
                 <pre class="ascii-header">
  ___  __  ____  ____  __ _  ____  ____
 / __)(  )(_  _)(  _ \(  ( \(  __)(_  _)
 \__ \ )(   )(   ) __//    / ) _)   )(
 (___/(__) (__) (__)  \_)__)(____) (__)
                 </pre>
-
                 <hr class="terminal-divider">
-
-                <div id="form-title" style="margin-bottom:16px; font-size:1rem; color: rgba(0,255,65,0.6); letter-spacing:3px;">
+                <div id="form-title" style="margin-bottom:16px; font-size:1rem; color:rgba(0,255,65,0.6); letter-spacing:3px;">
                     AUTHENTICATION REQUIRED <span class="cursor"></span>
                 </div>
-
-                <!-- LOGIN FIELDS -->
                 <div id="login-fields">
                     <div class="prompt-row">
                         <span class="prompt-label">IDENTIFIER</span>
@@ -381,8 +89,6 @@
                         <input type="password" id="password" class="prompt-input" placeholder="••••••••••••">
                     </div>
                 </div>
-
-                <!-- REGISTRATION EXTRA FIELDS -->
                 <div id="reg-fields">
                     <div class="prompt-row">
                         <span class="prompt-label">FULL_NAME</span>
@@ -390,7 +96,7 @@
                     </div>
                     <div class="prompt-row">
                         <span class="prompt-label">DEPARTMENT</span>
-                        <select id="dept-choice" class="prompt-input select-input">
+                        <select id="dept-choice" class="prompt-input" style="appearance:none; cursor:pointer;">
                             <option value="">-- SELECT UNIT --</option>
                             <option value="ScD">Scientific (ScD)</option>
                             <option value="MD">Medical (MD)</option>
@@ -402,50 +108,30 @@
                         </select>
                     </div>
                 </div>
-
-                <!-- Scan progress -->
                 <div id="scan-container">
                     <div class="scan-label">BIOMETRIC AUTHENTICATION IN PROGRESS...</div>
-                    <div class="scan-bar-outer">
-                        <div id="scan-bar-fill"></div>
-                    </div>
+                    <div class="scan-bar-outer"><div id="scan-bar-fill"></div></div>
                     <div id="scan-status-text">AWAITING INPUT</div>
                 </div>
-
-                <!-- Status message -->
                 <div class="status-line" id="status-msg"></div>
-
                 <hr class="terminal-divider">
-
                 <div class="action-row">
-                    <button class="terminal-btn primary" id="auth-btn" onclick="handleAuth()">AUTHENTICATE</button>
+                    <button class="terminal-btn" id="auth-btn" onclick="handleAuth()">AUTHENTICATE</button>
                     <button class="toggle-link" id="toggle-btn" onclick="toggleMode()">[ REQUEST_NEW_ACCESS ]</button>
                 </div>
-
             </div>
         </div>
-
-        <div class="terminal-footer">
-            SITE-19 // O5 COUNCIL CLEARANCE REQUIRED // UNAUTHORIZED ACCESS PROSECUTED
-        </div>
+        <div class="terminal-footer">SITE-19 // O5 COUNCIL CLEARANCE REQUIRED // UNAUTHORIZED ACCESS PROSECUTED</div>
     </div>
 
     <script>
-        let isRegistering = false;
-        let isScanning = false;
-        let scanInterval = null;
-        let scanProgress = 0;
+        let isRegistering = false, isScanning = false, scanInterval = null, scanProgress = 0;
 
-        // --- CLOCK ---
         function updateClock() {
-            const now = new Date();
-            document.getElementById('titlebar-time').innerText =
-                now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+            document.getElementById('titlebar-time').innerText = new Date().toISOString().replace('T',' ').substring(0,19) + ' UTC';
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+        setInterval(updateClock, 1000); updateClock();
 
-        // --- BOOT SEQUENCE ---
         const bootLines = [
             { text: 'INITIALIZING SCIPNET SECURE KERNEL...', type: 'ok', delay: 0 },
             { text: 'LOADING ENCRYPTION MODULES [AES-256]...', type: 'ok', delay: 300 },
@@ -458,7 +144,6 @@
         function runBootSequence() {
             const container = document.getElementById('boot-sequence');
             container.classList.add('visible');
-
             bootLines.forEach((line, i) => {
                 setTimeout(() => {
                     const span = document.createElement('span');
@@ -466,88 +151,38 @@
                     span.style.animation = `expand 0.4s steps(${line.text.length}) forwards`;
                     span.innerText = line.text;
                     container.appendChild(span);
-
-                    // Show terminal box after last line
-                    if (i === bootLines.length - 1) {
-                        setTimeout(() => {
-                            document.getElementById('terminal-box').classList.add('visible');
-                        }, 500);
-                    }
+                    if (i === bootLines.length - 1) setTimeout(() => document.getElementById('terminal-box').classList.add('visible'), 500);
                 }, line.delay);
             });
         }
 
-        // --- TOGGLE LOGIN/REGISTER ---
         function toggleMode() {
             isRegistering = !isRegistering;
-            const formTitle = document.getElementById('form-title');
-            const regFields = document.getElementById('reg-fields');
-            const authBtn = document.getElementById('auth-btn');
-            const toggleBtn = document.getElementById('toggle-btn');
-            const scanContainer = document.getElementById('scan-container');
-
             clearStatus();
-
-            if (isRegistering) {
-                formTitle.innerHTML = 'NEW ACCESS REQUEST <span class="cursor"></span>';
-                regFields.style.display = 'block';
-                authBtn.innerText = 'SUBMIT REQUEST';
-                toggleBtn.innerText = '[ BACK TO LOGIN ]';
-                scanContainer.style.display = 'none';
-            } else {
-                formTitle.innerHTML = 'AUTHENTICATION REQUIRED <span class="cursor"></span>';
-                regFields.style.display = 'none';
-                authBtn.innerText = 'AUTHENTICATE';
-                toggleBtn.innerText = '[ REQUEST_NEW_ACCESS ]';
-            }
+            document.getElementById('form-title').innerHTML = isRegistering ? 'NEW ACCESS REQUEST <span class="cursor"></span>' : 'AUTHENTICATION REQUIRED <span class="cursor"></span>';
+            document.getElementById('reg-fields').style.display = isRegistering ? 'block' : 'none';
+            document.getElementById('auth-btn').innerText = isRegistering ? 'SUBMIT REQUEST' : 'AUTHENTICATE';
+            document.getElementById('toggle-btn').innerText = isRegistering ? '[ BACK TO LOGIN ]' : '[ REQUEST_NEW_ACCESS ]';
+            document.getElementById('scan-container').style.display = 'none';
         }
 
-        // --- AUTH HANDLER ---
-        function handleAuth() {
-            if (isRegistering) {
-                executeAuth();
-            } else {
-                startScan();
-            }
-        }
+        function handleAuth() { isRegistering ? executeAuth() : startScan(); }
 
-        // --- SCAN ANIMATION ---
         function startScan() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-
-            if (!email || !password) {
-                setStatus('ERROR: IDENTIFIER AND CREDENTIALS REQUIRED', 'error');
-                return;
-            }
-
+            if (!email || !password) { setStatus('ERROR: IDENTIFIER AND CREDENTIALS REQUIRED', 'error'); return; }
             if (isScanning) return;
-            isScanning = true;
-            scanProgress = 0;
-            clearStatus();
-
-            const scanContainer = document.getElementById('scan-container');
+            isScanning = true; scanProgress = 0; clearStatus();
             const fill = document.getElementById('scan-bar-fill');
             const statusText = document.getElementById('scan-status-text');
-
-            scanContainer.style.display = 'block';
+            document.getElementById('scan-container').style.display = 'block';
             document.getElementById('auth-btn').disabled = true;
-
-            const messages = [
-                'READING BIOMETRIC SIGNATURE...',
-                'CROSS-REFERENCING PERSONNEL DATABASE...',
-                'VERIFYING CLEARANCE LEVEL...',
-                'CHECKING CONTAINMENT PROTOCOL ACCESS...',
-                'IDENTITY CONFIRMED...',
-            ];
-
+            const messages = ['READING BIOMETRIC SIGNATURE...','CROSS-REFERENCING PERSONNEL DATABASE...','VERIFYING CLEARANCE LEVEL...','CHECKING CONTAINMENT PROTOCOL ACCESS...','IDENTITY CONFIRMED...'];
             scanInterval = setInterval(() => {
                 scanProgress += 1.5;
                 fill.style.width = Math.min(scanProgress, 100) + '%';
-
-                const msgIndex = Math.floor((scanProgress / 100) * messages.length);
-                statusText.innerText = messages[Math.min(msgIndex, messages.length - 1)] + ' ' + Math.floor(scanProgress) + '%';
-
+                statusText.innerText = messages[Math.min(Math.floor((scanProgress/100)*messages.length), messages.length-1)] + ' ' + Math.floor(scanProgress) + '%';
                 if (scanProgress >= 100) {
                     clearInterval(scanInterval);
                     statusText.innerText = 'ACCESS GRANTED // AUTHENTICATING...';
@@ -557,29 +192,16 @@
         }
 
         function resetScan() {
-            isScanning = false;
-            clearInterval(scanInterval);
-            scanProgress = 0;
+            isScanning = false; clearInterval(scanInterval); scanProgress = 0;
             document.getElementById('scan-bar-fill').style.width = '0%';
             document.getElementById('scan-status-text').innerText = 'AWAITING INPUT';
             document.getElementById('scan-container').style.display = 'none';
             document.getElementById('auth-btn').disabled = false;
         }
 
-        // --- STATUS HELPERS ---
-        function setStatus(msg, type = '') {
-            const el = document.getElementById('status-msg');
-            el.innerText = '> ' + msg;
-            el.className = 'status-line ' + type;
-        }
+        function setStatus(msg, type='') { const el = document.getElementById('status-msg'); el.innerText = '> '+msg; el.className='status-line '+type; }
+        function clearStatus() { const el = document.getElementById('status-msg'); el.innerText=''; el.className='status-line'; }
 
-        function clearStatus() {
-            const el = document.getElementById('status-msg');
-            el.innerText = '';
-            el.className = 'status-line';
-        }
-
-        // --- EXECUTE AUTH ---
         async function executeAuth() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -587,158 +209,84 @@
             if (isRegistering) {
                 const fullName = document.getElementById('fullname').value.trim();
                 const deptChoice = document.getElementById('dept-choice').value;
-
-                if (!email || !password || !fullName || !deptChoice) {
-                    setStatus('ERROR: ALL FIELDS REQUIRED', 'error');
-                    return;
-                }
-
-                setStatus('TRANSMITTING REQUEST TO O5 COUNCIL...', 'warning');
-
-                const { error } = await _supabase.auth.signUp({
-                    email,
-                    password,
-                    options: { data: { full_name: fullName, department: deptChoice } }
-                });
-
-                if (error) {
-                    setStatus('REQUEST FAILED: ' + error.message, 'error');
-                } else {
+                if (!email||!password||!fullName||!deptChoice) { setStatus('ERROR: ALL FIELDS REQUIRED','error'); return; }
+                setStatus('TRANSMITTING REQUEST TO O5 COUNCIL...','warning');
+                const { error } = await _supabase.auth.signUp({ email, password, options: { data: { full_name: fullName, department: deptChoice } } });
+                if (error) { setStatus('REQUEST FAILED: '+error.message,'error'); }
+                else {
                     document.querySelector('.terminal-body').innerHTML = `
-                        <div style="text-align:center; padding: 20px 0;">
-                            <div style="font-size:1.4rem; margin-bottom:16px; text-shadow: 0 0 10px var(--terminal-green);">
-                                REQUEST_TRANSMITTED
-                            </div>
+                        <div style="text-align:center;padding:20px 0;">
+                            <div style="font-size:1.4rem;margin-bottom:16px;text-shadow:0 0 10px var(--green);">REQUEST_TRANSMITTED</div>
                             <hr class="terminal-divider">
-                            <p style="color: rgba(0,255,65,0.6); margin: 16px 0; font-size:0.9rem;">
-                                VERIFICATION LINK DISPATCHED TO:<br>
-                                <span style="color: var(--terminal-green);">${email}</span>
-                            </p>
-                            <p style="color: rgba(0,255,65,0.4); font-size:0.8rem; margin-bottom:20px;">
-                                DEPARTMENTAL O5 NOTIFIED OF PENDING REQUEST.<br>
-                                AWAIT COUNCIL APPROVAL BEFORE ATTEMPTING LOGIN.
-                            </p>
+                            <p style="color:rgba(0,255,65,0.6);margin:16px 0;font-size:0.9rem;">VERIFICATION LINK DISPATCHED TO:<br><span style="color:var(--green);">${email}</span></p>
+                            <p style="color:rgba(0,255,65,0.4);font-size:0.8rem;margin-bottom:20px;">DEPARTMENTAL O5 NOTIFIED OF PENDING REQUEST.<br>AWAIT COUNCIL APPROVAL BEFORE ATTEMPTING LOGIN.</p>
                             <hr class="terminal-divider">
                             <button class="terminal-btn" onclick="location.reload()">RETURN TO TERMINAL</button>
                         </div>`;
                 }
             } else {
                 const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-
-                if (error) {
-                    resetScan();
-                    setStatus('ACCESS DENIED: ' + error.message, 'error');
-                } else {
-                    const { data: profile } = await _supabase
-                        .from('profiles')
-                        .select('is_banned')
-                        .eq('id', data.user.id)
-                        .maybeSingle();
-
-                    if (profile && profile.is_banned) {
-                        showRedScreen(data.user.id);
-                        return;
-                    }
-
+                if (error) { resetScan(); setStatus('ACCESS DENIED: '+error.message,'error'); }
+                else {
+                    const { data: profile } = await _supabase.from('profiles').select('is_banned').eq('id', data.user.id).maybeSingle();
+                    if (profile && profile.is_banned) { showRedScreen(data.user.id); return; }
                     await checkAndCreateProfile(data.user);
-                    setStatus('IDENTITY VERIFIED // REDIRECTING...', 'success');
+                    setStatus('IDENTITY VERIFIED // REDIRECTING...','success');
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
                 }
             }
         }
 
         async function checkAndCreateProfile(user) {
-            const { data: profile } = await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('id', user.id)
-                .maybeSingle();
-
+            const { data: profile } = await _supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
             if (!profile) {
                 await _supabase.from('profiles').insert([{
-                    id: user.id,
-                    full_name: user.user_metadata?.full_name || 'REDACTED_NAME',
+                    id: user.id, full_name: user.user_metadata?.full_name || 'REDACTED_NAME',
                     department: user.user_metadata?.department || null,
-                    is_approved: false,
-                    is_banned: false,
-                    clearance_level: 0
+                    is_approved: false, is_banned: false, clearance_level: 0
                 }]);
             }
         }
 
-        function typeWriter(text, elementId, speed = 30) {
-            let i = 0;
-            const element = document.getElementById(elementId);
-            if (!element) return;
-            element.innerHTML = '';
-            function type() {
-                if (i < text.length) {
-                    element.innerHTML += text.charAt(i);
-                    i++;
-                    setTimeout(type, speed);
-                }
-            }
+        function typeWriter(text, elementId, speed=30) {
+            let i=0; const el=document.getElementById(elementId); if(!el) return; el.innerHTML='';
+            function type() { if(i<text.length){el.innerHTML+=text.charAt(i);i++;setTimeout(type,speed);} }
             type();
         }
 
         function showRedScreen(userId) {
             document.body.innerHTML = `
-                <div class="banned-overlay">
-                    <div style="font-size: 3rem; font-weight: bold; animation: alert-flicker 0.5s infinite;">
-                        TERMINAL_LOCKED
-                    </div>
-                    <div style="border: 2px solid var(--error-red); padding: 20px; margin: 20px; background: rgba(255,0,0,0.05); max-width:500px;">
+                <div style="background:#020000;color:var(--red);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'VT323',monospace;border:2px solid var(--red);">
+                    <div style="font-size:3rem;font-weight:bold;animation:flicker 0.5s infinite;letter-spacing:6px;">TERMINAL_LOCKED</div>
+                    <div style="border:1px solid var(--red);padding:20px;margin:20px;background:rgba(255,0,0,0.05);max-width:500px;">
                         <h2 style="margin-bottom:12px;">[ SECURITY_BREACH_DETECTED ]</h2>
                         <p id="typewriter-revocation"></p>
-                        <hr style="border: 1px solid var(--error-red); margin: 12px 0;">
-                        <p id="typewriter-threat" style="color: #ff5555;"></p>
+                        <hr style="border:1px solid var(--red);margin:12px 0;">
+                        <p id="typewriter-threat" style="color:#ff5555;"></p>
                     </div>
-                    <button id="ack-btn" style="display:none; background: var(--error-red); color: #000; border: none; padding: 12px 30px; cursor: pointer; font-family: 'VT323'; font-size:1.1rem; letter-spacing:2px;">
-                        ACKNOWLEDGE_TERMINATION
-                    </button>
+                    <button id="ack-btn" style="display:none;background:var(--red);color:#000;border:none;padding:12px 30px;cursor:pointer;font-family:'VT323';font-size:1.1rem;letter-spacing:2px;">ACKNOWLEDGE_TERMINATION</button>
                 </div>`;
             typeWriter(`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`, 'typewriter-revocation', 40);
             setTimeout(() => {
                 typeWriter('MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.', 'typewriter-threat', 30);
-                document.getElementById('ack-btn').style.display = 'block';
+                document.getElementById('ack-btn').style.display='block';
             }, 2000);
-            document.getElementById('ack-btn').onclick = async () => {
-                await _supabase.auth.signOut();
-                location.reload();
-            };
+            document.getElementById('ack-btn').onclick = async () => { await _supabase.auth.signOut(); location.reload(); };
         }
 
         async function checkInitialStatus() {
             const { data: { user } } = await _supabase.auth.getUser();
             if (user) {
-                const { data: profile } = await _supabase
-                    .from('profiles')
-                    .select('is_banned')
-                    .eq('id', user.id)
-                    .maybeSingle();
-
-                if (profile && profile.is_banned) {
-                    showRedScreen(user.id);
-                    return;
-                } else if (profile) {
-                    window.location.href = 'dashboard.html';
-                    return;
-                }
+                const { data: profile } = await _supabase.from('profiles').select('is_banned').eq('id', user.id).maybeSingle();
+                if (profile && profile.is_banned) { showRedScreen(user.id); return; }
+                else if (profile) { window.location.href='dashboard.html'; return; }
             }
-
             const params = new URLSearchParams(window.location.search);
-            if (params.get('error') === 'session_terminated') {
-                setStatus('SESSION TERMINATED: ACCESS REVOKED BY ADMINISTRATOR', 'error');
-            }
-
+            if (params.get('error')==='session_terminated') setStatus('SESSION TERMINATED: ACCESS REVOKED BY ADMINISTRATOR','error');
             runBootSequence();
         }
 
-        // Enter key support
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !isScanning) handleAuth();
-        });
-
+        document.addEventListener('keydown', e => { if(e.key==='Enter' && !isScanning) handleAuth(); });
         window.onload = checkInitialStatus;
     </script>
 </body>

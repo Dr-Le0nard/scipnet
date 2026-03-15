@@ -6,32 +6,25 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
+    <script src="toast.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <div class="identity-block" style="padding: 12px 24px;">
-        <a href="dashboard.html" style="text-decoration:none;">
-            <div class="logo" style="font-family:var(--font-display);font-size:1.6rem;color:var(--green);text-shadow:0 0 12px var(--green),0 0 30px rgba(0,255,65,0.3);letter-spacing:4px;">
-                SCIPNET <span style="color:var(--text-dim);font-size:0.75rem;letter-spacing:2px;display:block;text-shadow:none;margin-top:-4px;">SECURE INTRANET // SITE-19</span>
-            </div>
-        </a>
+    <div class="identity-block">
+        <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
     </div>
-
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
         <a href="archive.html">DATABASE_ARCHIVE</a>
         <a href="write.html" class="active">EDIT_DOCUMENT</a>
+        <a href="profile.html">MY_PROFILE</a>
     </nav>
-
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="form-header">LOADING_DOCUMENT...</div>
         <div class="page-subtitle">DOCUMENT EDITOR // AUTHORIZED PERSONNEL ONLY</div>
-
-        <div style="max-width: 800px;">
+        <div style="max-width:800px;">
             <label>DOCUMENT TITLE</label>
             <input type="text" id="title" placeholder="ENTER LOG TITLE...">
-
             <label>CLEARANCE RESTRICTION</label>
             <select id="clearance_level">
                 <option value="0">LEVEL 0 — PUBLIC</option>
@@ -41,71 +34,47 @@
                 <option value="4">LEVEL 4 — TOP SECRET</option>
                 <option value="5">LEVEL 5 — O5 ONLY</option>
             </select>
-
             <label>DOCUMENT CONTENT</label>
             <textarea id="content" rows="15"></textarea>
-
             <div class="btn-row" style="margin-top:8px;">
                 <button onclick="saveDocument()">SAVE_CHANGES</button>
                 <button class="btn-red" onclick="deleteDocument()">DELETE_DOCUMENT</button>
             </div>
         </div>
     </div>
-
     <script>
-        let currentProfile = null;
-        let articleId = null;
-
-        async function initEdit() {
-            const auth = await requireAuth();
-            if (!auth) return;
-            currentProfile = auth.profile;
-
-            articleId = new URLSearchParams(window.location.search).get('id');
-            if (!articleId) { document.getElementById('form-header').innerText = 'ERROR: NO_DOCUMENT_ID'; return; }
-
-            const { data: art, error } = await _supabase.from('articles').select('*').eq('id', articleId).single();
-            if (error || !art) { document.getElementById('form-header').innerText = 'ERROR: DOCUMENT_NOT_FOUND'; return; }
-
-            const isElevated = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
-            const isAuthor   = art.author === currentProfile.full_name;
-
-            if (!isElevated && !isAuthor) {
-                alert('ACCESS_DENIED: INSUFFICIENT_PRIVILEGES');
-                window.location.href = 'archive.html';
-                return;
-            }
-
-            document.getElementById('form-header').innerText = `EDITING: ${(art.title || 'UNTITLED').toUpperCase()}`;
-            document.getElementById('title').value           = art.title || '';
-            document.getElementById('clearance_level').value = art.required_clearance || 0;
-            document.getElementById('content').value         = art.content || '';
+        let currentProfile=null,articleId=null;
+        async function initEdit(){
+            const auth=await requireAuth();if(!auth)return;
+            currentProfile=auth.profile;
+            articleId=new URLSearchParams(window.location.search).get('id');
+            if(!articleId){document.getElementById('form-header').innerText='ERROR: NO_DOCUMENT_ID';return;}
+            const{data:art,error}=await _supabase.from('articles').select('*').eq('id',articleId).single();
+            if(error||!art){document.getElementById('form-header').innerText='ERROR: DOCUMENT_NOT_FOUND';return;}
+            const isElevated=currentProfile.is_admin||currentProfile.is_overseer||currentProfile.is_terminal_admin;
+            const isAuthor=art.author===currentProfile.full_name;
+            if(!isElevated&&!isAuthor){toast('ACCESS_DENIED: INSUFFICIENT_PRIVILEGES','error');setTimeout(()=>window.location.href='archive.html',1500);return;}
+            document.getElementById('form-header').innerText=`EDITING: ${(art.title||'UNTITLED').toUpperCase()}`;
+            document.getElementById('title').value=art.title||'';
+            document.getElementById('clearance_level').value=art.required_clearance||0;
+            document.getElementById('content').value=art.content||'';
         }
-
-        async function saveDocument() {
-            const title    = document.getElementById('title').value.trim();
-            const content  = document.getElementById('content').value.trim();
-            const clearance = parseInt(document.getElementById('clearance_level').value);
-
-            if (!title || !content) { alert('CRITICAL_ERROR: DATA_MISSING'); return; }
-
-            const { error } = await _supabase.from('articles')
-                .update({ title, content, required_clearance: clearance })
-                .eq('id', articleId);
-
-            if (error) alert('UPDATE_FAILED: ' + error.message);
-            else { alert('DOCUMENT_UPDATED_SUCCESSFULLY'); window.location.href = `view.html?id=${articleId}`; }
+        async function saveDocument(){
+            const title=document.getElementById('title').value.trim();
+            const content=document.getElementById('content').value.trim();
+            const clearance=parseInt(document.getElementById('clearance_level').value);
+            if(!title||!content){toast('CRITICAL_ERROR: DATA_MISSING','error');return;}
+            const{error}=await _supabase.from('articles').update({title,content,required_clearance:clearance}).eq('id',articleId);
+            if(error){toast('UPDATE_FAILED: '+error.message,'error');}
+            else{toast('DOCUMENT_UPDATED_SUCCESSFULLY','success');setTimeout(()=>window.location.href=`view.html?id=${articleId}`,1200);}
         }
-
-        async function deleteDocument() {
-            if (!confirm('WARNING: PERMANENTLY DELETE THIS DOCUMENT? THIS CANNOT BE UNDONE.')) return;
-
-            const { error } = await _supabase.from('articles').delete().eq('id', articleId);
-            if (error) alert('DELETE_FAILED: ' + error.message);
-            else { alert('DOCUMENT_PERMANENTLY_DELETED'); window.location.href = 'archive.html'; }
+        async function deleteDocument(){
+            if(!confirm('WARNING: PERMANENTLY DELETE THIS DOCUMENT? THIS CANNOT BE UNDONE.'))return;
+            const{error}=await _supabase.from('articles').delete().eq('id',articleId);
+            if(error){toast('DELETE_FAILED: '+error.message,'error');}
+            else{toast('DOCUMENT_PERMANENTLY_DELETED','warning');setTimeout(()=>window.location.href='archive.html',1200);}
         }
-
-        window.onload = initEdit;
+        window.onload=initEdit;
     </script>
 </body>
 </html>

@@ -6,192 +6,103 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
+    <script src="toast.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div id="loading" class="loading-screen">
         <div class="loading-title">INITIALIZING_SECURE_CONNECTION</div>
-        <div style="color: var(--text-dim); font-size:0.75rem; letter-spacing:3px;">ESTABLISHING HANDSHAKE WITH SITE-19 SERVERS...</div>
+        <div style="color:var(--text-dim);font-size:0.75rem;letter-spacing:3px;">ESTABLISHING HANDSHAKE WITH SITE-19 SERVERS...</div>
     </div>
-
     <div id="main-content" style="display:none;" class="fade-in">
-
-        <!-- Identity Block -->
         <div class="identity-block">
             <div>
                 <div class="identity-name" id="welcome">WELCOME: [REDACTED]</div>
                 <div style="margin-top:8px;">
                     <span class="clearance-badge" id="badge-container">
-                        <span class="status-dot"></span>
-                        CL: <span id="lvl">0</span> // <span id="dept-display">PENDING</span>
+                        <span class="status-dot"></span>CL: <span id="lvl">0</span> // <span id="dept-display">PENDING</span>
                     </span>
                 </div>
             </div>
             <button class="terminate-btn" onclick="logout()">[ TERMINATE_SESSION ]</button>
         </div>
-
-        <!-- System Bar -->
         <div class="system-bar">
             <div><span class="status-dot"></span>SYSTEM: <span>STABLE</span></div>
             <div>LOCATION: <span>SITE-19</span></div>
             <div>UPLINK: <span>ACTIVE</span></div>
             <div id="sys-time" style="margin-left:auto;"></div>
         </div>
-
-        <!-- Navigation -->
         <nav class="main-nav" id="main-nav">
             <a href="archive.html">DATABASE_ARCHIVE</a>
             <a href="personnel.html">PERSONNEL_DIRECTORY</a>
             <a href="write.html">FILE_NEW_REPORT</a>
+            <a href="profile.html">MY_PROFILE</a>
             <a href="admin.html" id="admin-link" style="display:none;">ADMIN_OVERRIDE</a>
         </nav>
-
-        <!-- Page Content -->
         <div class="page-content page-wrapper">
             <div class="page-title">COMMAND_TERMINAL</div>
             <div class="page-subtitle">SITE-19 SECURE INTRANET // AUTHORIZED PERSONNEL ONLY</div>
-
-            <div class="grid" style="margin-top: 8px;">
-                <a href="archive.html" style="text-decoration:none;">
-                    <div class="card" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display); font-size:1.1rem; letter-spacing:3px; margin-bottom:8px;">DATABASE_ARCHIVE</div>
-                        <div style="color:var(--text-dim); font-size:0.78rem;">ACCESS DEPARTMENTAL DOCUMENTS AND REPORTS</div>
-                    </div>
-                </a>
-                <a href="personnel.html" style="text-decoration:none;">
-                    <div class="card" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display); font-size:1.1rem; letter-spacing:3px; margin-bottom:8px;">PERSONNEL_DIRECTORY</div>
-                        <div style="color:var(--text-dim); font-size:0.78rem;">VIEW FOUNDATION STAFF MANIFEST</div>
-                    </div>
-                </a>
-                <a href="write.html" style="text-decoration:none;">
-                    <div class="card" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display); font-size:1.1rem; letter-spacing:3px; margin-bottom:8px;">FILE_NEW_REPORT</div>
-                        <div style="color:var(--text-dim); font-size:0.78rem;">SUBMIT A NEW DEPARTMENTAL ENTRY</div>
-                    </div>
-                </a>
-                <a href="admin.html" id="admin-card" style="text-decoration:none; display:none;">
-                    <div class="card card-gold" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display); font-size:1.1rem; letter-spacing:3px; margin-bottom:8px; color:var(--gold);">ADMIN_OVERRIDE</div>
-                        <div style="color:rgba(255,215,0,0.4); font-size:0.78rem;">PERSONNEL MANAGEMENT AND SYSTEM CONTROL</div>
-                    </div>
-                </a>
+            <div class="grid" style="margin-top:8px;">
+                <a href="archive.html" style="text-decoration:none;"><div class="card" style="cursor:pointer;"><div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;margin-bottom:8px;">DATABASE_ARCHIVE</div><div style="color:var(--text-dim);font-size:0.78rem;">ACCESS DEPARTMENTAL DOCUMENTS AND REPORTS</div></div></a>
+                <a href="personnel.html" style="text-decoration:none;"><div class="card" style="cursor:pointer;"><div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;margin-bottom:8px;">PERSONNEL_DIRECTORY</div><div style="color:var(--text-dim);font-size:0.78rem;">VIEW FOUNDATION STAFF MANIFEST</div></div></a>
+                <a href="write.html" style="text-decoration:none;"><div class="card" style="cursor:pointer;"><div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;margin-bottom:8px;">FILE_NEW_REPORT</div><div style="color:var(--text-dim);font-size:0.78rem;">SUBMIT A NEW DEPARTMENTAL ENTRY</div></div></a>
+                <a href="profile.html" style="text-decoration:none;"><div class="card" style="cursor:pointer;"><div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;margin-bottom:8px;">MY_PROFILE</div><div style="color:var(--text-dim);font-size:0.78rem;">VIEW AND EDIT YOUR PERSONNEL FILE</div></div></a>
+                <a href="admin.html" id="admin-card" style="text-decoration:none;display:none;"><div class="card card-gold" style="cursor:pointer;"><div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;margin-bottom:8px;color:var(--gold);">ADMIN_OVERRIDE</div><div style="color:rgba(255,215,0,0.4);font-size:0.78rem;">PERSONNEL MANAGEMENT AND SYSTEM CONTROL</div></div></a>
             </div>
         </div>
     </div>
-
     <script>
-        function updateClock() {
-            const el = document.getElementById('sys-time');
-            if (el) el.innerText = new Date().toISOString().replace('T',' ').substring(0,19) + ' UTC';
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        async function loadProfile() {
-            const auth = await requireAuth();
-            if (!auth) return;
-            const { user, profile } = auth;
-
-            _supabase.channel('public:profiles')
-                .on('postgres_changes', {
-                    event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}`
-                }, (payload) => {
-                    if (payload.new.is_banned) window.location.href = 'index.html';
-                    if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
-                }).subscribe();
-
-            const welcomeEl  = document.getElementById('welcome');
-            const adminLink  = document.getElementById('admin-link');
-            const adminCard  = document.getElementById('admin-card');
-            const badge      = document.getElementById('badge-container');
-
-            if (profile.is_terminal_admin) {
-                welcomeEl.innerText = 'TERMINAL_ADMINISTRATOR';
-                welcomeEl.classList.add('gold');
-                badge.className = 'clearance-badge gold';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> ROOT_SYSTEM_ACCESS // TECH_ADMIN`;
-                adminLink.style.display = 'inline-flex';
-                adminLink.innerText = 'SYSTEM_OVERRIDE';
-                adminCard.style.display = 'block';
-                renderDeptMenu(profile.department, true);
-            } else if (profile.is_overseer) {
-                welcomeEl.innerText = 'O5_COUNCIL_CHAIRMAN';
-                welcomeEl.classList.add('red');
-                badge.className = 'clearance-badge red';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span> LEVEL 5 // O5_CHAIRMAN`;
-                adminLink.style.display = 'inline-flex';
-                adminLink.innerText = 'CHAIRMAN_OVERRIDE';
-                adminCard.style.display = 'block';
-                renderDeptMenu(profile.department, false);
-            } else if (profile.is_admin) {
-                welcomeEl.innerText = 'O5_COUNCIL_MEMBER';
-                welcomeEl.classList.add('gold');
-                badge.className = 'clearance-badge gold';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> LEVEL ${profile.clearance_level} // ${profile.department || 'UNASSIGNED'}`;
-                adminLink.style.display = 'inline-flex';
-                adminLink.innerText = 'COUNCIL_OVERRIDE';
-                adminCard.style.display = 'block';
-                renderDeptMenu(profile.department, false);
-            } else {
-                if (!profile.is_approved) { showPendingScreen(); return; }
-                welcomeEl.innerText = profile.full_name ? profile.full_name.toUpperCase() : 'PERSONNEL';
-                document.getElementById('lvl').innerText = profile.clearance_level;
-                document.getElementById('dept-display').innerText = profile.department || 'UNASSIGNED';
-                renderDeptMenu(profile.department, false);
+        function updateClock(){const el=document.getElementById('sys-time');if(el)el.innerText=new Date().toISOString().replace('T',' ').substring(0,19)+' UTC';}
+        setInterval(updateClock,1000);updateClock();
+        async function loadProfile(){
+            const auth=await requireAuth();if(!auth)return;
+            const{user,profile}=auth;
+            _supabase.channel('public:profiles').on('postgres_changes',{event:'UPDATE',schema:'public',table:'profiles',filter:`id=eq.${user.id}`},(payload)=>{
+                if(payload.new.is_banned)window.location.href='index.html';
+                if(payload.new.clearance_level!==profile.clearance_level)window.location.reload();
+            }).subscribe();
+            const welcomeEl=document.getElementById('welcome'),adminLink=document.getElementById('admin-link'),adminCard=document.getElementById('admin-card'),badge=document.getElementById('badge-container');
+            if(profile.is_terminal_admin){
+                welcomeEl.innerText='TERMINAL_ADMINISTRATOR';welcomeEl.classList.add('gold');
+                badge.className='clearance-badge gold';badge.innerHTML=`<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> ROOT_SYSTEM_ACCESS // TECH_ADMIN`;
+                adminLink.style.display='inline-flex';adminLink.innerText='SYSTEM_OVERRIDE';adminCard.style.display='block';
+                renderDeptMenu(profile.department,true);
+            }else if(profile.is_overseer){
+                welcomeEl.innerText='O5_COUNCIL_CHAIRMAN';welcomeEl.classList.add('red');
+                badge.className='clearance-badge red';badge.innerHTML=`<span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span> LEVEL 5 // O5_CHAIRMAN`;
+                adminLink.style.display='inline-flex';adminLink.innerText='CHAIRMAN_OVERRIDE';adminCard.style.display='block';
+                renderDeptMenu(profile.department,false);
+            }else if(profile.is_admin){
+                welcomeEl.innerText='O5_COUNCIL_MEMBER';welcomeEl.classList.add('gold');
+                badge.className='clearance-badge gold';badge.innerHTML=`<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> LEVEL ${profile.clearance_level} // ${profile.department||'UNASSIGNED'}`;
+                adminLink.style.display='inline-flex';adminLink.innerText='COUNCIL_OVERRIDE';adminCard.style.display='block';
+                renderDeptMenu(profile.department,false);
+            }else{
+                if(!profile.is_approved){showPendingScreen();return;}
+                welcomeEl.innerText=profile.full_name?profile.full_name.toUpperCase():'PERSONNEL';
+                document.getElementById('lvl').innerText=profile.clearance_level;
+                document.getElementById('dept-display').innerText=profile.department||'UNASSIGNED';
+                renderDeptMenu(profile.department,false);
             }
-
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
+            document.getElementById('loading').style.display='none';
+            document.getElementById('main-content').style.display='block';
         }
-
-        function showPendingScreen() {
-            document.getElementById('loading').innerHTML = `
-                <div class="loading-title" style="color:var(--gold);">PENDING_COUNCIL_REVIEW</div>
-                <div style="color:var(--text-dim);font-size:0.75rem;letter-spacing:3px;margin-bottom:20px;">CREDENTIALS UNDER REVIEW BY THE O5 COUNCIL</div>
-                <button class="terminate-btn" onclick="logout()">[ CANCEL_REQUEST ]</button>`;
-        }
-
-        function renderDeptMenu(dept, isTerminalAdmin) {
-            const nav = document.getElementById('main-nav');
-            const modules = {
-                'AD':   { label: 'ADMINISTRATIVE_LOG',  type: 'admin' },
-                'RAISA':{ label: 'INFOSEC_MANIFEST',    type: 'infosec' },
-                'ScD':  { label: 'RESEARCH_TEST_LOG',   type: 'research' },
-                'MD':   { label: 'MEDICAL_RECORD',      type: 'medical' },
-                'SLMD': { label: 'MAINTENANCE_REPORT',  type: 'maintenance' },
-                'DEA':  { label: 'EXTERNAL_AFFAIRS_LOG',type: 'external' },
-                'DoA':  { label: 'ADMISSIONS_FILE',     type: 'admissions' },
-                'ITD':  { label: 'TRIBUNAL_RECORD',     type: 'tribunal' },
-                'DSIS': { label: 'INTEL_BRIEFING',      type: 'intel' }
-            };
-
-            if (isTerminalAdmin) {
-                const wrap = document.createElement('div');
-                wrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto;';
-                const sel = document.createElement('select');
-                sel.className = 'nav-module-select';
-                sel.style.cssText = 'background:#000;color:var(--gold);border:1px solid rgba(255,215,0,0.3);font-family:var(--font-display);font-size:0.95rem;padding:4px 10px;letter-spacing:2px;cursor:pointer;';
-                sel.innerHTML = `<option value="">-- MODULE_TESTER --</option>` +
-                    Object.keys(modules).map(k => `<option value="${modules[k].type}">${modules[k].label}</option>`).join('');
-                sel.onchange = () => { if (sel.value) window.location.href = `write.html?type=${sel.value}`; };
-                wrap.appendChild(sel);
-                nav.appendChild(wrap);
-            } else if (dept && modules[dept]) {
-                const a = document.createElement('a');
-                a.href = `write.html?type=${modules[dept].type}`;
-                a.innerText = modules[dept].label;
-                nav.appendChild(a);
+        function showPendingScreen(){document.getElementById('loading').innerHTML=`<div class="loading-title" style="color:var(--gold);">PENDING_COUNCIL_REVIEW</div><div style="color:var(--text-dim);font-size:0.75rem;letter-spacing:3px;margin-bottom:20px;">CREDENTIALS UNDER REVIEW BY THE O5 COUNCIL</div><button class="terminate-btn" onclick="logout()">[ CANCEL_REQUEST ]</button>`;}
+        function renderDeptMenu(dept,isTerminalAdmin){
+            const nav=document.getElementById('main-nav');
+            const modules={'AD':{label:'ADMINISTRATIVE_LOG',type:'admin'},'RAISA':{label:'INFOSEC_MANIFEST',type:'infosec'},'ScD':{label:'RESEARCH_TEST_LOG',type:'research'},'MD':{label:'MEDICAL_RECORD',type:'medical'},'SLMD':{label:'MAINTENANCE_REPORT',type:'maintenance'},'DEA':{label:'EXTERNAL_AFFAIRS_LOG',type:'external'},'DoA':{label:'ADMISSIONS_FILE',type:'admissions'},'ITD':{label:'TRIBUNAL_RECORD',type:'tribunal'},'DSIS':{label:'INTEL_BRIEFING',type:'intel'}};
+            if(isTerminalAdmin){
+                const wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;gap:8px;margin-left:auto;';
+                const sel=document.createElement('select');sel.style.cssText='background:#000;color:var(--gold);border:1px solid rgba(255,215,0,0.3);font-family:var(--font-display);font-size:0.95rem;padding:4px 10px;letter-spacing:2px;cursor:pointer;';
+                sel.innerHTML=`<option value="">-- MODULE_TESTER --</option>`+Object.keys(modules).map(k=>`<option value="${modules[k].type}">${modules[k].label}</option>`).join('');
+                sel.onchange=()=>{if(sel.value)window.location.href=`write.html?type=${sel.value}`;};
+                wrap.appendChild(sel);nav.appendChild(wrap);
+            }else if(dept&&modules[dept]){
+                const a=document.createElement('a');a.href=`write.html?type=${modules[dept].type}`;a.innerText=modules[dept].label;nav.appendChild(a);
             }
         }
-
-        async function logout() {
-            await _supabase.auth.signOut();
-            window.location.href = 'index.html';
-        }
-
-        window.onload = loadProfile;
+        async function logout(){await _supabase.auth.signOut();window.location.href='index.html';}
+        window.onload=loadProfile;
     </script>
 </body>
 </html>
