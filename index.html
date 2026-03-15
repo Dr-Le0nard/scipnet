@@ -2,296 +2,632 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SCiPNET - Login</title>
+    <title>SCiPNET - Secure Access Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
-        .scanner-container {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #000;
+            color: var(--terminal-green);
+            font-family: 'VT323', monospace;
+            font-size: 1.1rem;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 20px;
-            padding: 10px;
-            border-top: 1px solid rgba(0, 255, 65, 0.2);
-        }
-
-        #hand-scanner {
-            position: relative;
-            width: 160px;
-            height: 200px;
-            border: 2px solid var(--terminal-green);
-            background: rgba(0, 255, 65, 0.05);
-            display: flex;
             justify-content: center;
-            align-items: center;
-            cursor: pointer;
+            padding: 20px;
             overflow: hidden;
-            transition: box-shadow 0.3s;
         }
 
-        #hand-scanner:active {
-            box-shadow: 0 0 20px var(--terminal-green);
+        /* Animated background grid */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(0,255,65,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,65,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
         }
 
-        #laser-line {
-            position: absolute;
-            top: 0;
-            left: 0;
+        .terminal-wrapper {
             width: 100%;
-            height: 4px;
-            background: var(--terminal-green);
-            box-shadow: 0 0 15px var(--terminal-green);
-            display: none;
-            z-index: 10;
+            max-width: 680px;
+            position: relative;
+            z-index: 1;
         }
 
-        @keyframes laser-sweep {
-            0% { top: 0; }
-            100% { top: 100%; }
+        /* Boot sequence */
+        #boot-sequence {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            min-height: 120px;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
-        #progress-bar-container {
-            width: 160px;
-            height: 8px;
-            border: 1px solid var(--terminal-green);
-            margin-top: 10px;
-            background: #000;
+        #boot-sequence.visible { opacity: 1; }
+
+        .boot-line {
+            display: block;
+            overflow: hidden;
+            white-space: nowrap;
+            width: 0;
+            animation: expand 0s forwards;
         }
 
-        #progress-bar {
-            width: 0%;
-            height: 100%;
-            background: var(--terminal-green);
-            transition: width 0.1s linear;
-        }
-
-        #scan-status {
-            font-size: 0.8rem;
-            margin-top: 8px;
-            height: 15px;
+        .boot-line.ok::after {
+            content: ' [OK]';
             color: var(--terminal-green);
-            font-family: 'VT323', monospace;
         }
 
-        .auth-actions {
+        .boot-line.warn::after {
+            content: ' [WARN]';
+            color: var(--alert-gold);
+        }
+
+        .boot-line.err::after {
+            content: ' [ERR]';
+            color: var(--error-red);
+        }
+
+        @keyframes expand {
+            to { width: 100%; }
+        }
+
+        /* Main terminal box */
+        .terminal-box {
+            border: 1px solid var(--terminal-green);
+            box-shadow: 0 0 30px rgba(0,255,65,0.15), inset 0 0 30px rgba(0,255,65,0.03);
+            background: rgba(0,0,0,0.95);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.5s, transform 0.5s;
+        }
+
+        .terminal-box.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .terminal-titlebar {
+            background: var(--terminal-green);
+            color: #000;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 2px;
+        }
+
+        .terminal-body {
+            padding: 24px;
+        }
+
+        /* ASCII art header */
+        .ascii-header {
+            font-size: 0.7rem;
+            line-height: 1.2;
+            color: var(--terminal-green);
+            text-shadow: 0 0 10px var(--terminal-green);
+            margin-bottom: 20px;
+            text-align: center;
+            letter-spacing: 0;
+            text-transform: none;
+            opacity: 0.8;
+        }
+
+        .terminal-divider {
+            border: none;
+            border-top: 1px dashed rgba(0,255,65,0.3);
+            margin: 16px 0;
+        }
+
+        /* Prompt-style inputs */
+        .prompt-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .prompt-label {
+            color: var(--terminal-green);
+            white-space: nowrap;
+            font-size: 1rem;
+            min-width: 180px;
+            opacity: 0.7;
+        }
+
+        .prompt-label::before {
+            content: '> ';
+            color: var(--terminal-green);
+        }
+
+        .prompt-input {
+            background: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(0,255,65,0.4) !important;
+            border-radius: 0 !important;
+            color: var(--terminal-green) !important;
+            font-family: 'VT323', monospace !important;
+            font-size: 1rem !important;
+            padding: 2px 4px !important;
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            outline: none !important;
+            letter-spacing: 1px;
+            caret-color: var(--terminal-green);
+        }
+
+        .prompt-input:focus {
+            border-bottom-color: var(--terminal-green) !important;
+            box-shadow: 0 2px 0 rgba(0,255,65,0.3);
+        }
+
+        .prompt-input::placeholder {
+            color: rgba(0,255,65,0.25);
+            font-style: normal;
+        }
+
+        /* Select styling */
+        .prompt-input.select-input {
+            appearance: none;
+            cursor: pointer;
+        }
+
+        /* Status line */
+        .status-line {
+            font-size: 0.85rem;
+            margin: 8px 0;
+            min-height: 20px;
+            padding-left: 8px;
+        }
+
+        .status-line.error { color: var(--error-red); }
+        .status-line.success { color: var(--terminal-green); }
+        .status-line.warning { color: var(--alert-gold); }
+
+        /* Action buttons */
+        .action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-top: 20px;
+            gap: 12px;
+        }
+
+        .terminal-btn {
+            background: transparent !important;
+            border: 1px solid var(--terminal-green) !important;
+            color: var(--terminal-green) !important;
+            font-family: 'VT323', monospace !important;
+            font-size: 1rem !important;
+            padding: 6px 20px !important;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: all 0.15s;
+            height: auto !important;
+            text-transform: uppercase;
+        }
+
+        .terminal-btn:hover {
+            background: var(--terminal-green) !important;
+            color: #000 !important;
+            box-shadow: 0 0 15px rgba(0,255,65,0.5) !important;
+        }
+
+        .terminal-btn.primary {
+            border-color: var(--terminal-green) !important;
+        }
+
+        .toggle-link {
+            color: rgba(0,255,65,0.5);
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-decoration: none;
+            letter-spacing: 1px;
+            transition: color 0.2s;
+            border: none;
+            background: none;
+            height: auto !important;
+            padding: 0 !important;
+        }
+
+        .toggle-link:hover {
+            color: var(--terminal-green);
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        /* Scan progress bar */
+        #scan-container {
+            margin: 16px 0;
+            display: none;
+        }
+
+        .scan-label {
+            font-size: 0.85rem;
+            color: rgba(0,255,65,0.6);
+            margin-bottom: 6px;
+        }
+
+        .scan-bar-outer {
+            border: 1px solid rgba(0,255,65,0.3);
+            height: 12px;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #scan-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--terminal-green);
+            box-shadow: 0 0 8px var(--terminal-green);
+            transition: width 0.05s linear;
+        }
+
+        .scan-bar-outer::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 8px,
+                rgba(0,0,0,0.3) 8px,
+                rgba(0,0,0,0.3) 9px
+            );
+        }
+
+        #scan-status-text {
+            font-size: 0.8rem;
+            color: rgba(0,255,65,0.5);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        /* Blinking cursor */
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: var(--terminal-green);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Footer */
+        .terminal-footer {
+            font-size: 0.75rem;
+            color: rgba(0,255,65,0.3);
+            text-align: center;
+            margin-top: 12px;
+            letter-spacing: 2px;
+        }
+
+        /* Registration extra fields */
+        #reg-fields { display: none; }
+
+        /* Banned screen */
+        .banned-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0a0000;
+            color: var(--error-red);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-family: 'VT323', monospace;
+            border: 4px solid var(--error-red);
+            z-index: 99999;
         }
     </style>
 </head>
-<body class="login-screen">
-    <div class="terminal-box">
-        <h1 id="auth-title">SCiPNET_USER_LOGIN</h1>
+<body>
+    <div class="terminal-wrapper">
 
-        <div class="input-group">
-            <label>IDENTIFIER:</label>
-            <input type="email" id="email" placeholder="email@foundation.scp">
-        </div>
+        <!-- Boot sequence -->
+        <div id="boot-sequence"></div>
 
-        <div class="input-group">
-            <label>CREDENTIALS:</label>
-            <input type="password" id="password" placeholder="password">
-        </div>
-
-        <div id="reg-fields" style="display:none;">
-            <div class="input-group">
-                <label>FULL_NAME:</label>
-                <input type="text" id="fullname" placeholder="Dr. Bright">
+        <!-- Main terminal -->
+        <div class="terminal-box" id="terminal-box">
+            <div class="terminal-titlebar">
+                <span>SCIPNET // SECURE ACCESS TERMINAL v4.2.1</span>
+                <span id="titlebar-time"></span>
             </div>
-            <div class="input-group">
-                <label>SELECT_DEPARTMENT:</label>
-                <select id="dept-choice" style="width: 100%; background: black; color: var(--terminal-green); border: 1px solid var(--terminal-green); font-family: 'VT323'; padding: 5px;">
-                    <option value="">-- CHOOSE_UNIT --</option>
-                    <option value="ScD">Scientific (ScD)</option>
-                    <option value="MD">Medical (MD)</option>
-                    <option value="SD">Security (SD)</option>
-                    <option value="EcD">Engineering (EcD)</option>
-                    <option value="RAISA">Infosec (RAISA)</option>
-                    <option value="AD">Administrative (AD)</option>
-                    <option value="ISD">Intelligence (ISD)</option>
-                </select>
-            </div>
-        </div>
+            <div class="terminal-body">
 
-        <div id="scanner-wrapper" style="display: block;">
-            <div class="scanner-container">
-                <div id="hand-scanner" onmousedown="startScan()" onmouseup="cancelScan()" onmouseleave="cancelScan()">
-                    <svg viewBox="0 0 512 512" width="100" fill="var(--terminal-green)" style="opacity: 0.7;">
-                        <path d="M448 192V80c0-26.5-21.5-48-48-48s-48 21.5-48 48v112h-32V48c0-26.5-21.5-48-48-48s-48 21.5-48 48v144h-32V80c0-26.5-21.5-48-48-48s-48 21.5-48 48v224l-44.5-44.5c-18.7-18.7-49.1-18.7-67.9 0s-18.7 49.1 0 67.9l121.5 121.5c41.3 41.3 96.6 64.1 155 64.1H400c61.9 0 112-50.1 112-112V256c0-26.5-21.5-48-48-48s-48 21.5-48 48v112h-16V192z"/>
-                    </svg>
-                    <div id="laser-line"></div>
+                <pre class="ascii-header">
+ ___  __  ____  ____  __ _  ____  ____
+/ __)(  )(_  _)(  _ \(  ( \(  __)(_  _)
+\__ \ )(   )(   ) __//    / ) _)   )(
+(___/(__) (__) (__)  \_)__)(____) (__)
+                </pre>
+
+                <hr class="terminal-divider">
+
+                <div id="form-title" style="margin-bottom:16px; font-size:1rem; color: rgba(0,255,65,0.6); letter-spacing:3px;">
+                    AUTHENTICATION REQUIRED <span class="cursor"></span>
                 </div>
-                <div id="progress-bar-container">
-                    <div id="progress-bar"></div>
+
+                <!-- LOGIN FIELDS -->
+                <div id="login-fields">
+                    <div class="prompt-row">
+                        <span class="prompt-label">IDENTIFIER</span>
+                        <input type="email" id="email" class="prompt-input" placeholder="user@foundation.scp" autocomplete="off">
+                    </div>
+                    <div class="prompt-row">
+                        <span class="prompt-label">CREDENTIALS</span>
+                        <input type="password" id="password" class="prompt-input" placeholder="••••••••••••">
+                    </div>
                 </div>
-                <p id="scan-status">HOLD_HAND_TO_INITIALIZE_LOGIN</p>
+
+                <!-- REGISTRATION EXTRA FIELDS -->
+                <div id="reg-fields">
+                    <div class="prompt-row">
+                        <span class="prompt-label">FULL_NAME</span>
+                        <input type="text" id="fullname" class="prompt-input" placeholder="Dr. Bright">
+                    </div>
+                    <div class="prompt-row">
+                        <span class="prompt-label">DEPARTMENT</span>
+                        <select id="dept-choice" class="prompt-input select-input">
+                            <option value="">-- SELECT UNIT --</option>
+                            <option value="ScD">Scientific (ScD)</option>
+                            <option value="MD">Medical (MD)</option>
+                            <option value="SD">Security (SD)</option>
+                            <option value="EcD">Engineering (EcD)</option>
+                            <option value="RAISA">Infosec (RAISA)</option>
+                            <option value="AD">Administrative (AD)</option>
+                            <option value="ISD">Intelligence (ISD)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Scan progress -->
+                <div id="scan-container">
+                    <div class="scan-label">BIOMETRIC AUTHENTICATION IN PROGRESS...</div>
+                    <div class="scan-bar-outer">
+                        <div id="scan-bar-fill"></div>
+                    </div>
+                    <div id="scan-status-text">AWAITING INPUT</div>
+                </div>
+
+                <!-- Status message -->
+                <div class="status-line" id="status-msg"></div>
+
+                <hr class="terminal-divider">
+
+                <div class="action-row">
+                    <button class="terminal-btn primary" id="auth-btn" onclick="handleAuth()">AUTHENTICATE</button>
+                    <button class="toggle-link" id="toggle-btn" onclick="toggleMode()">[ REQUEST_NEW_ACCESS ]</button>
+                </div>
+
             </div>
         </div>
 
-        <div class="auth-actions">
-            <button id="submit-btn" onclick="handleAuth()" style="display:none;">LOGIN</button>
-            <p onclick="toggleAuth()" id="toggle-text" style="cursor:pointer; text-decoration:underline;">[REQUEST_NEW_ACCESS]</p>
+        <div class="terminal-footer">
+            SITE-19 // O5 COUNCIL CLEARANCE REQUIRED // UNAUTHORIZED ACCESS PROSECUTED
         </div>
-
-        <p id="error-msg" style="color:red;"></p>
     </div>
 
     <script>
         let isRegistering = false;
-        let scanInterval;
+        let isScanning = false;
+        let scanInterval = null;
         let scanProgress = 0;
-        let scanLocked = false; // Prevent double-firing on scan complete
 
-        // --- Check if already logged in and redirect ---
-        async function checkInitialBanStatus() {
-            const { data: { user } } = await _supabase.auth.getUser();
-            if (user) {
-                const { data: profile } = await _supabase
-                    .from('profiles')
-                    .select('is_banned')
-                    .eq('id', user.id)
-                    .maybeSingle();
+        // --- CLOCK ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('titlebar-time').innerText =
+                now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-                if (profile && profile.is_banned) {
-                    showRedScreen(user.id);
-                } else if (profile) {
-                    // Already authenticated — send them to dashboard
-                    window.location.href = "dashboard.html";
-                }
-            }
+        // --- BOOT SEQUENCE ---
+        const bootLines = [
+            { text: 'INITIALIZING SCIPNET SECURE KERNEL...', type: 'ok', delay: 0 },
+            { text: 'LOADING ENCRYPTION MODULES [AES-256]...', type: 'ok', delay: 300 },
+            { text: 'ESTABLISHING UPLINK TO SITE-19 MAINFRAME...', type: 'ok', delay: 600 },
+            { text: 'VERIFYING MEMETIC KILL AGENT FILTERS...', type: 'ok', delay: 900 },
+            { text: 'ANOMALY CONTAINMENT STATUS: NOMINAL', type: 'ok', delay: 1200 },
+            { text: 'TERMINAL READY. AWAITING PERSONNEL CREDENTIALS.', type: '', delay: 1500 },
+        ];
 
-            // Show URL error messages (e.g. session_terminated)
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('error') === 'session_terminated') {
-                document.getElementById('error-msg').innerText = "SESSION_TERMINATED: ACCESS_REVOKED_BY_ADMINISTRATOR";
-            }
+        function runBootSequence() {
+            const container = document.getElementById('boot-sequence');
+            container.classList.add('visible');
+
+            bootLines.forEach((line, i) => {
+                setTimeout(() => {
+                    const span = document.createElement('span');
+                    span.className = `boot-line ${line.type}`;
+                    span.style.animation = `expand 0.4s steps(${line.text.length}) forwards`;
+                    span.innerText = line.text;
+                    container.appendChild(span);
+
+                    // Show terminal box after last line
+                    if (i === bootLines.length - 1) {
+                        setTimeout(() => {
+                            document.getElementById('terminal-box').classList.add('visible');
+                        }, 500);
+                    }
+                }, line.delay);
+            });
         }
 
-        function toggleAuth() {
+        // --- TOGGLE LOGIN/REGISTER ---
+        function toggleMode() {
             isRegistering = !isRegistering;
-            document.getElementById('auth-title').innerText = isRegistering ? "ACCESS_REQUEST_FORM" : "SCiPNET_USER_LOGIN";
-            document.getElementById('reg-fields').style.display = isRegistering ? "block" : "none";
-            document.getElementById('toggle-text').innerText = isRegistering ? "[BACK_TO_LOGIN]" : "[REQUEST_NEW_ACCESS]";
-            document.getElementById('error-msg').innerText = "";
+            const formTitle = document.getElementById('form-title');
+            const regFields = document.getElementById('reg-fields');
+            const authBtn = document.getElementById('auth-btn');
+            const toggleBtn = document.getElementById('toggle-btn');
+            const scanContainer = document.getElementById('scan-container');
 
-            const scanner = document.getElementById('scanner-wrapper');
-            const btn = document.getElementById('submit-btn');
+            clearStatus();
+
             if (isRegistering) {
-                scanner.style.display = "none";
-                btn.style.display = "block";
-                btn.innerText = "SUBMIT_REQUEST";
+                formTitle.innerHTML = 'NEW ACCESS REQUEST <span class="cursor"></span>';
+                regFields.style.display = 'block';
+                authBtn.innerText = 'SUBMIT REQUEST';
+                toggleBtn.innerText = '[ BACK TO LOGIN ]';
+                scanContainer.style.display = 'none';
             } else {
-                scanner.style.display = "block";
-                btn.style.display = "none";
-                btn.innerText = "LOGIN";
+                formTitle.innerHTML = 'AUTHENTICATION REQUIRED <span class="cursor"></span>';
+                regFields.style.display = 'none';
+                authBtn.innerText = 'AUTHENTICATE';
+                toggleBtn.innerText = '[ REQUEST_NEW_ACCESS ]';
             }
         }
 
-        // --- SCANNER LOGIC ---
-        function startScan() {
-            if (scanLocked) return;
+        // --- AUTH HANDLER ---
+        function handleAuth() {
+            if (isRegistering) {
+                executeAuth();
+            } else {
+                startScan();
+            }
+        }
 
+        // --- SCAN ANIMATION ---
+        function startScan() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('error-msg');
 
             if (!email || !password) {
-                errorMsg.innerText = "ERROR: IDENTIFIER_AND_CREDENTIALS_REQUIRED";
+                setStatus('ERROR: IDENTIFIER AND CREDENTIALS REQUIRED', 'error');
                 return;
             }
-            errorMsg.innerText = "";
 
+            if (isScanning) return;
+            isScanning = true;
             scanProgress = 0;
-            const laser = document.getElementById('laser-line');
-            const bar = document.getElementById('progress-bar');
-            const status = document.getElementById('scan-status');
+            clearStatus();
 
-            laser.style.display = 'block';
-            laser.style.animation = 'laser-sweep 1.5s infinite alternate';
-            status.innerText = "AUTHENTICATING_BIO_SIGNATURE...";
+            const scanContainer = document.getElementById('scan-container');
+            const fill = document.getElementById('scan-bar-fill');
+            const statusText = document.getElementById('scan-status-text');
+
+            scanContainer.style.display = 'block';
+            document.getElementById('auth-btn').disabled = true;
+
+            const messages = [
+                'READING BIOMETRIC SIGNATURE...',
+                'CROSS-REFERENCING PERSONNEL DATABASE...',
+                'VERIFYING CLEARANCE LEVEL...',
+                'CHECKING CONTAINMENT PROTOCOL ACCESS...',
+                'IDENTITY CONFIRMED...',
+            ];
 
             scanInterval = setInterval(() => {
-                scanProgress += 2;
-                bar.style.width = scanProgress + "%";
+                scanProgress += 1.5;
+                fill.style.width = Math.min(scanProgress, 100) + '%';
+
+                const msgIndex = Math.floor((scanProgress / 100) * messages.length);
+                statusText.innerText = messages[Math.min(msgIndex, messages.length - 1)] + ' ' + Math.floor(scanProgress) + '%';
 
                 if (scanProgress >= 100) {
                     clearInterval(scanInterval);
-                    scanLocked = true;
-                    status.innerText = "IDENTITY_CONFIRMED_ACCESS_GRANTED";
-                    laser.style.animation = 'none';
-                    laser.style.top = "50%";
-
-                    setTimeout(() => {
-                        executeFinalAuth();
-                    }, 600);
+                    statusText.innerText = 'ACCESS GRANTED // AUTHENTICATING...';
+                    setTimeout(() => executeAuth(), 400);
                 }
-            }, 40);
+            }, 30);
         }
 
-        function cancelScan() {
-            if (scanLocked) return;
+        function resetScan() {
+            isScanning = false;
             clearInterval(scanInterval);
-            const laser = document.getElementById('laser-line');
-            const bar = document.getElementById('progress-bar');
-            const status = document.getElementById('scan-status');
-
-            if (scanProgress < 100) {
-                laser.style.display = 'none';
-                laser.style.animation = 'none';
-                scanProgress = 0;
-                bar.style.width = "0%";
-                status.innerText = "SCAN_ABORTED_HOLD_TO_VERIFY";
-            }
+            scanProgress = 0;
+            document.getElementById('scan-bar-fill').style.width = '0%';
+            document.getElementById('scan-status-text').innerText = 'AWAITING INPUT';
+            document.getElementById('scan-container').style.display = 'none';
+            document.getElementById('auth-btn').disabled = false;
         }
 
-        function handleAuth() {
-            if (isRegistering) executeFinalAuth();
+        // --- STATUS HELPERS ---
+        function setStatus(msg, type = '') {
+            const el = document.getElementById('status-msg');
+            el.innerText = '> ' + msg;
+            el.className = 'status-line ' + type;
         }
 
-        async function executeFinalAuth() {
+        function clearStatus() {
+            const el = document.getElementById('status-msg');
+            el.innerText = '';
+            el.className = 'status-line';
+        }
+
+        // --- EXECUTE AUTH ---
+        async function executeAuth() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            const errorMsg = document.getElementById('error-msg');
 
             if (isRegistering) {
                 const fullName = document.getElementById('fullname').value.trim();
                 const deptChoice = document.getElementById('dept-choice').value;
 
-                if (!fullName || !deptChoice) {
-                    errorMsg.innerText = "ERROR: ALL_FIELDS_REQUIRED";
+                if (!email || !password || !fullName || !deptChoice) {
+                    setStatus('ERROR: ALL FIELDS REQUIRED', 'error');
                     return;
                 }
 
-                const { data, error } = await _supabase.auth.signUp({
+                setStatus('TRANSMITTING REQUEST TO O5 COUNCIL...', 'warning');
+
+                const { error } = await _supabase.auth.signUp({
                     email,
                     password,
-                    options: {
-                        data: {
-                            full_name: fullName,
-                            department: deptChoice
-                        }
-                    }
+                    options: { data: { full_name: fullName, department: deptChoice } }
                 });
 
                 if (error) {
-                    errorMsg.innerText = "ERROR: " + error.message;
-                    return;
+                    setStatus('REQUEST FAILED: ' + error.message, 'error');
+                } else {
+                    document.querySelector('.terminal-body').innerHTML = `
+                        <div style="text-align:center; padding: 20px 0;">
+                            <div style="font-size:1.4rem; margin-bottom:16px; text-shadow: 0 0 10px var(--terminal-green);">
+                                REQUEST_TRANSMITTED
+                            </div>
+                            <hr class="terminal-divider">
+                            <p style="color: rgba(0,255,65,0.6); margin: 16px 0; font-size:0.9rem;">
+                                VERIFICATION LINK DISPATCHED TO:<br>
+                                <span style="color: var(--terminal-green);">${email}</span>
+                            </p>
+                            <p style="color: rgba(0,255,65,0.4); font-size:0.8rem; margin-bottom:20px;">
+                                DEPARTMENTAL O5 NOTIFIED OF PENDING REQUEST.<br>
+                                AWAIT COUNCIL APPROVAL BEFORE ATTEMPTING LOGIN.
+                            </p>
+                            <hr class="terminal-divider">
+                            <button class="terminal-btn" onclick="location.reload()">RETURN TO TERMINAL</button>
+                        </div>`;
                 }
-
-                document.querySelector('.terminal-box').innerHTML = `
-                    <h1>REQUEST_SENT</h1>
-                    <p>Verification link dispatched to: <br><strong>${email}</strong></p>
-                    <p>Departmental O5 notified of pending request.</p>
-                    <button onclick="location.reload()">RETURN_TO_LOGIN</button>
-                `;
             } else {
                 const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
 
                 if (error) {
-                    errorMsg.innerText = "ACCESS_DENIED: " + error.message;
-                    scanLocked = false; // Allow retry
-                    cancelScan();
+                    resetScan();
+                    setStatus('ACCESS DENIED: ' + error.message, 'error');
                 } else {
                     const { data: profile } = await _supabase
                         .from('profiles')
@@ -305,7 +641,8 @@
                     }
 
                     await checkAndCreateProfile(data.user);
-                    window.location.href = "dashboard.html";
+                    setStatus('IDENTITY VERIFIED // REDIRECTING...', 'success');
+                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
                 }
             }
         }
@@ -318,12 +655,10 @@
                 .maybeSingle();
 
             if (!profile) {
-                const fullName = user.user_metadata?.full_name || "REDACTED_NAME";
-                const department = user.user_metadata?.department || null;
                 await _supabase.from('profiles').insert([{
                     id: user.id,
-                    full_name: fullName,
-                    department: department,
+                    full_name: user.user_metadata?.full_name || 'REDACTED_NAME',
+                    department: user.user_metadata?.department || null,
                     is_approved: false,
                     is_banned: false,
                     clearance_level: 0
@@ -335,7 +670,7 @@
             let i = 0;
             const element = document.getElementById(elementId);
             if (!element) return;
-            element.innerHTML = "";
+            element.innerHTML = '';
             function type() {
                 if (i < text.length) {
                     element.innerHTML += text.charAt(i);
@@ -348,22 +683,24 @@
 
         function showRedScreen(userId) {
             document.body.innerHTML = `
-                <div class="banned-overlay" style="background: #200; color: #f00; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-family: monospace; border: 5px solid #f00;">
-                    <div class="flicker-text" style="font-size: 3rem; font-weight: bold;">TERMINAL_LOCKED</div>
-                    <div class="warning-box" style="border: 2px solid #f00; padding: 20px; margin: 20px; background: rgba(255,0,0,0.1);">
-                        <h2>[ SECURITY_BREACH_DETECTED ]</h2>
+                <div class="banned-overlay">
+                    <div style="font-size: 3rem; font-weight: bold; animation: alert-flicker 0.5s infinite;">
+                        TERMINAL_LOCKED
+                    </div>
+                    <div style="border: 2px solid var(--error-red); padding: 20px; margin: 20px; background: rgba(255,0,0,0.05); max-width:500px;">
+                        <h2 style="margin-bottom:12px;">[ SECURITY_BREACH_DETECTED ]</h2>
                         <p id="typewriter-revocation"></p>
-                        <hr style="border: 1px solid #f00;">
+                        <hr style="border: 1px solid var(--error-red); margin: 12px 0;">
                         <p id="typewriter-threat" style="color: #ff5555;"></p>
                     </div>
-                    <button id="ack-btn" style="background: #f00; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; display: none;">
+                    <button id="ack-btn" style="display:none; background: var(--error-red); color: #000; border: none; padding: 12px 30px; cursor: pointer; font-family: 'VT323'; font-size:1.1rem; letter-spacing:2px;">
                         ACKNOWLEDGE_TERMINATION
                     </button>
                 </div>`;
-            typeWriter(`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`, "typewriter-revocation", 40);
+            typeWriter(`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`, 'typewriter-revocation', 40);
             setTimeout(() => {
-                typeWriter("MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.", "typewriter-threat", 30);
-                document.getElementById('ack-btn').style.display = "block";
+                typeWriter('MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.', 'typewriter-threat', 30);
+                document.getElementById('ack-btn').style.display = 'block';
             }, 2000);
             document.getElementById('ack-btn').onclick = async () => {
                 await _supabase.auth.signOut();
@@ -371,8 +708,38 @@
             };
         }
 
-        window.onload = checkInitialBanStatus;
+        async function checkInitialStatus() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await _supabase
+                    .from('profiles')
+                    .select('is_banned')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (profile && profile.is_banned) {
+                    showRedScreen(user.id);
+                    return;
+                } else if (profile) {
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('error') === 'session_terminated') {
+                setStatus('SESSION TERMINATED: ACCESS REVOKED BY ADMINISTRATOR', 'error');
+            }
+
+            runBootSequence();
+        }
+
+        // Enter key support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !isScanning) handleAuth();
+        });
+
+        window.onload = checkInitialStatus;
     </script>
 </body>
 </html>
-<!-- Hosting Test v3.2 -->
