@@ -119,7 +119,7 @@
                 document.getElementById('admin-header').style.color = 'var(--red)';
                 loadFlags(); loadAlertStatus(); showAuditLog();
             } else if (myProfile.is_admin) {
-                document.getElementById('alert-control-panel').style.display = 'none';
+                loadAlertStatus();
                 showAuditLog();
             }
 
