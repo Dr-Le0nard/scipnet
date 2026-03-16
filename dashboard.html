@@ -17,9 +17,11 @@
     </div>
 
     <div id="main-content" style="display:none;" class="fade-in">
+
+        <!-- Identity Block -->
         <div class="identity-block">
             <div>
-                <div class="identity-name" id="welcome">WELCOME: [REDACTED]</div>
+                <div class="identity-name" id="welcome">WELCOME</div>
                 <div style="margin-top:6px;">
                     <span class="clearance-badge" id="badge-container">
                         <span class="status-dot"></span>CL: <span id="lvl">0</span> // <span id="dept-display">PENDING</span>
@@ -29,6 +31,7 @@
             <button class="terminate-btn" onclick="logout()">[ TERMINATE ]</button>
         </div>
 
+        <!-- System Bar -->
         <div class="system-bar">
             <div><span class="status-dot"></span>SYSTEM: <span>STABLE</span></div>
             <div>LOCATION: <span>SITE-19</span></div>
@@ -36,7 +39,7 @@
             <div id="sys-time" style="margin-left:auto;"></div>
         </div>
 
-        <!-- Nav is built by loadProfile so admin link can be conditionally added -->
+        <!-- Nav -->
         <nav class="main-nav" id="main-nav">
             <a href="archive.html">ARCHIVE</a>
             <a href="personnel.html">PERSONNEL</a>
@@ -45,40 +48,70 @@
             <a href="admin.html" id="admin-link" style="display:none;">ADMIN</a>
         </nav>
 
+        <!-- Dashboard Content -->
         <div class="page-content page-wrapper">
+
             <div class="page-title">COMMAND_TERMINAL</div>
-            <div class="page-subtitle">SITE-19 SECURE INTRANET // AUTHORIZED PERSONNEL ONLY</div>
-            <div class="grid" style="margin-top:8px;">
-                <a href="archive.html" style="text-decoration:none;">
-                    <div class="card" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display);font-size:1.05rem;letter-spacing:3px;margin-bottom:6px;">DATABASE_ARCHIVE</div>
-                        <div style="color:var(--text-dim);font-size:0.75rem;">ACCESS DEPARTMENTAL DOCUMENTS</div>
+            <div class="page-subtitle" id="dash-subtitle">SITE-19 SECURE INTRANET // AUTHORIZED PERSONNEL ONLY</div>
+
+            <!-- Stats Row -->
+            <div class="grid-4" style="margin-bottom:28px;">
+                <div class="stat-card">
+                    <div class="stat-label">ACTIVE_PERSONNEL</div>
+                    <div class="stat-value" id="stat-personnel">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">TOTAL_DOCUMENTS</div>
+                    <div class="stat-value" id="stat-docs">—</div>
+                </div>
+                <div class="stat-card gold" id="stat-pending-card">
+                    <div class="stat-label">PENDING_REQUESTS</div>
+                    <div class="stat-value" id="stat-pending">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">YOUR_DOCUMENTS</div>
+                    <div class="stat-value" id="stat-yours">—</div>
+                </div>
+            </div>
+
+            <!-- Two column layout -->
+            <div class="grid-2">
+
+                <!-- Recent Documents -->
+                <div>
+                    <div class="section-header" style="margin-top:0;">RECENT_DOCUMENTS</div>
+                    <div id="recent-docs" style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
                     </div>
-                </a>
-                <a href="personnel.html" style="text-decoration:none;">
-                    <div class="card" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display);font-size:1.05rem;letter-spacing:3px;margin-bottom:6px;">PERSONNEL_DIRECTORY</div>
-                        <div style="color:var(--text-dim);font-size:0.75rem;">VIEW FOUNDATION STAFF MANIFEST</div>
+                    <div style="margin-top:12px;">
+                        <a href="archive.html" class="btn" style="font-size:0.85rem;">VIEW_FULL_ARCHIVE →</a>
                     </div>
-                </a>
-                <a href="write.html" style="text-decoration:none;">
-                    <div class="card" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display);font-size:1.05rem;letter-spacing:3px;margin-bottom:6px;">FILE_NEW_REPORT</div>
-                        <div style="color:var(--text-dim);font-size:0.75rem;">SUBMIT A NEW DEPARTMENTAL ENTRY</div>
+                </div>
+
+                <!-- Quick Actions + Personnel snapshot -->
+                <div>
+                    <div class="section-header" style="margin-top:0;">QUICK_ACTIONS</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+                        <a href="write.html" class="btn" style="justify-content:flex-start;gap:10px;">
+                            <span style="opacity:0.5;">▶</span> FILE_NEW_REPORT
+                        </a>
+                        <a href="profile.html" class="btn" style="justify-content:flex-start;gap:10px;">
+                            <span style="opacity:0.5;">▶</span> EDIT_PERSONNEL_BIO
+                        </a>
+                        <a href="personnel.html" class="btn" style="justify-content:flex-start;gap:10px;">
+                            <span style="opacity:0.5;">▶</span> VIEW_STAFF_MANIFEST
+                        </a>
+                        <a href="admin.html" id="admin-action" class="btn btn-gold" style="justify-content:flex-start;gap:10px;display:none;">
+                            <span style="opacity:0.5;">▶</span> ADMIN_OVERRIDE
+                        </a>
                     </div>
-                </a>
-                <a href="profile.html" style="text-decoration:none;">
-                    <div class="card" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display);font-size:1.05rem;letter-spacing:3px;margin-bottom:6px;">MY_PROFILE</div>
-                        <div style="color:var(--text-dim);font-size:0.75rem;">VIEW AND EDIT YOUR PERSONNEL FILE</div>
+
+                    <div class="section-header">RECENT_PERSONNEL</div>
+                    <div id="recent-personnel" style="display:flex;flex-direction:column;gap:6px;">
+                        <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
                     </div>
-                </a>
-                <a href="admin.html" id="admin-card" style="text-decoration:none;display:none;">
-                    <div class="card card-gold" style="cursor:pointer;">
-                        <div style="font-family:var(--font-display);font-size:1.05rem;letter-spacing:3px;margin-bottom:6px;color:var(--gold);">ADMIN_OVERRIDE</div>
-                        <div style="color:rgba(255,215,0,0.4);font-size:0.75rem;">PERSONNEL MANAGEMENT AND SYSTEM CONTROL</div>
-                    </div>
-                </a>
+                </div>
+
             </div>
         </div>
     </div>
@@ -91,23 +124,23 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        async function loadProfile() {
+        async function loadDashboard() {
             const auth = await requireAuth();
             if (!auth) return;
             const { user, profile } = auth;
 
+            // Realtime ban/clearance watch
             _supabase.channel('public:profiles')
                 .on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter:`id=eq.${user.id}` }, (payload) => {
                     if (payload.new.is_banned) window.location.href = 'index.html';
                     if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
                 }).subscribe();
 
-            const welcomeEl  = document.getElementById('welcome');
-            const adminLink  = document.getElementById('admin-link');
-            const adminCard  = document.getElementById('admin-card');
-            const badge      = document.getElementById('badge-container');
-            const loadingEl  = document.getElementById('loading');
-            const mainEl     = document.getElementById('main-content');
+            // Identity
+            const welcomeEl = document.getElementById('welcome');
+            const badge     = document.getElementById('badge-container');
+            const adminLink = document.getElementById('admin-link');
+            const adminAction = document.getElementById('admin-action');
 
             if (profile.is_terminal_admin) {
                 welcomeEl.innerText = 'TERMINAL_ADMINISTRATOR';
@@ -116,7 +149,7 @@
                 badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> ROOT_ACCESS`;
                 adminLink.style.display = 'inline-flex';
                 adminLink.innerText = 'SYSTEM';
-                adminCard.style.display = 'block';
+                adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, true);
             } else if (profile.is_overseer) {
                 welcomeEl.innerText = 'O5_COUNCIL_CHAIRMAN';
@@ -125,7 +158,7 @@
                 badge.innerHTML = `<span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span> LEVEL 5 // O5`;
                 adminLink.style.display = 'inline-flex';
                 adminLink.innerText = 'CHAIRMAN';
-                adminCard.style.display = 'block';
+                adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
             } else if (profile.is_admin) {
                 welcomeEl.innerText = 'O5_COUNCIL_MEMBER';
@@ -134,18 +167,117 @@
                 badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> LEVEL ${profile.clearance_level} // ${profile.department || 'UNASSIGNED'}`;
                 adminLink.style.display = 'inline-flex';
                 adminLink.innerText = 'COUNCIL';
-                adminCard.style.display = 'block';
+                adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
             } else {
                 if (!profile.is_approved) { showPendingScreen(); return; }
                 welcomeEl.innerText = profile.full_name ? profile.full_name.toUpperCase() : 'PERSONNEL';
                 document.getElementById('lvl').innerText = profile.clearance_level;
                 document.getElementById('dept-display').innerText = profile.department || 'UNASSIGNED';
+                document.getElementById('dash-subtitle').innerText =
+                    `DEPT: [${profile.department || 'UNASSIGNED'}] // CL: ${profile.clearance_level} // SITE-19`;
                 renderDeptMenu(profile.department, false);
             }
 
-            loadingEl.style.display = 'none';
-            mainEl.style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+
+            // Load stats and recent data in parallel
+            loadStats(profile);
+            loadRecentDocs(profile);
+            loadRecentPersonnel();
+        }
+
+        async function loadStats(profile) {
+            const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+
+            // Active personnel count
+            const { count: personnelCount } = await _supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_approved', true)
+                .eq('is_banned', false);
+
+            document.getElementById('stat-personnel').innerText = personnelCount ?? '—';
+
+            // Total documents (dept-scoped for regular users)
+            let docsQuery = _supabase.from('articles').select('*', { count: 'exact', head: true });
+            if (!isElevated) docsQuery = docsQuery.eq('department', profile.department);
+            const { count: docsCount } = await docsQuery;
+            document.getElementById('stat-docs').innerText = docsCount ?? '—';
+
+            // Pending requests (admin only, otherwise hide)
+            if (isElevated) {
+                let pendingQuery = _supabase.from('profiles').select('*', { count: 'exact', head: true })
+                    .eq('is_approved', false).eq('is_banned', false);
+                if (!profile.is_overseer && !profile.is_terminal_admin) {
+                    pendingQuery = pendingQuery.eq('department', profile.department);
+                }
+                const { count: pendingCount } = await pendingQuery;
+                document.getElementById('stat-pending').innerText = pendingCount ?? '0';
+                if (pendingCount > 0) {
+                    document.getElementById('stat-pending-card').style.borderColor = 'rgba(255,215,0,0.6)';
+                    document.getElementById('stat-pending-card').style.boxShadow = '0 0 16px rgba(255,215,0,0.12)';
+                }
+            } else {
+                document.getElementById('stat-pending-card').style.display = 'none';
+            }
+
+            // Your documents count
+            const { count: yoursCount } = await _supabase
+                .from('articles')
+                .select('*', { count: 'exact', head: true })
+                .eq('author', profile.full_name);
+            document.getElementById('stat-yours').innerText = yoursCount ?? '0';
+        }
+
+        async function loadRecentDocs(profile) {
+            const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+            let query = _supabase.from('articles').select('id, title, author, department, required_clearance, created_at')
+                .order('created_at', { ascending: false }).limit(5);
+            if (!isElevated) {
+                query = query.eq('department', profile.department)
+                             .lte('required_clearance', profile.clearance_level);
+            }
+
+            const { data: docs, error } = await query;
+            const container = document.getElementById('recent-docs');
+
+            if (error || !docs || docs.length === 0) {
+                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO DOCUMENTS ON RECORD</div>`;
+                return;
+            }
+
+            container.innerHTML = docs.map(d => `
+                <div style="border:1px solid var(--green-border);background:var(--bg-card);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;" onclick="window.location.href='view.html?id=${d.id}'">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-family:var(--font-display);font-size:0.95rem;letter-spacing:1px;color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.title || 'UNTITLED'}</div>
+                        <div style="font-size:0.68rem;color:var(--text-dim);margin-top:2px;">${d.author || 'UNKNOWN'} // [${d.department || 'N/A'}] // L${d.required_clearance}</div>
+                    </div>
+                    <div style="font-size:0.68rem;color:var(--text-dim);white-space:nowrap;">${new Date(d.created_at).toLocaleDateString()}</div>
+                </div>`).join('');
+        }
+
+        async function loadRecentPersonnel() {
+            const { data: staff, error } = await _supabase
+                .from('profiles')
+                .select('full_name, clearance_level, department')
+                .eq('is_approved', true)
+                .eq('is_banned', false)
+                .order('clearance_level', { ascending: false })
+                .limit(5);
+
+            const container = document.getElementById('recent-personnel');
+            if (error || !staff || staff.length === 0) {
+                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO PERSONNEL ON RECORD</div>`;
+                return;
+            }
+
+            container.innerHTML = staff.map(p => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,255,65,0.07);">
+                    <div style="font-size:0.78rem;color:var(--text-mid);">${p.full_name}</div>
+                    <div style="font-size:0.68rem;color:var(--text-dim);white-space:nowrap;">[${p.department || 'N/A'}] CL:${p.clearance_level}</div>
+                </div>`).join('');
         }
 
         function showPendingScreen() {
@@ -192,7 +324,7 @@
             window.location.href = 'index.html';
         }
 
-        window.onload = loadProfile;
+        window.onload = loadDashboard;
     </script>
 </body>
 </html>
