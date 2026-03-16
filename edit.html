@@ -17,6 +17,7 @@
         <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
     </div>
     <nav class="main-nav" id="main-nav"></nav>
+
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="form-header">LOADING_DOCUMENT...</div>
         <div class="page-subtitle">DOCUMENT EDITOR // AUTHORIZED PERSONNEL ONLY</div>
@@ -40,42 +41,70 @@
             </div>
         </div>
     </div>
+
     <script>
-        let currentProfile=null,articleId=null;
-        async function initEdit(){
-            const auth=await requireAuth();if(!auth)return;
-            currentProfile=auth.profile;
-            articleId=new URLSearchParams(window.location.search).get('id');
-            if(!articleId){document.getElementById('form-header').innerText='ERROR: NO_DOCUMENT_ID';return;}
-            const{data:art,error}=await _supabase.from('articles').select('*').eq('id',articleId).single();
-            if(error||!art){document.getElementById('form-header').innerText='ERROR: DOCUMENT_NOT_FOUND';return;}
-            const isElevated=currentProfile.is_admin||currentProfile.is_overseer||currentProfile.is_terminal_admin;
-            const isAuthor=art.author===currentProfile.full_name;
-            if(!isElevated&&!isAuthor){toast('ACCESS_DENIED: INSUFFICIENT_PRIVILEGES','error');setTimeout(()=>window.location.href='archive.html',1500);return;}
-            document.getElementById('form-header').innerText=`EDITING: ${(art.title||'UNTITLED').toUpperCase()}`;
-            document.getElementById('title').value=art.title||'';
-            document.getElementById('clearance_level').value=art.required_clearance||0;
-            document.getElementById('content').value=art.content||'';
+        let currentProfile = null, articleId = null, articleTitle = null;
+
+        async function initEdit() {
+            const auth = await requireAuth();
+            if (!auth) return;
+            currentProfile = auth.profile;
+
+            articleId = new URLSearchParams(window.location.search).get('id');
+            if (!articleId) { document.getElementById('form-header').innerText = 'ERROR: NO_DOCUMENT_ID'; return; }
+
+            const { data: art, error } = await _supabase.from('articles').select('*').eq('id', articleId).single();
+            if (error || !art) { document.getElementById('form-header').innerText = 'ERROR: DOCUMENT_NOT_FOUND'; return; }
+
+            const isElevated = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
+            const isAuthor   = art.author === currentProfile.full_name;
+            if (!isElevated && !isAuthor) {
+                toast('ACCESS_DENIED: INSUFFICIENT_PRIVILEGES', 'error');
+                setTimeout(() => window.location.href = 'archive.html', 1500);
+                return;
+            }
+
+            articleTitle = art.title || 'UNTITLED';
+            document.getElementById('form-header').innerText = `EDITING: ${articleTitle.toUpperCase()}`;
+            document.getElementById('title').value = art.title || '';
+            document.getElementById('clearance_level').value = art.required_clearance || 0;
+            document.getElementById('content').value = art.content || '';
         }
-        async function saveDocument(){
-            const title=document.getElementById('title').value.trim();
-            const content=document.getElementById('content').value.trim();
-            const clearance=parseInt(document.getElementById('clearance_level').value);
-            if(!title||!content){toast('CRITICAL_ERROR: DATA_MISSING','error');return;}
-            const confirmed=await showModal(`SAVE CHANGES TO THIS DOCUMENT?`,{title:'CONFIRM_UPDATE',confirmText:'SAVE',cancelText:'CANCEL'});
-            if(!confirmed)return;
-            const{error}=await _supabase.from('articles').update({title,content,required_clearance:clearance}).eq('id',articleId);
-            if(error){toast('UPDATE_FAILED: '+error.message,'error');}
-            else{toast('DOCUMENT_UPDATED_SUCCESSFULLY','success');setTimeout(()=>window.location.href=`view.html?id=${articleId}`,1200);}
+
+        async function saveDocument() {
+            const title    = document.getElementById('title').value.trim();
+            const content  = document.getElementById('content').value.trim();
+            const clearance = parseInt(document.getElementById('clearance_level').value);
+            if (!title || !content) { toast('CRITICAL_ERROR: DATA_MISSING', 'error'); return; }
+
+            const confirmed = await showModal(`SAVE CHANGES TO THIS DOCUMENT?`, { title:'CONFIRM_UPDATE', confirmText:'SAVE', cancelText:'CANCEL' });
+            if (!confirmed) return;
+
+            const { error } = await _supabase.from('articles')
+                .update({ title, content, required_clearance: clearance })
+                .eq('id', articleId);
+
+            if (error) { toast('UPDATE_FAILED: ' + error.message, 'error'); return; }
+            await logAction(currentProfile, 'EDITED', title, `CL: ${clearance}`);
+            toast('DOCUMENT_UPDATED_SUCCESSFULLY', 'success');
+            setTimeout(() => window.location.href = `view.html?id=${articleId}`, 1200);
         }
-        async function deleteDocument(){
-            const confirmed=await showModal('THIS ACTION IS PERMANENT. THE DOCUMENT WILL BE ERASED FROM THE ARCHIVE.',{title:'CONFIRM_DELETION',confirmText:'DELETE',cancelText:'ABORT',danger:true});
-            if(!confirmed)return;
-            const{error}=await _supabase.from('articles').delete().eq('id',articleId);
-            if(error){toast('DELETE_FAILED: '+error.message,'error');}
-            else{toast('DOCUMENT_PERMANENTLY_DELETED','warning');setTimeout(()=>window.location.href='archive.html',1200);}
+
+        async function deleteDocument() {
+            const confirmed = await showModal(
+                'THIS ACTION IS PERMANENT.\nTHE DOCUMENT WILL BE ERASED FROM THE ARCHIVE.',
+                { title:'CONFIRM_DELETION', confirmText:'DELETE', cancelText:'ABORT', danger: true }
+            );
+            if (!confirmed) return;
+
+            const { error } = await _supabase.from('articles').delete().eq('id', articleId);
+            if (error) { toast('DELETE_FAILED: ' + error.message, 'error'); return; }
+            await logAction(currentProfile, 'DELETED', articleTitle, 'Document permanently deleted');
+            toast('DOCUMENT_PERMANENTLY_DELETED', 'warning');
+            setTimeout(() => window.location.href = 'archive.html', 1200);
         }
-        window.onload=initEdit;
+
+        window.onload = initEdit;
     </script>
 </body>
 </html>
