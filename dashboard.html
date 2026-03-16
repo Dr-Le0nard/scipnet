@@ -250,6 +250,13 @@
                 </select>
             </div>
 
+            <div class="modal-form-row" id="cm-article-wrapper">
+                <label>LINKED RESEARCH REPORT (OPTIONAL)</label>
+                <select id="cm-article">
+                    <option value="">-- NO LINKED REPORT --</option>
+                </select>
+            </div>
+
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
                 <button onclick="closeContainmentModal()" style="color:rgba(0,255,65,0.5);border-color:rgba(0,255,65,0.2);">CANCEL</button>
                 <button onclick="saveContainmentEntry()" id="cm-save-btn">SAVE_ENTRY</button>
@@ -388,13 +395,16 @@
                 const editBtn     = _canEditContainment
                     ? `<button onclick="openEditModal('${e.id}')" style="font-size:0.72rem;padding:2px 8px;">EDIT</button>`
                     : '';
+                const reportBtn = e.article_id
+                    ? `<button onclick="window.location.href='view.html?id=${e.article_id}'" style="font-size:0.72rem;padding:2px 8px;color:var(--text-dim);border-color:rgba(0,255,65,0.15);">REPORT</button>`
+                    : '';
                 return `<div class="containment-row">
                     <div class="scp-number">${e.scp_number}</div>
                     <div class="scp-name">${e.scp_name || '—'}</div>
                     <div class="cc-badge ${ccClass}">${e.containment_class.toUpperCase()}</div>
                     <div class="scp-status ${statusClass}">${e.status.toUpperCase()}</div>
                     <div class="scp-date">${date}</div>
-                    <div class="scp-actions">${editBtn}</div>
+                    <div class="scp-actions">${editBtn}${reportBtn}</div>
                 </div>`;
             }).join('');
         }
@@ -404,10 +414,12 @@
             _editingEntryId = null;
             document.getElementById('containment-modal-title').innerText = 'ADD_CONTAINMENT_ENTRY';
             document.getElementById('cm-save-btn').innerText = 'SAVE_ENTRY';
-            document.getElementById('cm-number').value = '';
-            document.getElementById('cm-name').value = '';
-            document.getElementById('cm-class').value = 'Safe';
-            document.getElementById('cm-status').value = 'Contained';
+            document.getElementById('cm-number').value  = '';
+            document.getElementById('cm-name').value    = '';
+            document.getElementById('cm-class').value   = 'Safe';
+            document.getElementById('cm-status').value  = 'Contained';
+            document.getElementById('cm-article').value = '';
+            populateArticleDropdown(null);
             document.getElementById('containment-modal').style.display = 'flex';
         }
 
@@ -416,12 +428,35 @@
             if (error || !entry) { toast('FAILED TO LOAD ENTRY', 'error'); return; }
             _editingEntryId = entryId;
             document.getElementById('containment-modal-title').innerText = `EDIT: ${entry.scp_number}`;
-            document.getElementById('cm-save-btn').innerText = 'UPDATE_ENTRY';
-            document.getElementById('cm-number').value = entry.scp_number;
-            document.getElementById('cm-name').value = entry.scp_name || '';
-            document.getElementById('cm-class').value = entry.containment_class;
-            document.getElementById('cm-status').value = entry.status;
+            document.getElementById('cm-save-btn').innerText  = 'UPDATE_ENTRY';
+            document.getElementById('cm-number').value        = entry.scp_number;
+            document.getElementById('cm-name').value          = entry.scp_name || '';
+            document.getElementById('cm-class').value         = entry.containment_class;
+            document.getElementById('cm-status').value        = entry.status;
+            await populateArticleDropdown(entry.article_id);
             document.getElementById('containment-modal').style.display = 'flex';
+        }
+
+        async function populateArticleDropdown(selectedId) {
+            const sel = document.getElementById('cm-article');
+            sel.innerHTML = '<option value="">-- NO LINKED REPORT --</option>';
+ 
+            // Only fetch ScD articles
+            const { data: articles } = await _supabase
+                .from('articles')
+                .select('id, title')
+                .eq('department', 'ScD')
+                .order('created_at', { ascending: false });
+ 
+            if (articles) {
+                articles.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.text  = a.title || 'UNTITLED';
+                    if (a.id === selectedId) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            }
         }
 
         function closeContainmentModal() {
@@ -430,30 +465,33 @@
         }
 
         async function saveContainmentEntry() {
-            const number = document.getElementById('cm-number').value.trim().toUpperCase();
-            const name   = document.getElementById('cm-name').value.trim().toUpperCase();
-            const cls    = document.getElementById('cm-class').value;
-            const status = document.getElementById('cm-status').value;
-
+            const number    = document.getElementById('cm-number').value.trim().toUpperCase();
+            const name      = document.getElementById('cm-name').value.trim().toUpperCase();
+            const cls       = document.getElementById('cm-class').value;
+            const status    = document.getElementById('cm-status').value;
+            const articleId = document.getElementById('cm-article').value || null;
+ 
             if (!number) { toast('SCP NUMBER IS REQUIRED', 'error'); return; }
-
+ 
             let error;
             if (_editingEntryId) {
                 ({ error } = await _supabase.from('containment_status').update({
                     scp_number: number, scp_name: name || null,
                     containment_class: cls, status,
-                    updated_by: _currentProfile.full_name
+                    updated_by: _currentProfile.full_name,
+                    article_id: articleId
                 }).eq('id', _editingEntryId));
                 if (!error) await logAction(_currentProfile, 'CONTAINMENT_UPDATED', number, `${cls} — ${status}`);
             } else {
                 ({ error } = await _supabase.from('containment_status').insert([{
                     scp_number: number, scp_name: name || null,
                     containment_class: cls, status,
-                    updated_by: _currentProfile.full_name
+                    updated_by: _currentProfile.full_name,
+                    article_id: articleId
                 }]));
                 if (!error) await logAction(_currentProfile, 'CONTAINMENT_ADDED', number, `${cls} — ${status}`);
             }
-
+ 
             if (error) { toast('SAVE_FAILED: ' + error.message, 'error'); return; }
             toast(_editingEntryId ? 'ENTRY_UPDATED' : 'ENTRY_ADDED', 'success');
             closeContainmentModal();

@@ -11,12 +11,30 @@
     <script src="modal.js"></script>
     <script src="nav.js"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Clearance level color bands on table rows */
+        .cl-0 td:nth-child(3) { color: var(--text-dim); }
+        .cl-1 td:nth-child(3) { color: #4ade80; }
+        .cl-2 td:nth-child(3) { color: #facc15; }
+        .cl-3 td:nth-child(3) { color: #fb923c; }
+        .cl-4 td:nth-child(3) { color: var(--red); }
+        .cl-5 td:nth-child(3) { color: #a78bfa; }
+
+        /* Left border accent by clearance */
+        .cl-0 { border-left: 2px solid transparent; }
+        .cl-1 { border-left: 2px solid rgba(74,222,128,0.3); }
+        .cl-2 { border-left: 2px solid rgba(250,204,21,0.3); }
+        .cl-3 { border-left: 2px solid rgba(251,146,60,0.3); }
+        .cl-4 { border-left: 2px solid rgba(255,62,62,0.3); }
+        .cl-5 { border-left: 2px solid rgba(167,139,250,0.4); }
+    </style>
 </head>
 <body>
     <div class="identity-block">
         <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
     </div>
     <nav class="main-nav" id="main-nav"></nav>
+
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">DATABASE_ARCHIVE</div>
         <div class="page-subtitle">SECURE DOCUMENT REPOSITORY // CLEARANCE-GATED ACCESS</div>
@@ -35,128 +53,156 @@
             </select>
         </div>
 
+        <!-- Clearance legend -->
+        <div id="cl-legend" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:0.68rem;letter-spacing:1px;color:var(--text-dim);">
+            <span>CL LEGEND:</span>
+            <span style="color:var(--text-dim);">■ L0 PUBLIC</span>
+            <span style="color:#4ade80;">■ L1 RESTRICTED</span>
+            <span style="color:#facc15;">■ L2 CONFIDENTIAL</span>
+            <span style="color:#fb923c;">■ L3 SECRET</span>
+            <span style="color:var(--red);">■ L4 TOP SECRET</span>
+            <span style="color:#a78bfa;">■ L5 O5 ONLY</span>
+        </div>
+
         <div class="filter-bar">
             <input type="text" id="doc-search" placeholder="SEARCH DOCUMENTS..." onkeyup="filterTable()" style="max-width:360px;">
+            <select id="cl-filter" onchange="filterTable()" style="max-width:160px;margin-bottom:0;">
+                <option value="ALL">ALL CLEARANCES</option>
+                <option value="0">LEVEL 0</option>
+                <option value="1">LEVEL 1</option>
+                <option value="2">LEVEL 2</option>
+                <option value="3">LEVEL 3</option>
+                <option value="4">LEVEL 4</option>
+                <option value="5">LEVEL 5</option>
+            </select>
             <span id="record-count" style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;white-space:nowrap;"></span>
         </div>
 
         <div class="table-wrapper">
             <table>
                 <thead><tr><th>DATE</th><th>DEPT</th><th>CL</th><th>TITLE</th><th>AUTHOR</th><th>ACTION</th></tr></thead>
-                <tbody id="report-list"><tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr></tbody>
+                <tbody id="report-list">
+                    <tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr>
+                </tbody>
             </table>
         </div>
 
-        <!-- Pagination -->
         <div id="pagination" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:20px;flex-wrap:wrap;"></div>
     </div>
 
     <script>
         const PAGE_SIZE = 20;
-        let currentProfile=null,isElevated=false,isAdmin=false;
-        let allReports=[],filteredReports=[],currentPage=1;
+        let currentProfile=null, isElevated=false, isAdmin=false;
+        let allReports=[], filteredReports=[], currentPage=1;
 
-        async function initArchive(){
-            const auth=await requireAuth();if(!auth)return;
-            currentProfile=auth.profile;
-            if(currentProfile.is_terminal_admin||currentProfile.is_overseer){isElevated=true;document.getElementById('overseer-filters').style.display='flex';}
-            else if(currentProfile.is_admin){isAdmin=true;}
+        const CL_COLORS = ['var(--text-dim)','#4ade80','#facc15','#fb923c','var(--red)','#a78bfa'];
+
+        async function initArchive() {
+            const auth = await requireAuth();
+            if (!auth) return;
+            currentProfile = auth.profile;
+            if (currentProfile.is_terminal_admin || currentProfile.is_overseer) {
+                isElevated = true;
+                document.getElementById('overseer-filters').style.display = 'flex';
+            } else if (currentProfile.is_admin) {
+                isAdmin = true;
+            }
             fetchReports();
         }
 
-        async function fetchReports(){
-            const list=document.getElementById('report-list');
-            list.innerHTML=`<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr>`;
-            let query=_supabase.from('articles').select('*').order('created_at',{ascending:false});
-            if(!isElevated){
-                query=query.eq('department',currentProfile.department);
-                if(!isAdmin)query=query.lte('required_clearance',currentProfile.clearance_level);
-            }else{
-                const filter=document.getElementById('dept-filter')?.value;
-                if(filter&&filter!=='ALL')query=query.eq('department',filter);
+        async function fetchReports() {
+            const list = document.getElementById('report-list');
+            list.innerHTML = `<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr>`;
+            let query = _supabase.from('articles').select('*').order('created_at', { ascending: false });
+            if (!isElevated) {
+                query = query.eq('department', currentProfile.department);
+                if (!isAdmin) query = query.lte('required_clearance', currentProfile.clearance_level);
+            } else {
+                const filter = document.getElementById('dept-filter')?.value;
+                if (filter && filter !== 'ALL') query = query.eq('department', filter);
             }
-            const{data:reports,error}=await query;
-            if(error){list.innerHTML=`<tr><td colspan="6" style="color:var(--red)">QUERY_ERROR: ${error.message}</td></tr>`;return;}
-            allReports=reports;
-            filteredReports=reports;
-            currentPage=1;
+            const { data: reports, error } = await query;
+            if (error) { list.innerHTML = `<tr><td colspan="6" style="color:var(--red)">QUERY_ERROR: ${error.message}</td></tr>`; return; }
+            allReports = reports;
+            filteredReports = reports;
+            currentPage = 1;
             renderPage();
         }
 
-        function filterTable(){
-            const q=document.getElementById('doc-search').value.toLowerCase();
-            filteredReports=allReports.filter(r=>(r.title||'').toLowerCase().includes(q)||(r.author||'').toLowerCase().includes(q)||(r.department||'').toLowerCase().includes(q));
-            currentPage=1;
+        function filterTable() {
+            const q  = document.getElementById('doc-search').value.toLowerCase();
+            const cl = document.getElementById('cl-filter').value;
+            filteredReports = allReports.filter(r => {
+                if (cl !== 'ALL' && r.required_clearance !== parseInt(cl)) return false;
+                return (r.title||'').toLowerCase().includes(q) ||
+                       (r.author||'').toLowerCase().includes(q) ||
+                       (r.department||'').toLowerCase().includes(q);
+            });
+            currentPage = 1;
             renderPage();
         }
 
-        function renderPage(){
-            const list=document.getElementById('report-list');
-            const countEl=document.getElementById('record-count');
-            const pagination=document.getElementById('pagination');
+        function renderPage() {
+            const list       = document.getElementById('report-list');
+            const countEl    = document.getElementById('record-count');
+            const pagination = document.getElementById('pagination');
 
-            if(filteredReports.length===0){
-                list.innerHTML=`<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">NO RECORDS FOUND</td></tr>`;
-                countEl.innerText='';
-                pagination.innerHTML='';
-                return;
+            if (filteredReports.length === 0) {
+                list.innerHTML = `<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">NO RECORDS FOUND</td></tr>`;
+                countEl.innerText = ''; pagination.innerHTML = ''; return;
             }
 
-            const totalPages=Math.ceil(filteredReports.length/PAGE_SIZE);
-            const start=(currentPage-1)*PAGE_SIZE;
-            const pageReports=filteredReports.slice(start,start+PAGE_SIZE);
+            const totalPages = Math.ceil(filteredReports.length / PAGE_SIZE);
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const pageReports = filteredReports.slice(start, start + PAGE_SIZE);
+            const isElevatedUser = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
 
-            countEl.innerText=`${filteredReports.length} RECORD${filteredReports.length!==1?'S':''} // PAGE ${currentPage}/${totalPages}`;
+            countEl.innerText = `${filteredReports.length} RECORD${filteredReports.length !== 1 ? 'S' : ''} // PAGE ${currentPage}/${totalPages}`;
 
-            const isElevatedUser=currentProfile.is_admin||currentProfile.is_overseer||currentProfile.is_terminal_admin;
-            list.innerHTML=pageReports.map(r=>{
-                const date=new Date(r.created_at).toLocaleDateString();
-                const canEdit=isElevatedUser||r.author===currentProfile.full_name;
-                return `<tr>
+            list.innerHTML = pageReports.map(r => {
+                const date    = new Date(r.created_at).toLocaleDateString();
+                const canEdit = isElevatedUser || r.author === currentProfile.full_name;
+                const cl      = r.required_clearance ?? 0;
+                const clColor = CL_COLORS[Math.min(cl, 5)];
+                return `<tr class="cl-${cl}">
                     <td>${date}</td>
                     <td><span style="color:var(--text-dim)">[${r.department||'N/A'}]</span></td>
-                    <td><span style="color:var(--text-dim)">L${r.required_clearance}</span></td>
+                    <td><span style="color:${clColor};font-family:var(--font-display);letter-spacing:1px;">L${cl}</span></td>
                     <td style="color:var(--green);">${r.title||'UNTITLED'}</td>
                     <td style="color:var(--text-mid);">${r.author||'UNKNOWN'}</td>
                     <td><div class="btn-row">
                         <button onclick="window.location.href='view.html?id=${r.id}'">OPEN</button>
-                        ${canEdit?`<button class="btn-gold" onclick="window.location.href='edit.html?id=${r.id}'">EDIT</button>`:''}
+                        ${canEdit ? `<button class="btn-gold" onclick="window.location.href='edit.html?id=${r.id}'">EDIT</button>` : ''}
                     </div></td>
                 </tr>`;
             }).join('');
 
-            // Pagination controls
-            if(totalPages<=1){pagination.innerHTML='';return;}
-            let pages='';
-            // Prev button
-            pages+=`<button onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>◄</button>`;
-            // Page numbers — show max 5
-            const range=getPageRange(currentPage,totalPages);
-            range.forEach(p=>{
-                if(p==='...'){pages+=`<span style="color:var(--text-dim);padding:0 4px;">...</span>`;}
-                else{pages+=`<button ${p===currentPage?'style="border-color:var(--green);background:var(--green-glow);"':''} onclick="goToPage(${p})">${p}</button>`;}
+            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
+            let pages = `<button onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>◄</button>`;
+            getPageRange(currentPage, totalPages).forEach(p => {
+                if (p === '...') pages += `<span style="color:var(--text-dim);padding:0 4px;">...</span>`;
+                else pages += `<button ${p===currentPage?'style="border-color:var(--green);background:var(--green-glow);"':''} onclick="goToPage(${p})">${p}</button>`;
             });
-            // Next button
-            pages+=`<button onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>►</button>`;
-            pagination.innerHTML=pages;
+            pages += `<button onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>►</button>`;
+            pagination.innerHTML = pages;
         }
 
-        function goToPage(page){
-            const totalPages=Math.ceil(filteredReports.length/PAGE_SIZE);
-            if(page<1||page>totalPages)return;
-            currentPage=page;
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredReports.length / PAGE_SIZE);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
             renderPage();
-            window.scrollTo({top:0,behavior:'smooth'});
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function getPageRange(current,total){
-            if(total<=7)return Array.from({length:total},(_,i)=>i+1);
-            if(current<=4)return[1,2,3,4,5,'...',total];
-            if(current>=total-3)return[1,'...',total-4,total-3,total-2,total-1,total];
-            return[1,'...',current-1,current,current+1,'...',total];
+        function getPageRange(current, total) {
+            if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+            if (current <= 4) return [1,2,3,4,5,'...',total];
+            if (current >= total - 3) return [1,'...',total-4,total-3,total-2,total-1,total];
+            return [1,'...',current-1,current,current+1,'...',total];
         }
 
-        window.onload=initArchive;
+        window.onload = initArchive;
     </script>
 </body>
 </html>
