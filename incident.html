@@ -14,7 +14,10 @@
     <style>
         .priority-standard  { color: var(--text-mid); border-color: var(--green-border); }
         .priority-urgent    { color: var(--gold); border-color: rgba(255,215,0,0.4); }
-        .priority-critical  { color: var(--red); border-color: rgba(255,62,62,0.4); animation: flicker 0.6s infinite; }
+        .priority-critical  { color: var(--red); border-color: rgba(255,62,62,0.4); }
+
+        /* Only non-resolved critical incidents flicker */
+        .priority-critical.not-resolved { animation: flicker 0.6s infinite; }
 
         .status-open          { color: var(--gold); }
         .status-investigating { color: #60a5fa; }
@@ -30,9 +33,9 @@
             transition: border-color 0.2s, box-shadow 0.2s;
             cursor: pointer;
         }
-        .incident-card:hover { border-color: rgba(0,255,65,0.6); box-shadow: 0 0 14px rgba(0,255,65,0.07); }
-        .incident-card.urgent   { border-color: rgba(255,215,0,0.35); background: rgba(20,16,0,0.8); }
-        .incident-card.critical { border-color: rgba(255,62,62,0.4);  background: rgba(20,0,0,0.8); }
+        .incident-card:hover  { border-color: rgba(0,255,65,0.6); box-shadow: 0 0 14px rgba(0,255,65,0.07); }
+        .incident-card.urgent { border-color: rgba(255,215,0,0.35); background: rgba(20,16,0,0.8); }
+        .incident-card.critical { border-color: rgba(255,62,62,0.4); background: rgba(20,0,0,0.8); }
         .incident-card.selected { box-shadow: 0 0 16px rgba(0,255,65,0.12); }
 
         .priority-badge {
@@ -45,12 +48,11 @@
             white-space: nowrap;
         }
 
-        .assigned-badge {
+        .dept-badge {
             font-size: 0.68rem;
             color: #60a5fa;
             border: 1px solid rgba(96,165,250,0.3);
             padding: 1px 6px;
-            display: inline-block;
             white-space: nowrap;
         }
 
@@ -65,18 +67,8 @@
         #detail-panel.critical { border-color: rgba(255,62,62,0.4); }
         #detail-panel.urgent   { border-color: rgba(255,215,0,0.35); }
 
-        .sort-btn {
-            font-size: 0.75rem;
-            padding: 3px 10px;
-            letter-spacing: 1px;
-            color: var(--text-dim);
-            border-color: rgba(0,255,65,0.15);
-        }
-        .sort-btn.active {
-            color: var(--green);
-            border-color: var(--green-border);
-            background: var(--green-glow);
-        }
+        .sort-btn { font-size:0.75rem; padding:3px 10px; letter-spacing:1px; color:var(--text-dim); border-color:rgba(0,255,65,0.15); }
+        .sort-btn.active { color:var(--green); border-color:var(--green-border); background:var(--green-glow); }
     </style>
 </head>
 <body>
@@ -124,6 +116,19 @@
                     <label>CUSTOM TYPE</label>
                     <input type="text" id="inc-custom-type" placeholder="SPECIFY INCIDENT TYPE...">
                 </div>
+                <div>
+                    <label>ASSIGN TO DEPARTMENT (OPTIONAL)</label>
+                    <select id="inc-dept">
+                        <option value="">-- NO ASSIGNMENT --</option>
+                        <option value="ScD">SCIENTIFIC (ScD)</option>
+                        <option value="MD">MEDICAL (MD)</option>
+                        <option value="SD">SECURITY (SD)</option>
+                        <option value="EcD">ENGINEERING (EcD)</option>
+                        <option value="RAISA">INFOSEC (RAISA)</option>
+                        <option value="AD">ADMINISTRATIVE (AD)</option>
+                        <option value="ISD">INTELLIGENCE (ISD)</option>
+                    </select>
+                </div>
             </div>
             <label style="margin-top:4px;">INCIDENT DESCRIPTION</label>
             <textarea id="inc-description" rows="6" placeholder="DESCRIBE THE INCIDENT IN DETAIL..."></textarea>
@@ -160,20 +165,17 @@
         <!-- Two column layout -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
 
-            <!-- Incident List -->
             <div id="incident-list">
                 <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
             </div>
 
-            <!-- Detail Panel -->
             <div id="detail-panel">
                 <div style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:2px;margin-bottom:4px;" id="detail-title">—</div>
                 <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:16px;" id="detail-meta">—</div>
 
                 <div id="detail-assignment" style="display:none;margin-bottom:14px;padding:8px 12px;border:1px solid rgba(96,165,250,0.25);background:rgba(96,165,250,0.05);">
-                    <span style="font-size:0.68rem;color:rgba(96,165,250,0.6);letter-spacing:2px;display:block;margin-bottom:3px;">ASSIGNED TO</span>
-                    <span style="font-family:var(--font-display);font-size:0.95rem;color:#60a5fa;letter-spacing:1px;" id="detail-assigned-name">—</span>
-                    <span style="font-size:0.68rem;color:rgba(96,165,250,0.5);margin-left:8px;" id="detail-assigned-dept"></span>
+                    <span style="font-size:0.68rem;color:rgba(96,165,250,0.6);letter-spacing:2px;display:block;margin-bottom:3px;">ASSIGNED TO DEPARTMENT</span>
+                    <span style="font-family:var(--font-display);font-size:0.95rem;color:#60a5fa;letter-spacing:1px;" id="detail-assigned-dept">—</span>
                 </div>
 
                 <hr style="margin-bottom:16px;">
@@ -189,12 +191,19 @@
                 <hr style="margin-top:20px;margin-bottom:16px;">
 
                 <div id="detail-controls" style="display:none;">
-                    <!-- Assignment (admins only) -->
+                    <!-- Department assignment (admins only) -->
                     <div id="assign-section" style="display:none;margin-bottom:16px;">
-                        <div style="font-size:0.75rem;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px;">ASSIGN_INCIDENT</div>
+                        <div style="font-size:0.75rem;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px;">ASSIGN_TO_DEPARTMENT</div>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <select id="assign-personnel" style="flex:1;min-width:160px;margin-bottom:0;">
-                                <option value="">-- ASSIGN TO PERSONNEL --</option>
+                            <select id="assign-dept" style="flex:1;min-width:160px;margin-bottom:0;">
+                                <option value="">-- NO ASSIGNMENT --</option>
+                                <option value="ScD">SCIENTIFIC (ScD)</option>
+                                <option value="MD">MEDICAL (MD)</option>
+                                <option value="SD">SECURITY (SD)</option>
+                                <option value="EcD">ENGINEERING (EcD)</option>
+                                <option value="RAISA">INFOSEC (RAISA)</option>
+                                <option value="AD">ADMINISTRATIVE (AD)</option>
+                                <option value="ISD">INTELLIGENCE (ISD)</option>
                             </select>
                             <button onclick="assignIncident()" style="font-size:0.85rem;">ASSIGN</button>
                             <button onclick="unassignIncident()" style="font-size:0.85rem;color:var(--text-dim);border-color:rgba(0,255,65,0.2);">CLEAR</button>
@@ -203,9 +212,9 @@
 
                     <div style="font-size:0.75rem;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px;">UPDATE_STATUS</div>
                     <div class="btn-row" style="margin-bottom:12px;">
-                        <button onclick="updateStatus('Open')"          style="font-size:0.82rem;">OPEN</button>
-                        <button onclick="updateStatus('Investigating')" style="font-size:0.82rem;color:#60a5fa;border-color:rgba(96,165,250,0.4);">INVESTIGATING</button>
-                        <button onclick="updateStatus('Resolved')"      style="font-size:0.82rem;color:var(--text-dim);border-color:rgba(0,255,65,0.2);">RESOLVED</button>
+                        <button id="btn-open"          onclick="updateStatus('Open')"          style="font-size:0.82rem;">OPEN</button>
+                        <button id="btn-investigating" onclick="updateStatus('Investigating')" style="font-size:0.82rem;color:#60a5fa;border-color:rgba(96,165,250,0.4);">INVESTIGATING</button>
+                        <button id="btn-resolved"      onclick="updateStatus('Resolved')"      style="font-size:0.82rem;color:var(--text-dim);border-color:rgba(0,255,65,0.2);">RESOLVED</button>
                     </div>
 
                     <div id="resolution-input-section" style="display:none;">
@@ -226,36 +235,33 @@
         let currentProfile = null;
         let allIncidents = [], filteredIncidents = [];
         let selectedIncidentId = null;
-        let currentSort = 'date';
-        let allPersonnel = [];
+        let currentSort = 'date', sortDir = 'desc';
         let isElevated = false;
 
-        const PRIORITY_ORDER = { Critical: 0, Urgent: 1, Standard: 2 };
-        const STATUS_ORDER   = { Open: 0, Investigating: 1, Resolved: 2 };
+        const PRIORITY_ORDER = { Critical:0, Urgent:1, Standard:2 };
+        const STATUS_ORDER   = { Open:0, Investigating:1, Resolved:2 };
 
         async function init() {
             const auth = await requireAuth();
             if (!auth) return;
             currentProfile = auth.profile;
             isElevated = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
-
-            if (isElevated) loadPersonnel();
             loadIncidents();
 
+            // Realtime subscription
             _supabase.channel('incident_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'incident_reports' }, () => {
-                    loadIncidents();
+                .on('postgres_changes', { event:'*', schema:'public', table:'incident_reports' }, (payload) => {
+                    // Update the local array directly without full reload
+                    if (payload.eventType === 'UPDATE') {
+                        const idx = allIncidents.findIndex(i => i.id === payload.new.id);
+                        if (idx !== -1) allIncidents[idx] = payload.new;
+                        applyFilters();
+                        // Re-render detail panel if this is the selected incident
+                        if (selectedIncidentId === payload.new.id) renderDetail(payload.new);
+                    } else {
+                        loadIncidents();
+                    }
                 }).subscribe();
-        }
-
-        async function loadPersonnel() {
-            const { data } = await _supabase
-                .from('profiles')
-                .select('id, full_name, department')
-                .eq('is_approved', true)
-                .eq('is_banned', false)
-                .order('full_name', { ascending: true });
-            allPersonnel = data || [];
         }
 
         async function loadIncidents() {
@@ -272,10 +278,15 @@
             }
         }
 
-        function setSort(type) {
-            currentSort = type;
+        function setSort(field) {
+            if (currentSort === field) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort = field;
+                sortDir = 'desc';
+            }
             document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(`sort-${type}`).classList.add('active');
+            document.getElementById(`sort-${field}`).classList.add('active');
             applyFilters();
         }
 
@@ -291,20 +302,20 @@
                     (i.title||'').toLowerCase().includes(search) ||
                     (i.filed_by||'').toLowerCase().includes(search) ||
                     (i.incident_type||'').toLowerCase().includes(search) ||
-                    (i.assigned_to||'').toLowerCase().includes(search)
+                    (i.assigned_department||'').toLowerCase().includes(search)
                 )) return false;
                 return true;
             });
 
-            // Sort
             filteredIncidents.sort((a, b) => {
-                if (currentSort === 'priority') return (PRIORITY_ORDER[a.priority] ?? 2) - (PRIORITY_ORDER[b.priority] ?? 2);
-                if (currentSort === 'status')   return (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0);
-                return new Date(b.created_at) - new Date(a.created_at); // date desc
+                let va, vb;
+                if (currentSort === 'priority') { va = PRIORITY_ORDER[a.priority]??2; vb = PRIORITY_ORDER[b.priority]??2; }
+                else if (currentSort === 'status') { va = STATUS_ORDER[a.status]??0; vb = STATUS_ORDER[b.status]??0; }
+                else { va = new Date(a.created_at); vb = new Date(b.created_at); }
+                return sortDir === 'asc' ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
             });
 
-            document.getElementById('incident-count').innerText =
-                `${filteredIncidents.length} INCIDENT${filteredIncidents.length !== 1 ? 'S' : ''}`;
+            document.getElementById('incident-count').innerText = `${filteredIncidents.length} INCIDENT${filteredIncidents.length !== 1 ? 'S' : ''}`;
             renderList();
         }
 
@@ -324,11 +335,14 @@
                 const type = i.incident_type === 'Custom' ? (i.custom_type || 'CUSTOM') : i.incident_type;
                 const date = new Date(i.created_at).toLocaleDateString();
                 const isSelected = i.id === selectedIncidentId;
-                const assignedBadge = i.assigned_to
-                    ? `<span class="assigned-badge">→ ${i.assigned_to}</span>`
+                // Only flicker if critical AND not resolved
+                const flickerClass = (i.priority === 'Critical' && i.status !== 'Resolved') ? 'not-resolved' : '';
+                const deptBadge = i.assigned_department
+                    ? `<span class="dept-badge">→ [${i.assigned_department}]</span>`
                     : '';
                 return `
-                    <div class="incident-card ${pc}${isSelected?' selected':''}" onclick="selectIncident('${i.id}')"
+                    <div class="incident-card ${pc} ${flickerClass}${isSelected?' selected':''}"
+                         onclick="selectIncident('${i.id}')"
                          style="${isSelected?'border-color:var(--green);':''}">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
                             <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:var(--green);flex:1;">${i.title}</div>
@@ -337,7 +351,7 @@
                         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                             <span style="font-size:0.72rem;color:var(--text-dim);">${type.toUpperCase()}</span>
                             <span class="${sc}" style="font-family:var(--font-display);font-size:0.85rem;letter-spacing:1px;">● ${i.status.toUpperCase()}</span>
-                            ${assignedBadge}
+                            ${deptBadge}
                         </div>
                         <div style="font-size:0.68rem;color:var(--text-dim);">FILED BY: ${i.filed_by} // ${date}</div>
                     </div>`;
@@ -354,10 +368,10 @@
         function renderDetail(incident) {
             const panel = document.getElementById('detail-panel');
             const type  = incident.incident_type === 'Custom' ? (incident.custom_type || 'CUSTOM') : incident.incident_type;
-            const date  = new Date(incident.created_at).toLocaleDateString();
+            const date    = new Date(incident.created_at).toLocaleDateString();
             const updated = new Date(incident.updated_at).toLocaleDateString();
-            const sc    = { Open:'status-open', Investigating:'status-investigating', Resolved:'status-resolved' };
-            const pc    = { Standard:'', Urgent:'urgent', Critical:'critical' };
+            const sc = { Open:'status-open', Investigating:'status-investigating', Resolved:'status-resolved' };
+            const pc = { Standard:'', Urgent:'urgent', Critical:'critical' };
 
             panel.style.display = 'block';
             panel.className     = pc[incident.priority] || '';
@@ -371,12 +385,11 @@
                 &nbsp;|&nbsp; UPDATED: ${updated}`;
             document.getElementById('detail-description').innerText = incident.description;
 
-            // Assignment display
+            // Department assignment display
             const assignDisplay = document.getElementById('detail-assignment');
-            if (incident.assigned_to) {
+            if (incident.assigned_department) {
                 assignDisplay.style.display = 'block';
-                document.getElementById('detail-assigned-name').innerText = incident.assigned_to;
-                document.getElementById('detail-assigned-dept').innerText = incident.assigned_dept ? `[${incident.assigned_dept}]` : '';
+                document.getElementById('detail-assigned-dept').innerText = `[${incident.assigned_department}]`;
             } else {
                 assignDisplay.style.display = 'none';
             }
@@ -397,58 +410,35 @@
             controls.style.display = canControl ? 'block' : 'none';
 
             if (canControl) {
+                // Hide resolution input unless explicitly opened
                 document.getElementById('resolution-input-section').style.display = 'none';
                 document.getElementById('admin-delete-section').style.display = isElevated ? 'block' : 'none';
 
-                // Assignment section — admins only
-                const assignSec = document.getElementById('assign-section');
+                // Pre-select current department in assignment dropdown
                 if (isElevated) {
-                    assignSec.style.display = 'block';
-                    populateAssignDropdown(incident.assigned_to_id);
+                    document.getElementById('assign-section').style.display = 'block';
+                    document.getElementById('assign-dept').value = incident.assigned_department || '';
                 } else {
-                    assignSec.style.display = 'none';
+                    document.getElementById('assign-section').style.display = 'none';
                 }
             }
         }
 
-        function populateAssignDropdown(currentAssigneeId) {
-            const sel = document.getElementById('assign-personnel');
-            sel.innerHTML = '<option value="">-- ASSIGN TO PERSONNEL --</option>';
-            allPersonnel.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.text  = `${p.full_name} [${p.department || 'N/A'}]`;
-                if (p.id === currentAssigneeId) opt.selected = true;
-                sel.appendChild(opt);
-            });
-        }
-
         async function assignIncident() {
             if (!selectedIncidentId) return;
-            const personnelId = document.getElementById('assign-personnel').value;
-            if (!personnelId) { toast('SELECT A PERSONNEL TO ASSIGN', 'error'); return; }
-            const person = allPersonnel.find(p => p.id === personnelId);
-            if (!person) return;
-
-            const { error } = await _supabase.from('incident_reports').update({
-                assigned_to:    person.full_name,
-                assigned_to_id: person.id,
-                assigned_dept:  person.department
-            }).eq('id', selectedIncidentId);
-
+            const dept = document.getElementById('assign-dept').value;
+            const { error } = await _supabase.from('incident_reports')
+                .update({ assigned_department: dept || null })
+                .eq('id', selectedIncidentId);
             if (error) { toast('ASSIGNMENT_FAILED: ' + error.message, 'error'); return; }
             const incident = allIncidents.find(i => i.id === selectedIncidentId);
-            await logAction(currentProfile, 'INCIDENT_ASSIGNED', incident?.title, `→ ${person.full_name}`);
-            toast(`INCIDENT ASSIGNED TO ${person.full_name.toUpperCase()}`, 'success');
+            await logAction(currentProfile, 'INCIDENT_ASSIGNED', incident?.title, dept ? `→ [${dept}]` : 'CLEARED');
+            toast(dept ? `INCIDENT ASSIGNED TO [${dept}]` : 'ASSIGNMENT CLEARED', 'success');
         }
 
         async function unassignIncident() {
-            if (!selectedIncidentId) return;
-            const { error } = await _supabase.from('incident_reports').update({
-                assigned_to: null, assigned_to_id: null, assigned_dept: null
-            }).eq('id', selectedIncidentId);
-            if (error) { toast('FAILED: ' + error.message, 'error'); return; }
-            toast('ASSIGNMENT CLEARED', 'success');
+            document.getElementById('assign-dept').value = '';
+            await assignIncident();
         }
 
         async function updateStatus(newStatus) {
@@ -457,7 +447,9 @@
                 document.getElementById('resolution-input-section').style.display = 'block';
                 return;
             }
-            const { error } = await _supabase.from('incident_reports').update({ status: newStatus }).eq('id', selectedIncidentId);
+            const { error } = await _supabase.from('incident_reports')
+                .update({ status: newStatus })
+                .eq('id', selectedIncidentId);
             if (error) { toast('UPDATE_FAILED: ' + error.message, 'error'); return; }
             const incident = allIncidents.find(i => i.id === selectedIncidentId);
             await logAction(currentProfile, 'INCIDENT_STATUS', incident?.title, `→ ${newStatus}`);
@@ -467,7 +459,9 @@
         async function submitResolution() {
             const resolution = document.getElementById('resolution-input').value.trim();
             if (!resolution) { toast('RESOLUTION NOTES REQUIRED', 'error'); return; }
-            const { error } = await _supabase.from('incident_reports').update({ status: 'Resolved', resolution }).eq('id', selectedIncidentId);
+            const { error } = await _supabase.from('incident_reports')
+                .update({ status: 'Resolved', resolution })
+                .eq('id', selectedIncidentId);
             if (error) { toast('UPDATE_FAILED: ' + error.message, 'error'); return; }
             const incident = allIncidents.find(i => i.id === selectedIncidentId);
             await logAction(currentProfile, 'INCIDENT_RESOLVED', incident?.title, resolution.substring(0, 80));
@@ -480,7 +474,7 @@
             const incident = allIncidents.find(i => i.id === selectedIncidentId);
             const confirmed = await showModal(
                 `PERMANENTLY DELETE THIS INCIDENT REPORT?\n\n"${incident?.title}"`,
-                { title:'CONFIRM_DELETION', confirmText:'DELETE', cancelText:'ABORT', danger: true }
+                { title:'CONFIRM_DELETION', confirmText:'DELETE', cancelText:'ABORT', danger:true }
             );
             if (!confirmed) return;
             const { error } = await _supabase.from('incident_reports').delete().eq('id', selectedIncidentId);
@@ -493,7 +487,10 @@
 
         function showFileForm()  { document.getElementById('file-form').style.display = 'block'; document.getElementById('inc-title').focus(); }
         function hideFileForm()  { document.getElementById('file-form').style.display = 'none'; }
-        function toggleCustomType() { document.getElementById('custom-type-wrapper').style.display = document.getElementById('inc-type').value === 'Custom' ? 'block' : 'none'; }
+        function toggleCustomType() {
+            document.getElementById('custom-type-wrapper').style.display =
+                document.getElementById('inc-type').value === 'Custom' ? 'block' : 'none';
+        }
 
         async function submitIncident() {
             const title       = document.getElementById('inc-title').value.trim();
@@ -501,29 +498,33 @@
             const type        = document.getElementById('inc-type').value;
             const customType  = document.getElementById('inc-custom-type').value.trim();
             const description = document.getElementById('inc-description').value.trim();
+            const assignDept  = document.getElementById('inc-dept').value || null;
 
             if (!title || !description) { toast('TITLE AND DESCRIPTION ARE REQUIRED', 'error'); return; }
             if (type === 'Custom' && !customType) { toast('PLEASE SPECIFY THE CUSTOM TYPE', 'error'); return; }
 
             const { error } = await _supabase.from('incident_reports').insert([{
                 title, priority,
-                incident_type: type,
-                custom_type:   type === 'Custom' ? customType : null,
+                incident_type:         type,
+                custom_type:           type === 'Custom' ? customType : null,
                 description,
-                filed_by:      currentProfile.full_name,
-                filed_by_id:   currentProfile.id,
-                department:    currentProfile.department,
-                status:        'Open'
+                filed_by:              currentProfile.full_name,
+                filed_by_id:           currentProfile.id,
+                department:            currentProfile.department,
+                status:                'Open',
+                assigned_department:   assignDept
             }]);
 
             if (error) { toast('TRANSMISSION_FAILED: ' + error.message, 'error'); return; }
-            await logAction(currentProfile, 'INCIDENT_FILED', title, `${type} — ${priority}`);
+            await logAction(currentProfile, 'INCIDENT_FILED', title,
+                `${type} — ${priority}${assignDept ? ` → [${assignDept}]` : ''}`);
             toast('INCIDENT REPORT FILED', 'success');
             hideFileForm();
-            document.getElementById('inc-title').value = '';
-            document.getElementById('inc-description').value = '';
-            document.getElementById('inc-type').value = 'Containment Breach';
+            // Reset form
+            ['inc-title','inc-description','inc-custom-type'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('inc-type').value     = 'Containment Breach';
             document.getElementById('inc-priority').value = 'Standard';
+            document.getElementById('inc-dept').value     = '';
             document.getElementById('custom-type-wrapper').style.display = 'none';
         }
 

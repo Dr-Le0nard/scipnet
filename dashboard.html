@@ -343,7 +343,7 @@
         async function loadOpenIncidents() {
             const { data: incidents, error } = await _supabase
                 .from('incident_reports')
-                .select('id, title, priority, status, incident_type, custom_type, filed_by, created_at, assigned_to, assigned_to_id, assigned_dept')
+                .select('id, title, priority, status, incident_type, custom_type, filed_by, created_at, assigned_department')
                 .in('status', ['Open', 'Investigating'])
                 .order('created_at', { ascending: false })
                 .limit(5);
@@ -362,31 +362,31 @@
                 const color = priorityColor[i.priority] || 'var(--text-mid)';
                 const sc    = statusColor[i.status] || 'var(--text-dim)';
 
-                // Highlight if assigned to current user
-                const isAssignedToMe = i.assigned_to_id === _currentProfile?.id;
-                const assignedBadge  = i.assigned_to
-                    ? `<span style="font-size:0.65rem;color:#60a5fa;border:1px solid rgba(96,165,250,0.3);padding:1px 5px;">→ ${i.assigned_to}</span>`
+                // Highlight if assigned to current user's department
+                const isAssignedToMyDept = i.assigned_department && i.assigned_department === _currentProfile?.department;
+                const deptBadge = i.assigned_department
+                    ? `<span style="font-size:0.65rem;color:#60a5fa;border:1px solid rgba(96,165,250,0.3);padding:1px 5px;">→ [${i.assigned_department}]</span>`
                     : '';
 
                 return `<div onclick="window.location.href='incident.html'"
-                    style="border:1px solid ${isAssignedToMe ? 'rgba(96,165,250,0.5)' : 'var(--green-border)'};
-                           background:${isAssignedToMe ? 'rgba(96,165,250,0.06)' : 'var(--bg-card)'};
-                           padding:8px 12px;cursor:pointer;transition:border-color 0.15s;
-                           ${i.priority === 'Critical' ? 'animation: flicker 0.8s infinite;' : ''}"
+                    style="border:1px solid ${isAssignedToMyDept ? 'rgba(96,165,250,0.6)' : 'var(--green-border)'};
+                           background:${isAssignedToMyDept ? 'rgba(96,165,250,0.07)' : 'var(--bg-card)'};
+                           padding:8px 12px;cursor:pointer;transition:border-color 0.15s;"
                     onmouseover="this.style.borderColor='rgba(0,255,65,0.6)'"
-                    onmouseout="this.style.borderColor='${isAssignedToMe ? 'rgba(96,165,250,0.5)' : 'var(--green-border)'}'">
+                    onmouseout="this.style.borderColor='${isAssignedToMyDept ? 'rgba(96,165,250,0.6)' : 'var(--green-border)'}'">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                         <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${i.title}</div>
                         <div style="font-family:var(--font-display);font-size:0.8rem;color:${sc};white-space:nowrap;">● ${i.status.toUpperCase()}</div>
                     </div>
                     <div style="font-size:0.68rem;color:var(--text-dim);margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                         <span>${type.toUpperCase()} // ${i.filed_by}</span>
-                        ${assignedBadge}
-                        ${isAssignedToMe ? '<span style="color:#60a5fa;font-size:0.65rem;">[ASSIGNED TO YOU]</span>' : ''}
+                        ${deptBadge}
+                        ${isAssignedToMyDept ? '<span style="color:#60a5fa;font-size:0.65rem;">[ASSIGNED TO YOUR DEPT]</span>' : ''}
                     </div>
                 </div>`;
             }).join('');
         }
+
 
         // ---- CONTAINMENT BOARD ----
         async function loadContainmentBoard() {
