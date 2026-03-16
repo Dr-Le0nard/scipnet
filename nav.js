@@ -1,5 +1,4 @@
 // nav.js — SCiPNET Shared Navigation
-// Requires config.js to be loaded first (needs _supabase)
 
 async function initNav() {
     const nav = document.getElementById('main-nav');
@@ -19,17 +18,16 @@ async function initNav() {
                 .maybeSingle();
 
             if (profile) {
-                isAdmin   = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+                isAdmin    = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
                 isElevated = profile.is_overseer || profile.is_terminal_admin;
             }
         }
-    } catch (e) {
-        // If auth fails, still render base nav
-    }
+    } catch (e) {}
 
     const links = [
         { href: 'dashboard.html', label: 'DASHBOARD' },
         { href: 'archive.html',   label: 'ARCHIVE' },
+        { href: 'incident.html',  label: 'INCIDENTS' },
         { href: 'personnel.html', label: 'PERSONNEL' },
         { href: 'write.html',     label: 'NEW_REPORT' },
         { href: 'profile.html',   label: 'PROFILE' },
@@ -46,7 +44,6 @@ async function initNav() {
     }).join('');
 }
 
-// Wait for DOM to be ready before running
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initNav);
 } else {

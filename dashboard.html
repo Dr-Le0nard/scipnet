@@ -90,6 +90,11 @@
 
                 <!-- Quick Actions + Personnel snapshot -->
                 <div>
+                    <div class="section-header" style="margin-top:0;">OPEN_INCIDENTS</div>
+                    <div id="incident-widget" style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px;">
+                        <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
+                    </div>
+                    <a href="incident.html" class="btn" style="font-size:0.85rem;margin-bottom:24px;">VIEW_ALL_INCIDENTS →</a>
                     <div class="section-header" style="margin-top:0;">QUICK_ACTIONS</div>
                     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
                         <a href="write.html" class="btn" style="justify-content:flex-start;gap:10px;">
@@ -186,6 +191,38 @@
             loadStats(profile);
             loadRecentDocs(profile);
             loadRecentPersonnel();
+            loadOpenIncidents();
+        }
+
+        async function loadOpenIncidents() {
+            const { data: incidents, error } = await _supabase
+                .from('incident_reports')
+                .select('id, title, priority, status, incident_type, custom_type, filed_by, created_at')
+                .in('status', ['Open', 'Investigating'])
+                .order('created_at', { ascending: false })
+                .limit(4);
+
+            const container = document.getElementById('incident-widget');
+            if (error || !incidents || incidents.length === 0) {
+                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO OPEN INCIDENTS</div>`;
+                return;
+            }
+
+            const priorityColor = { Standard:'var(--text-mid)', Urgent:'var(--gold)', Critical:'var(--red)' };
+            const statusColor   = { Open:'var(--gold)', Investigating:'#60a5fa' };
+
+            container.innerHTML = incidents.map(i => {
+                const type  = i.incident_type === 'Custom' ? (i.custom_type || 'CUSTOM') : i.incident_type;
+                const color = priorityColor[i.priority] || 'var(--text-mid)';
+                const sc    = statusColor[i.status] || 'var(--text-dim)';
+                return `<div onclick="window.location.href='incident.html'" style="border:1px solid var(--green-border);background:var(--bg-card);padding:8px 12px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(0,255,65,0.6)'" onmouseout="this.style.borderColor='var(--green-border)'">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${i.title}</div>
+                        <div style="font-family:var(--font-display);font-size:0.8rem;color:${sc};white-space:nowrap;">● ${i.status.toUpperCase()}</div>
+                    </div>
+                    <div style="font-size:0.68rem;color:var(--text-dim);margin-top:3px;">${type.toUpperCase()} // ${i.filed_by}</div>
+                </div>`;
+            }).join('');
         }
 
         async function loadStats(profile) {
