@@ -343,10 +343,10 @@
         async function loadOpenIncidents() {
             const { data: incidents, error } = await _supabase
                 .from('incident_reports')
-                .select('id, title, priority, status, incident_type, custom_type, filed_by, created_at')
+                .select('id, title, priority, status, incident_type, custom_type, filed_by, created_at, assigned_to, assigned_to_id, assigned_dept')
                 .in('status', ['Open', 'Investigating'])
                 .order('created_at', { ascending: false })
-                .limit(4);
+                .limit(5);
 
             const container = document.getElementById('incident-widget');
             if (error || !incidents || incidents.length === 0) {
@@ -361,12 +361,29 @@
                 const type  = i.incident_type === 'Custom' ? (i.custom_type || 'CUSTOM') : i.incident_type;
                 const color = priorityColor[i.priority] || 'var(--text-mid)';
                 const sc    = statusColor[i.status] || 'var(--text-dim)';
-                return `<div onclick="window.location.href='incident.html'" style="border:1px solid var(--green-border);background:var(--bg-card);padding:8px 12px;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(0,255,65,0.6)'" onmouseout="this.style.borderColor='var(--green-border)'">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+
+                // Highlight if assigned to current user
+                const isAssignedToMe = i.assigned_to_id === _currentProfile?.id;
+                const assignedBadge  = i.assigned_to
+                    ? `<span style="font-size:0.65rem;color:#60a5fa;border:1px solid rgba(96,165,250,0.3);padding:1px 5px;">→ ${i.assigned_to}</span>`
+                    : '';
+
+                return `<div onclick="window.location.href='incident.html'"
+                    style="border:1px solid ${isAssignedToMe ? 'rgba(96,165,250,0.5)' : 'var(--green-border)'};
+                           background:${isAssignedToMe ? 'rgba(96,165,250,0.06)' : 'var(--bg-card)'};
+                           padding:8px 12px;cursor:pointer;transition:border-color 0.15s;
+                           ${i.priority === 'Critical' ? 'animation: flicker 0.8s infinite;' : ''}"
+                    onmouseover="this.style.borderColor='rgba(0,255,65,0.6)'"
+                    onmouseout="this.style.borderColor='${isAssignedToMe ? 'rgba(96,165,250,0.5)' : 'var(--green-border)'}'">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                         <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${i.title}</div>
                         <div style="font-family:var(--font-display);font-size:0.8rem;color:${sc};white-space:nowrap;">● ${i.status.toUpperCase()}</div>
                     </div>
-                    <div style="font-size:0.68rem;color:var(--text-dim);margin-top:3px;">${type.toUpperCase()} // ${i.filed_by}</div>
+                    <div style="font-size:0.68rem;color:var(--text-dim);margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <span>${type.toUpperCase()} // ${i.filed_by}</span>
+                        ${assignedBadge}
+                        ${isAssignedToMe ? '<span style="color:#60a5fa;font-size:0.65rem;">[ASSIGNED TO YOU]</span>' : ''}
+                    </div>
                 </div>`;
             }).join('');
         }
@@ -398,13 +415,16 @@
                 const reportBtn = e.article_id
                     ? `<button onclick="window.location.href='view.html?id=${e.article_id}'" style="font-size:0.72rem;padding:2px 8px;color:var(--text-dim);border-color:rgba(0,255,65,0.15);">REPORT</button>`
                     : '';
+                const deleteBtn = _canEditContainment
+                    ? `<button onclick="deleteContainmentEntry(event, '${e.id}', '${e.scp_number}')" class="btn-red" style="font-size:0.72rem;padding:2px 8px;">DEL</button>`
+                    : '';
                 return `<div class="containment-row">
                     <div class="scp-number">${e.scp_number}</div>
                     <div class="scp-name">${e.scp_name || '—'}</div>
                     <div class="cc-badge ${ccClass}">${e.containment_class.toUpperCase()}</div>
                     <div class="scp-status ${statusClass}">${e.status.toUpperCase()}</div>
                     <div class="scp-date">${date}</div>
-                    <div class="scp-actions">${editBtn}${reportBtn}</div>
+                    <div class="scp-actions">${editBtn}${reportBtn}${deleteBtn}</div>
                 </div>`;
             }).join('');
         }
@@ -495,6 +515,20 @@
             if (error) { toast('SAVE_FAILED: ' + error.message, 'error'); return; }
             toast(_editingEntryId ? 'ENTRY_UPDATED' : 'ENTRY_ADDED', 'success');
             closeContainmentModal();
+            loadContainmentBoard();
+        }
+
+        async function deleteContainmentEntry(event, entryId, scpNumber) {
+            event.stopPropagation(); // prevent row click
+            const confirmed = await showModal(
+                `PERMANENTLY REMOVE ${scpNumber} FROM THE CONTAINMENT BOARD?`,
+                { title: 'CONFIRM_DELETION', confirmText: 'DELETE', cancelText: 'ABORT', danger: true }
+            );
+            if (!confirmed) return;
+            const { error } = await _supabase.from('containment_status').delete().eq('id', entryId);
+            if (error) { toast('DELETE_FAILED: ' + error.message, 'error'); return; }
+            await logAction(_currentProfile, 'CONTAINMENT_DELETED', scpNumber, null);
+            toast(`${scpNumber} REMOVED FROM CONTAINMENT BOARD`, 'warning');
             loadContainmentBoard();
         }
 
