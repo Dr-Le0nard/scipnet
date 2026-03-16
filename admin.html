@@ -6,11 +6,13 @@
     <title>SCiPNET - Admin Override</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
     <script src="modal.js"></script>
     <script src="nav.js"></script>
     <link rel="stylesheet" href="style.css">
+    <style>optgroup { background: #010d02; color: rgba(0,255,65,0.5); }</style>
 </head>
 <body>
     <div class="identity-block">
@@ -23,7 +25,7 @@
         <div class="page-subtitle">PERSONNEL MANAGEMENT // RESTRICTED ACCESS</div>
 
         <!-- Alert Broadcast Panel -->
-        <div class="card card-gold" style="margin-bottom:28px;" id="alert-control-panel">
+        <div class="card card-gold" style="margin-bottom:28px;display:none;" id="alert-control-panel">
             <div style="font-family:var(--font-display);font-size:1.05rem;letter-spacing:3px;color:var(--gold);margin-bottom:14px;">// SITE-WIDE_ALERT_BROADCAST</div>
             <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
                 <div style="flex:1;min-width:200px;">
@@ -44,22 +46,16 @@
             <div class="grid" id="flagged-list"></div>
         </div>
 
-        <!-- Filter -->
         <div class="filter-bar">
             <input type="text" id="user-search" placeholder="FILTER PERSONNEL..." onkeyup="filterUsers()">
         </div>
 
         <div class="section-header">PENDING_ACCESS_REQUESTS</div>
         <div class="grid" id="pending-list"><div style="color:var(--text-dim);">SCANNING...</div></div>
-
         <hr>
-
         <div class="section-header">ACTIVE_PERSONNEL_MANAGEMENT</div>
         <div class="grid" id="active-list"><div style="color:var(--text-dim);">SCANNING...</div></div>
-
         <hr>
-
-        <!-- Audit Log -->
         <div class="section-header" id="audit-section-header" style="display:none;">AUDIT_LOG</div>
         <div id="audit-log-container" style="display:none;">
             <div class="filter-bar" style="margin-top:8px;">
@@ -68,21 +64,10 @@
             </div>
             <div class="table-wrapper">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>TIMESTAMP</th>
-                            <th>ACTOR</th>
-                            <th>ACTION</th>
-                            <th>TARGET</th>
-                            <th>DETAILS</th>
-                        </tr>
-                    </thead>
-                    <tbody id="audit-list">
-                        <tr><td colspan="5" style="color:var(--text-dim);padding:16px;">LOADING...</td></tr>
-                    </tbody>
+                    <thead><tr><th>TIMESTAMP</th><th>ACTOR</th><th>ACTION</th><th>TARGET</th><th>DETAILS</th></tr></thead>
+                    <tbody id="audit-list"><tr><td colspan="5" style="color:var(--text-dim);padding:16px;">LOADING...</td></tr></tbody>
                 </table>
             </div>
-            <!-- Audit Pagination -->
             <div id="audit-pagination" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap;"></div>
         </div>
     </div>
@@ -93,15 +78,10 @@
         let allLogs=[], filteredLogs=[], auditPage=1;
 
         const ACTION_COLORS = {
-            'APPROVED': 'var(--green)',
-            'CREATED':  'var(--green)',
-            'BANNED':   'var(--red)',
-            'REVOKED':  'var(--red)',
-            'DELETED':  'var(--red)',
-            'FLAGGED':  'var(--gold)',
-            'UNFLAGGED':'var(--text-mid)',
-            'BROADCAST':'var(--gold)',
-            'ALERT_CLEARED': 'var(--text-mid)',
+            'APPROVED':'var(--green)', 'CREATED':'var(--green)',
+            'BANNED':'var(--red)', 'REVOKED':'var(--red)', 'DELETED':'var(--red)',
+            'FLAGGED':'var(--gold)', 'UNFLAGGED':'var(--text-mid)',
+            'BROADCAST':'var(--gold)', 'ALERT_CLEARED':'var(--text-mid)',
         };
 
         async function initAdmin() {
@@ -113,114 +93,25 @@
             if (myProfile.is_terminal_admin) {
                 document.getElementById('admin-header').innerText = 'ROOT_SYSTEM_OVERRIDE';
                 document.getElementById('admin-header').style.color = 'var(--gold)';
-                loadFlags(); loadAlertStatus(); showAuditLog();
+                showAlertPanel(); loadFlags(); showAuditLog();
             } else if (myProfile.is_overseer) {
                 document.getElementById('admin-header').innerText = 'CHAIRMAN_OVERRIDE';
                 document.getElementById('admin-header').style.color = 'var(--red)';
-                loadFlags(); loadAlertStatus(); showAuditLog();
+                showAlertPanel(); loadFlags(); showAuditLog();
             } else if (myProfile.is_admin) {
-                loadAlertStatus();
-                showAuditLog();
+                showAlertPanel(); showAuditLog();
             }
 
             loadPending();
             loadActiveUsers();
         }
 
-        // ---- AUDIT LOG ----
-        function showAuditLog() {
-            document.getElementById('audit-section-header').style.display = 'block';
-            document.getElementById('audit-log-container').style.display = 'block';
-            loadAuditLog();
+        function showAlertPanel() {
+            document.getElementById('alert-control-panel').style.display = 'block';
+            loadAlertStatus();
         }
 
-        async function loadAuditLog() {
-            const { data: logs, error } = await _supabase
-                .from('audit_log')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(500);
-
-            if (error) {
-                document.getElementById('audit-list').innerHTML =
-                    `<tr><td colspan="5" style="color:var(--red)">ERROR: ${error.message}</td></tr>`;
-                return;
-            }
-
-            allLogs = logs;
-            filteredLogs = logs;
-            auditPage = 1;
-            renderAuditPage();
-        }
-
-        function filterAuditLog() {
-            const q = document.getElementById('audit-search').value.toLowerCase();
-            filteredLogs = allLogs.filter(l =>
-                (l.actor_name||'').toLowerCase().includes(q) ||
-                (l.action||'').toLowerCase().includes(q) ||
-                (l.target_name||'').toLowerCase().includes(q) ||
-                (l.details||'').toLowerCase().includes(q)
-            );
-            auditPage = 1;
-            renderAuditPage();
-        }
-
-        function renderAuditPage() {
-            const tbody      = document.getElementById('audit-list');
-            const countEl    = document.getElementById('audit-count');
-            const pagination = document.getElementById('audit-pagination');
-
-            if (filteredLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim);padding:16px;">NO LOG ENTRIES FOUND</td></tr>`;
-                countEl.innerText = '';
-                pagination.innerHTML = '';
-                return;
-            }
-
-            const totalPages = Math.ceil(filteredLogs.length / AUDIT_PAGE_SIZE);
-            const start = (auditPage - 1) * AUDIT_PAGE_SIZE;
-            const page  = filteredLogs.slice(start, start + AUDIT_PAGE_SIZE);
-
-            countEl.innerText = `${filteredLogs.length} ENTRIES // PAGE ${auditPage}/${totalPages}`;
-
-            tbody.innerHTML = page.map(l => {
-                const dt    = new Date(l.created_at);
-                const stamp = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-                const color = ACTION_COLORS[l.action] || 'var(--text-mid)';
-                return `<tr>
-                    <td style="white-space:nowrap;font-size:0.72rem;">${stamp}</td>
-                    <td style="color:var(--text-mid);">${l.actor_name}</td>
-                    <td><span style="color:${color};font-family:var(--font-display);letter-spacing:1px;">${l.action}</span></td>
-                    <td style="color:var(--text-mid);">${l.target_name || '—'}</td>
-                    <td style="color:var(--text-dim);font-size:0.75rem;">${l.details || '—'}</td>
-                </tr>`;
-            }).join('');
-
-            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
-            let pages = `<button onclick="goAuditPage(${auditPage-1})" ${auditPage===1?'disabled':''}>◄</button>`;
-            getPageRange(auditPage, totalPages).forEach(p => {
-                if (p === '...') pages += `<span style="color:var(--text-dim);padding:0 4px;">...</span>`;
-                else pages += `<button ${p===auditPage?'style="border-color:var(--green);background:var(--green-glow);"':''} onclick="goAuditPage(${p})">${p}</button>`;
-            });
-            pages += `<button onclick="goAuditPage(${auditPage+1})" ${auditPage===totalPages?'disabled':''}>►</button>`;
-            pagination.innerHTML = pages;
-        }
-
-        function goAuditPage(page) {
-            const total = Math.ceil(filteredLogs.length / AUDIT_PAGE_SIZE);
-            if (page < 1 || page > total) return;
-            auditPage = page;
-            renderAuditPage();
-        }
-
-        function getPageRange(current, total) {
-            if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-            if (current <= 4) return [1,2,3,4,5,'...',total];
-            if (current >= total - 3) return [1,'...',total-4,total-3,total-2,total-1,total];
-            return [1,'...',current-1,current,current+1,'...',total];
-        }
-
-        // ---- ALERT CONTROL ----
+        // ---- ALERT ----
         async function loadAlertStatus() {
             const { data, error } = await _supabase.from('system_status').select('*').limit(1).maybeSingle();
             const statusEl = document.getElementById('alert-current-status');
@@ -228,9 +119,7 @@
             if (data.is_active) {
                 statusEl.innerHTML = `ACTIVE: <span style="color:var(--gold);">${data.alert_message}</span>`;
                 document.getElementById('alert-message-input').value = data.alert_message || '';
-            } else {
-                statusEl.innerText = 'NO ACTIVE ALERT — STATUS NOMINAL';
-            }
+            } else { statusEl.innerText = 'NO ACTIVE ALERT — STATUS NOMINAL'; }
         }
 
         async function broadcastAlert() {
@@ -242,8 +131,7 @@
             if (error) { toast('BROADCAST_FAILED: ' + error.message, 'error'); return; }
             await logAction(myProfile, 'BROADCAST', 'SYSTEM', msg);
             toast('ALERT BROADCAST TO ALL ACTIVE TERMINALS', 'warning');
-            loadAlertStatus();
-            loadAuditLog();
+            loadAlertStatus(); loadAuditLog();
         }
 
         async function clearAlert() {
@@ -254,9 +142,52 @@
             await logAction(myProfile, 'ALERT_CLEARED', 'SYSTEM', null);
             toast('ALERT CLEARED — STATUS NOMINAL', 'success');
             document.getElementById('alert-message-input').value = '';
-            loadAlertStatus();
+            loadAlertStatus(); loadAuditLog();
+        }
+
+        // ---- AUDIT LOG ----
+        function showAuditLog() {
+            document.getElementById('audit-section-header').style.display = 'block';
+            document.getElementById('audit-log-container').style.display = 'block';
             loadAuditLog();
         }
+
+        async function loadAuditLog() {
+            const { data: logs, error } = await _supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(500);
+            if (error) { document.getElementById('audit-list').innerHTML = `<tr><td colspan="5" style="color:var(--red)">ERROR: ${error.message}</td></tr>`; return; }
+            allLogs = logs; filteredLogs = logs; auditPage = 1; renderAuditPage();
+        }
+
+        function filterAuditLog() {
+            const q = document.getElementById('audit-search').value.toLowerCase();
+            filteredLogs = allLogs.filter(l =>
+                (l.actor_name||'').toLowerCase().includes(q) ||
+                (l.action||'').toLowerCase().includes(q) ||
+                (l.target_name||'').toLowerCase().includes(q) ||
+                (l.details||'').toLowerCase().includes(q)
+            );
+            auditPage = 1; renderAuditPage();
+        }
+
+        function renderAuditPage() {
+            const tbody=document.getElementById('audit-list'), countEl=document.getElementById('audit-count'), pagination=document.getElementById('audit-pagination');
+            if (filteredLogs.length === 0) { tbody.innerHTML=`<tr><td colspan="5" style="color:var(--text-dim);padding:16px;">NO LOG ENTRIES FOUND</td></tr>`; countEl.innerText=''; pagination.innerHTML=''; return; }
+            const totalPages=Math.ceil(filteredLogs.length/AUDIT_PAGE_SIZE), start=(auditPage-1)*AUDIT_PAGE_SIZE, page=filteredLogs.slice(start,start+AUDIT_PAGE_SIZE);
+            countEl.innerText=`${filteredLogs.length} ENTRIES // PAGE ${auditPage}/${totalPages}`;
+            tbody.innerHTML=page.map(l=>{
+                const dt=new Date(l.created_at), stamp=dt.toLocaleDateString()+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+                const color=ACTION_COLORS[l.action]||'var(--text-mid)';
+                return `<tr><td style="white-space:nowrap;font-size:0.72rem;">${stamp}</td><td style="color:var(--text-mid);">${l.actor_name}</td><td><span style="color:${color};font-family:var(--font-display);letter-spacing:1px;">${l.action}</span></td><td style="color:var(--text-mid);">${l.target_name||'—'}</td><td style="color:var(--text-dim);font-size:0.75rem;">${l.details||'—'}</td></tr>`;
+            }).join('');
+            if(totalPages<=1){pagination.innerHTML='';return;}
+            let pages=`<button onclick="goAuditPage(${auditPage-1})" ${auditPage===1?'disabled':''}>◄</button>`;
+            getPageRange(auditPage,totalPages).forEach(p=>{if(p==='...')pages+=`<span style="color:var(--text-dim);padding:0 4px;">...</span>`;else pages+=`<button ${p===auditPage?'style="border-color:var(--green);background:var(--green-glow);"':''} onclick="goAuditPage(${p})">${p}</button>`;});
+            pages+=`<button onclick="goAuditPage(${auditPage+1})" ${auditPage===totalPages?'disabled':''}>►</button>`;
+            pagination.innerHTML=pages;
+        }
+
+        function goAuditPage(page){const total=Math.ceil(filteredLogs.length/AUDIT_PAGE_SIZE);if(page<1||page>total)return;auditPage=page;renderAuditPage();}
+        function getPageRange(current,total){if(total<=7)return Array.from({length:total},(_,i)=>i+1);if(current<=4)return[1,2,3,4,5,'...',total];if(current>=total-3)return[1,'...',total-4,total-3,total-2,total-1,total];return[1,'...',current-1,current,current+1,'...',total];}
 
         // ---- FLAGS ----
         async function loadFlags() {
@@ -268,9 +199,9 @@
                 return `<div class="card card-gold">
                     <p style="color:var(--gold);"><strong>NOTICE:</strong> ${u.admin_notice}</p>
                     <p><strong>USER:</strong> ${u.full_name}</p>
-                    <p><strong>DEPT:</strong> ${u.department || 'NONE'}</p>
-                    <button class="btn-gold" onclick="clearFlag('${u.id}', '${u.full_name}')" ${isMe ? 'disabled' : ''}>
-                        ${isMe ? 'EXTERNAL_CLEARANCE_REQUIRED' : 'RESOLVE_FLAG'}
+                    <p><strong>DEPT:</strong> ${getDeptShort(u.department) || 'NONE'}</p>
+                    <button class="btn-gold" onclick="clearFlag('${u.id}', '${u.full_name}')" ${isMe?'disabled':''}>
+                        ${isMe?'EXTERNAL_CLEARANCE_REQUIRED':'RESOLVE_FLAG'}
                     </button>
                 </div>`;
             }).join('');
@@ -283,21 +214,14 @@
             const container = document.getElementById('pending-list');
             if (error) { container.innerHTML = `<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`; return; }
             if (pending.length === 0) { container.innerHTML = `<div style="color:var(--text-dim)">NO PENDING REQUESTS</div>`; return; }
+
             container.innerHTML = pending.map(u => {
                 const isMe = currentUserId === u.id;
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
                     <h3>${u.full_name}</h3>
-                    <p><strong>DEPT:</strong> ${u.department || 'NONE'}</p>
+                    <p><strong>REQUESTED DEPT:</strong> ${getDeptShort(u.department) || 'NONE'}</p>
                     <label>VALIDATE DEPARTMENT:</label>
-                    <select id="dept-${u.id}">
-                        <option value="ScD"  ${u.department==='ScD'  ?'selected':''}>Scientific (ScD)</option>
-                        <option value="MD"   ${u.department==='MD'   ?'selected':''}>Medical (MD)</option>
-                        <option value="SD"   ${u.department==='SD'   ?'selected':''}>Security (SD)</option>
-                        <option value="EcD"  ${u.department==='EcD'  ?'selected':''}>Engineering (EcD)</option>
-                        <option value="RAISA"${u.department==='RAISA'?'selected':''}>Infosec (RAISA)</option>
-                        <option value="AD"   ${u.department==='AD'   ?'selected':''}>Administrative (AD)</option>
-                        <option value="ISD"  ${u.department==='ISD'  ?'selected':''}>Intelligence (ISD)</option>
-                    </select>
+                    <select id="dept-${u.id}"></select>
                     <label>ASSIGN CLEARANCE:</label>
                     <select id="lvl-${u.id}">
                         <option value="1">Level 1</option><option value="2">Level 2</option>
@@ -305,12 +229,15 @@
                     </select>
                     <div class="btn-row" style="margin-top:10px;">
                         <button onclick="approveUser('${u.id}', '${u.full_name}')">GRANT</button>
-                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Departmental Misalignment Reported')" ${isMe ? 'disabled' : ''}>
-                            ${isMe ? 'N/A' : 'FLAG'}
+                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Departmental Misalignment Reported')" ${isMe?'disabled':''}>
+                            ${isMe?'N/A':'FLAG'}
                         </button>
                     </div>
                 </div>`;
             }).join('');
+
+            // Populate department dropdowns after rendering
+            pending.forEach(u => populateDeptSelect(`dept-${u.id}`, u.department, false, false));
         }
 
         async function loadActiveUsers() {
@@ -327,71 +254,44 @@
                 if (myProfile.is_overseer && !u.is_terminal_admin && !isMe) canRevoke = true;
                 if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canRevoke = true;
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
-                    <h3>${u.full_name} ${u.is_terminal_admin ? `<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>` : ''}</h3>
-                    <p>DEPT: [${u.department || 'NONE'}] | CL: ${u.clearance_level}</p>
+                    <h3>${u.full_name} ${u.is_terminal_admin?`<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>`:''}</h3>
+                    <p>DEPT: [${getDeptShort(u.department)||'NONE'}] | CL: ${u.clearance_level}</p>
                     <div class="btn-row" style="margin-top:10px;">
-                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Active Personnel Audit Required')" ${isMe ? 'disabled' : ''}>
-                            ${isMe ? 'N/A' : 'FLAG'}
-                        </button>
-                        <button class="btn-red" onclick="revokeAccess('${u.id}', '${u.full_name}')" ${!canRevoke ? 'disabled' : ''}>
-                            ${isMe ? 'YOU' : 'REVOKE'}
-                        </button>
+                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Active Personnel Audit Required')" ${isMe?'disabled':''}>${isMe?'N/A':'FLAG'}</button>
+                        <button class="btn-red" onclick="revokeAccess('${u.id}', '${u.full_name}')" ${!canRevoke?'disabled':''}>${isMe?'YOU':'REVOKE'}</button>
                     </div>
                 </div>`;
             }).join('');
         }
 
-        async function flagUser(userId, userName, reason) {
-            if (userId === currentUserId) { toast('CANNOT_FLAG_SELF', 'error'); return; }
-            const { error } = await _supabase.from('profiles').update({ admin_notice: reason }).eq('id', userId);
-            if (error) { toast('FLAG_FAILED: ' + error.message, 'error'); return; }
-            await logAction(myProfile, 'FLAGGED', userName, reason);
-            toast('USER FLAGGED', 'warning');
-            location.reload();
+        async function flagUser(userId,userName,reason){
+            if(userId===currentUserId){toast('CANNOT_FLAG_SELF','error');return;}
+            const{error}=await _supabase.from('profiles').update({admin_notice:reason}).eq('id',userId);
+            if(error)toast('FLAG_FAILED: '+error.message,'error');
+            else{await logAction(myProfile,'FLAGGED',userName,reason);toast('USER FLAGGED','warning');location.reload();}
         }
-
-        async function clearFlag(userId, userName) {
-            if (userId === currentUserId) { toast('CANNOT_UNFLAG_SELF', 'error'); return; }
-            const { error } = await _supabase.from('profiles').update({ admin_notice: null }).eq('id', userId);
-            if (error) { toast('CLEAR_FAILED: ' + error.message, 'error'); return; }
-            await logAction(myProfile, 'UNFLAGGED', userName, null);
-            toast('FLAG RESOLVED', 'success');
-            location.reload();
+        async function clearFlag(userId,userName){
+            if(userId===currentUserId){toast('CANNOT_UNFLAG_SELF','error');return;}
+            const{error}=await _supabase.from('profiles').update({admin_notice:null}).eq('id',userId);
+            if(error)toast('CLEAR_FAILED: '+error.message,'error');
+            else{await logAction(myProfile,'UNFLAGGED',userName,null);toast('FLAG RESOLVED','success');location.reload();}
         }
-
-        async function approveUser(userId, userName) {
-            const level = document.getElementById(`lvl-${userId}`).value;
-            const dept  = document.getElementById(`dept-${userId}`).value;
-            const { error } = await _supabase.from('profiles').update({
-                is_approved: true, clearance_level: parseInt(level), department: dept, admin_notice: null
-            }).eq('id', userId);
-            if (error) { toast('UPDATE_FAILED: ' + error.message, 'error'); return; }
-            await logAction(myProfile, 'APPROVED', userName, `Dept: ${dept} | CL: ${level}`);
-            toast('ACCESS GRANTED', 'success');
-            location.reload();
+        async function approveUser(userId,userName){
+            const level=document.getElementById(`lvl-${userId}`).value;
+            const dept=document.getElementById(`dept-${userId}`).value;
+            const{error}=await _supabase.from('profiles').update({is_approved:true,clearance_level:parseInt(level),department:dept,admin_notice:null}).eq('id',userId);
+            if(error)toast('UPDATE_FAILED: '+error.message,'error');
+            else{await logAction(myProfile,'APPROVED',userName,`Dept: ${dept} | CL: ${level}`);toast('ACCESS GRANTED','success');location.reload();}
         }
-
-        async function revokeAccess(userId, userName) {
-            const confirmed = await showModal(
-                'THIS ACTION WILL PERMANENTLY BAN THIS USER.\nTHEY WILL LOSE ALL ACCESS IMMEDIATELY.',
-                { title:'CONFIRM_REVOCATION', confirmText:'REVOKE', cancelText:'ABORT', danger: true }
-            );
-            if (!confirmed) return;
-            const { error } = await _supabase.from('profiles').update({ is_approved: false, is_banned: true }).eq('id', userId);
-            if (error) { toast('BAN_FAILED: ' + error.message, 'error'); return; }
-            await logAction(myProfile, 'BANNED', userName, 'Permanent access revocation');
-            toast('USER BANNED — ACCESS REVOKED', 'warning');
-            location.reload();
+        async function revokeAccess(userId,userName){
+            const confirmed=await showModal('THIS ACTION WILL PERMANENTLY BAN THIS USER.\nTHEY WILL LOSE ALL ACCESS IMMEDIATELY.',{title:'CONFIRM_REVOCATION',confirmText:'REVOKE',cancelText:'ABORT',danger:true});
+            if(!confirmed)return;
+            const{error}=await _supabase.from('profiles').update({is_approved:false,is_banned:true}).eq('id',userId);
+            if(error)toast('BAN_FAILED: '+error.message,'error');
+            else{await logAction(myProfile,'BANNED',userName,'Permanent access revocation');toast('USER BANNED','warning');location.reload();}
         }
-
-        function filterUsers() {
-            const q = document.getElementById('user-search').value.toLowerCase();
-            document.querySelectorAll('.user-item').forEach(u => {
-                u.style.display = u.getAttribute('data-name').includes(q) ? 'flex' : 'none';
-            });
-        }
-
-        window.onload = initAdmin;
+        function filterUsers(){const q=document.getElementById('user-search').value.toLowerCase();document.querySelectorAll('.user-item').forEach(u=>{u.style.display=u.getAttribute('data-name').includes(q)?'flex':'none';});}
+        window.onload=initAdmin;
     </script>
 </body>
 </html>

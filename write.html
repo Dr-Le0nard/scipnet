@@ -6,6 +6,7 @@
     <title>SCiPNET - File Report</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
     <script src="modal.js"></script>
@@ -65,10 +66,36 @@
 
         function setupExtraFields() {
             const container = document.getElementById('dynamic-fields');
+            const wrap = (html) => `<div style="border-left:2px solid var(--green-border);padding-left:14px;margin-bottom:16px;">${html}</div>`;
+
             if (reportModule === 'research') {
-                container.innerHTML = `<div style="border-left:2px solid var(--green-border);padding-left:14px;margin-bottom:16px;"><label>SUBJECT ID</label><input type="text" id="meta_subject" placeholder="e.g. SCP-096"><label>TEST PHASE</label><input type="text" id="meta_phase" placeholder="e.g. Initial Exposure"></div>`;
+                container.innerHTML = wrap(`
+                    <label>SUBJECT ID</label>
+                    <input type="text" id="meta_subject" placeholder="e.g. SCP-096">
+                    <label>TEST PHASE</label>
+                    <input type="text" id="meta_phase" placeholder="e.g. Initial Exposure">`);
             } else if (reportModule === 'medical') {
-                container.innerHTML = `<div style="border-left:2px solid var(--green-border);padding-left:14px;margin-bottom:16px;"><label>PATIENT ID</label><input type="text" id="meta_patient" placeholder="e.g. D-9022"></div>`;
+                container.innerHTML = wrap(`
+                    <label>PATIENT ID</label>
+                    <input type="text" id="meta_patient" placeholder="e.g. D-9022">`);
+            } else if (reportModule === 'mtf') {
+                container.innerHTML = wrap(`
+                    <label>OPERATION NAME</label>
+                    <input type="text" id="meta_operation" placeholder="e.g. OPERATION WHITEBOARD">
+                    <label>MTF UNIT</label>
+                    <input type="text" id="meta_unit" placeholder="e.g. MTF ε-11 Nine Tailed Fox">`);
+            } else if (reportModule === 'intel') {
+                container.innerHTML = wrap(`
+                    <label>CLASSIFICATION LEVEL</label>
+                    <input type="text" id="meta_classification" placeholder="e.g. EYES ONLY">
+                    <label>SOURCE</label>
+                    <input type="text" id="meta_source" placeholder="e.g. ASSET CODENAME">`);
+            } else if (reportModule === 'external') {
+                container.innerHTML = wrap(`
+                    <label>GROUP OF INTEREST</label>
+                    <input type="text" id="meta_goi" placeholder="e.g. Serpent's Hand">
+                    <label>INCIDENT LOCATION</label>
+                    <input type="text" id="meta_location" placeholder="e.g. Site-19 Perimeter">`);
             }
         }
 
@@ -76,13 +103,9 @@
             const title   = document.getElementById('title').value.trim();
             const content = document.getElementById('content').value.trim();
             const cl      = parseInt(document.getElementById('clearance_level').value);
-
             if (!title || !content) { toast('CRITICAL_ERROR: DATA_MISSING', 'error'); return; }
-
             const isElevated = currentUserProfile.is_admin || currentUserProfile.is_overseer || currentUserProfile.is_terminal_admin;
-            if (!isElevated && cl > currentUserProfile.clearance_level) {
-                toast('ACCESS_DENIED: CLEARANCE_EXCEEDS_AUTHORIZATION', 'error'); return;
-            }
+            if (!isElevated && cl > currentUserProfile.clearance_level) { toast('ACCESS_DENIED: CLEARANCE_EXCEEDS_AUTHORIZATION', 'error'); return; }
 
             const confirmed = await showModal(
                 `TRANSMIT DOCUMENT TO SECURE SERVERS?\n\nTITLE: ${title}\nCLEARANCE: LEVEL ${cl}`,

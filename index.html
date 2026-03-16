@@ -5,6 +5,7 @@
     <title>SCiPNET - Secure Access Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="departments.js"></script>
     <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -58,20 +59,9 @@
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
         .terminal-footer { font-size: 0.75rem; color: rgba(0,255,65,0.3); text-align: center; margin-top: 12px; letter-spacing: 2px; font-family: var(--font-mono); }
         #reg-fields { display: none; }
-
-        /* Verification banner */
-        .verify-banner {
-            border: 1px solid rgba(255,215,0,0.4);
-            background: rgba(20,16,0,0.95);
-            padding: 16px 20px;
-            margin-bottom: 16px;
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            color: var(--gold);
-            letter-spacing: 0.05em;
-            line-height: 1.6;
-        }
+        .verify-banner { border: 1px solid rgba(255,215,0,0.4); background: rgba(20,16,0,0.95); padding: 16px 20px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--gold); letter-spacing: 0.05em; line-height: 1.6; }
         .verify-banner strong { display: block; font-family: var(--font-display); font-size: 1rem; letter-spacing: 2px; margin-bottom: 6px; }
+        optgroup { background: #010d02; color: rgba(0,255,65,0.5); font-family: var(--font-mono); }
     </style>
 </head>
 <body>
@@ -93,7 +83,6 @@
                 <div id="form-title" style="margin-bottom:16px;font-size:1rem;color:rgba(0,255,65,0.6);letter-spacing:3px;">
                     AUTHENTICATION REQUIRED <span class="cursor"></span>
                 </div>
-
                 <div id="login-fields">
                     <div class="prompt-row">
                         <span class="prompt-label">IDENTIFIER</span>
@@ -104,7 +93,6 @@
                         <input type="password" id="password" class="prompt-input" placeholder="••••••••••••">
                     </div>
                 </div>
-
                 <div id="reg-fields">
                     <div class="prompt-row">
                         <span class="prompt-label">FULL_NAME</span>
@@ -112,25 +100,14 @@
                     </div>
                     <div class="prompt-row">
                         <span class="prompt-label">DEPARTMENT</span>
-                        <select id="dept-choice" class="prompt-input" style="appearance:none;cursor:pointer;">
-                            <option value="">-- SELECT UNIT --</option>
-                            <option value="ScD">Scientific (ScD)</option>
-                            <option value="MD">Medical (MD)</option>
-                            <option value="SD">Security (SD)</option>
-                            <option value="EcD">Engineering (EcD)</option>
-                            <option value="RAISA">Infosec (RAISA)</option>
-                            <option value="AD">Administrative (AD)</option>
-                            <option value="ISD">Intelligence (ISD)</option>
-                        </select>
+                        <select id="dept-choice" class="prompt-input" style="appearance:none;cursor:pointer;"></select>
                     </div>
                 </div>
-
                 <div id="scan-container">
                     <div class="scan-label">BIOMETRIC AUTHENTICATION IN PROGRESS...</div>
                     <div class="scan-bar-outer"><div id="scan-bar-fill"></div></div>
                     <div id="scan-status-text">AWAITING INPUT</div>
                 </div>
-
                 <div class="status-line" id="status-msg"></div>
                 <hr class="terminal-divider">
                 <div class="action-row">
@@ -145,9 +122,7 @@
     <script>
         let isRegistering=false, isScanning=false, scanInterval=null, scanProgress=0;
 
-        function updateClock() {
-            document.getElementById('titlebar-time').innerText = new Date().toISOString().replace('T',' ').substring(0,19)+' UTC';
-        }
+        function updateClock() { document.getElementById('titlebar-time').innerText = new Date().toISOString().replace('T',' ').substring(0,19)+' UTC'; }
         setInterval(updateClock,1000); updateClock();
 
         const bootLines = [
@@ -184,12 +159,13 @@
             document.getElementById('auth-btn').innerText        = isRegistering ? 'SUBMIT REQUEST' : 'AUTHENTICATE';
             document.getElementById('toggle-btn').innerText      = isRegistering ? '[ BACK TO LOGIN ]' : '[ REQUEST_NEW_ACCESS ]';
             document.getElementById('scan-container').style.display = 'none';
+            if (isRegistering) populateDeptSelect('dept-choice', null, true, false);
         }
 
         function handleAuth() { isRegistering ? executeAuth() : startScan(); }
 
         function startScan() {
-            const email    = document.getElementById('email').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             if (!email || !password) { setStatus('ERROR: IDENTIFIER AND CREDENTIALS REQUIRED','error'); return; }
             if (isScanning) return;
@@ -199,8 +175,7 @@
             const fill=document.getElementById('scan-bar-fill'), statusText=document.getElementById('scan-status-text');
             const messages=['READING BIOMETRIC SIGNATURE...','CROSS-REFERENCING PERSONNEL DATABASE...','VERIFYING CLEARANCE LEVEL...','CHECKING CONTAINMENT PROTOCOL ACCESS...','IDENTITY CONFIRMED...'];
             scanInterval=setInterval(()=>{
-                scanProgress+=1.5;
-                fill.style.width=Math.min(scanProgress,100)+'%';
+                scanProgress+=1.5; fill.style.width=Math.min(scanProgress,100)+'%';
                 statusText.innerText=messages[Math.min(Math.floor((scanProgress/100)*messages.length),messages.length-1)]+' '+Math.floor(scanProgress)+'%';
                 if(scanProgress>=100){clearInterval(scanInterval);statusText.innerText='ACCESS GRANTED // AUTHENTICATING...';setTimeout(()=>executeAuth(),400);}
             },30);
@@ -218,11 +193,10 @@
         function clearStatus(){const el=document.getElementById('status-msg');el.innerText='';el.className='status-line';}
 
         async function executeAuth() {
-            const email    = document.getElementById('email').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-
             if (isRegistering) {
-                const fullName   = document.getElementById('fullname').value.trim();
+                const fullName = document.getElementById('fullname').value.trim();
                 const deptChoice = document.getElementById('dept-choice').value;
                 if (!email||!password||!fullName||!deptChoice){setStatus('ERROR: ALL FIELDS REQUIRED','error');return;}
                 setStatus('TRANSMITTING REQUEST TO O5 COUNCIL...','warning');
@@ -238,8 +212,7 @@
                                 A verification link has been dispatched to:<br>
                                 <span style="color:var(--green);">${email}</span><br><br>
                                 You must verify your email address before you can log in.<br>
-                                Check your inbox and click the link to activate your account.<br>
-                                Once verified, return here and log in normally.
+                                Check your inbox and click the link to activate your account.
                             </div>
                             <p style="color:rgba(0,255,65,0.4);font-size:0.8rem;margin-bottom:20px;">
                                 DEPARTMENTAL O5 NOTIFIED OF PENDING REQUEST.<br>
@@ -253,7 +226,6 @@
                 const{data,error}=await _supabase.auth.signInWithPassword({email,password});
                 if(error){
                     resetScan();
-                    // Detect email not confirmed error specifically
                     if(error.message.toLowerCase().includes('email not confirmed')||error.message.toLowerCase().includes('not confirmed')){
                         setStatus('ACCESS DENIED: EMAIL NOT VERIFIED','error');
                         showVerificationReminder(email);
@@ -271,7 +243,6 @@
         }
 
         function showVerificationReminder(email) {
-            // Insert a banner below the status message
             const existing = document.getElementById('verify-reminder');
             if (existing) return;
             const banner = document.createElement('div');
@@ -280,8 +251,8 @@
             banner.style.marginTop = '12px';
             banner.innerHTML = `
                 <strong>⚠ EMAIL_NOT_VERIFIED</strong>
-                Your account exists but your email address has not been verified.<br>
-                Check your inbox for a verification link from SCiPNET.<br><br>
+                Your account exists but your email has not been verified.<br>
+                Check your inbox for a verification link.<br><br>
                 <span style="color:rgba(255,215,0,0.6);font-size:0.75rem;">Didn't receive it?</span>
                 <button onclick="resendVerification('${email}')" style="color:var(--gold);border-color:rgba(255,215,0,0.3);font-size:0.78rem;padding:2px 10px;margin-left:8px;cursor:pointer;">RESEND</button>`;
             document.getElementById('status-msg').after(banner);
@@ -290,28 +261,23 @@
         async function resendVerification(email) {
             const{error}=await _supabase.auth.resend({type:'signup',email});
             if(error){setStatus('RESEND FAILED: '+error.message,'error');}
-            else{
-                const btn=document.querySelector('#verify-reminder button');
-                if(btn){btn.disabled=true;btn.innerText='SENT';}
-                setStatus('VERIFICATION LINK RESENT — CHECK YOUR INBOX','success');
-            }
+            else{const btn=document.querySelector('#verify-reminder button');if(btn){btn.disabled=true;btn.innerText='SENT';}setStatus('VERIFICATION LINK RESENT','success');}
         }
 
         async function checkAndCreateProfile(user) {
             const{data:profile}=await _supabase.from('profiles').select('id').eq('id',user.id).maybeSingle();
             if(!profile){
                 await _supabase.from('profiles').insert([{
-                    id:user.id,full_name:user.user_metadata?.full_name||'REDACTED_NAME',
+                    id:user.id, full_name:user.user_metadata?.full_name||'REDACTED_NAME',
                     department:user.user_metadata?.department||null,
-                    is_approved:false,is_banned:false,clearance_level:0
+                    is_approved:false, is_banned:false, clearance_level:0
                 }]);
             }
         }
 
         function typeWriter(text,elementId,speed=30){
             let i=0;const el=document.getElementById(elementId);if(!el)return;el.innerHTML='';
-            function type(){if(i<text.length){el.innerHTML+=text.charAt(i);i++;setTimeout(type,speed);}}
-            type();
+            function type(){if(i<text.length){el.innerHTML+=text.charAt(i);i++;setTimeout(type,speed);}}type();
         }
 
         function showRedScreen(userId){
@@ -327,10 +293,7 @@
                     <button id="ack-btn" style="display:none;background:var(--red);color:#000;border:none;padding:12px 30px;cursor:pointer;font-family:'VT323';font-size:1.1rem;letter-spacing:2px;">ACKNOWLEDGE_TERMINATION</button>
                 </div>`;
             typeWriter(`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`,'typewriter-revocation',40);
-            setTimeout(()=>{
-                typeWriter('MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.','typewriter-threat',30);
-                document.getElementById('ack-btn').style.display='block';
-            },2000);
+            setTimeout(()=>{typeWriter('MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.','typewriter-threat',30);document.getElementById('ack-btn').style.display='block';},2000);
             document.getElementById('ack-btn').onclick=async()=>{await _supabase.auth.signOut();location.reload();};
         }
 

@@ -6,6 +6,7 @@
     <title>SCiPNET - Incident Reports</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
     <script src="modal.js"></script>
@@ -17,7 +18,7 @@
         .priority-critical  { color: var(--red); border-color: rgba(255,62,62,0.4); }
 
         /* Only non-resolved critical incidents flicker */
-        .priority-critical.not-resolved { animation: flicker 0.6s infinite; }
+        .critical.not-resolved { animation: flicker 0.6s infinite; }
 
         .status-open          { color: var(--gold); }
         .status-investigating { color: #60a5fa; }
@@ -105,11 +106,7 @@
                 <div>
                     <label>INCIDENT TYPE</label>
                     <select id="inc-type" onchange="toggleCustomType()">
-                        <option value="Containment Breach">CONTAINMENT BREACH</option>
-                        <option value="Personnel Injury">PERSONNEL INJURY</option>
-                        <option value="Anomalous Activity">ANOMALOUS ACTIVITY</option>
-                        <option value="Security Violation">SECURITY VIOLATION</option>
-                        <option value="Custom">CUSTOM</option>
+
                     </select>
                 </div>
                 <div id="custom-type-wrapper" style="display:none;">
@@ -119,14 +116,7 @@
                 <div>
                     <label>ASSIGN TO DEPARTMENT (OPTIONAL)</label>
                     <select id="inc-dept">
-                        <option value="">-- NO ASSIGNMENT --</option>
-                        <option value="ScD">SCIENTIFIC (ScD)</option>
-                        <option value="MD">MEDICAL (MD)</option>
-                        <option value="SD">SECURITY (SD)</option>
-                        <option value="EcD">ENGINEERING (EcD)</option>
-                        <option value="RAISA">INFOSEC (RAISA)</option>
-                        <option value="AD">ADMINISTRATIVE (AD)</option>
-                        <option value="ISD">INTELLIGENCE (ISD)</option>
+                        
                     </select>
                 </div>
             </div>
@@ -246,17 +236,20 @@
             if (!auth) return;
             currentProfile = auth.profile;
             isElevated = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
+
+            // Populate department dropdowns using the shared registry
+            populateDeptSelect('inc-dept', null, true, false);
+            populateDeptSelect('assign-dept', null, true, false);
+
             loadIncidents();
 
             // Realtime subscription
             _supabase.channel('incident_changes')
                 .on('postgres_changes', { event:'*', schema:'public', table:'incident_reports' }, (payload) => {
-                    // Update the local array directly without full reload
                     if (payload.eventType === 'UPDATE') {
                         const idx = allIncidents.findIndex(i => i.id === payload.new.id);
                         if (idx !== -1) allIncidents[idx] = payload.new;
                         applyFilters();
-                        // Re-render detail panel if this is the selected incident
                         if (selectedIncidentId === payload.new.id) renderDetail(payload.new);
                     } else {
                         loadIncidents();
@@ -417,7 +410,7 @@
                 // Pre-select current department in assignment dropdown
                 if (isElevated) {
                     document.getElementById('assign-section').style.display = 'block';
-                    document.getElementById('assign-dept').value = incident.assigned_department || '';
+                    populateDeptSelect('assign-dept', incident.assigned_department || null, true, false);
                 } else {
                     document.getElementById('assign-section').style.display = 'none';
                 }
