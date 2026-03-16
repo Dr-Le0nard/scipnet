@@ -4,23 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - Records Archive</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="nav.js"></script>
+    <script src="modal.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="identity-block">
         <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
     </div>
-    <nav class="main-nav">
-        <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html" class="active">ARCHIVE</a>
-        <a href="personnel.html">PERSONNEL</a>
-        <a href="write.html">NEW_REPORT</a>
-        <a href="profile.html">PROFILE</a>
-    </nav>
+    <nav class="main-nav" id="main-nav"></nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">DATABASE_ARCHIVE</div>
         <div class="page-subtitle">SECURE DOCUMENT REPOSITORY // CLEARANCE-GATED ACCESS</div>
