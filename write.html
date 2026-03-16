@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - File Report</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="modal.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,15 +17,15 @@
     </div>
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html">DATABASE_ARCHIVE</a>
-        <a href="write.html" class="active">FILE_NEW_REPORT</a>
-        <a href="profile.html">MY_PROFILE</a>
+        <a href="archive.html">ARCHIVE</a>
+        <a href="write.html" class="active">NEW_REPORT</a>
+        <a href="profile.html">PROFILE</a>
     </nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="form-header">INITIALIZING_REPORT_MODULE</div>
         <div class="page-subtitle">SECURE DOCUMENT SUBMISSION // AUTHORIZED PERSONNEL ONLY</div>
         <div style="max-width:800px;">
-            <div id="dynamic-fields" style="margin-bottom:20px;"></div>
+            <div id="dynamic-fields" style="margin-bottom:16px;"></div>
             <label>DOCUMENT TITLE</label>
             <input type="text" id="title" placeholder="ENTER LOG TITLE...">
             <label>CLEARANCE RESTRICTION</label>
@@ -62,9 +64,9 @@
         function setupExtraFields(){
             const container=document.getElementById('dynamic-fields');
             if(reportModule==='research'){
-                container.innerHTML=`<div style="border-left:2px solid var(--green-border);padding-left:16px;margin-bottom:20px;"><label>SUBJECT ID</label><input type="text" id="meta_subject" placeholder="e.g. SCP-096"><label>TEST PHASE</label><input type="text" id="meta_phase" placeholder="e.g. Initial Exposure"></div>`;
+                container.innerHTML=`<div style="border-left:2px solid var(--green-border);padding-left:14px;margin-bottom:16px;"><label>SUBJECT ID</label><input type="text" id="meta_subject" placeholder="e.g. SCP-096"><label>TEST PHASE</label><input type="text" id="meta_phase" placeholder="e.g. Initial Exposure"></div>`;
             }else if(reportModule==='medical'){
-                container.innerHTML=`<div style="border-left:2px solid var(--green-border);padding-left:16px;margin-bottom:20px;"><label>PATIENT ID</label><input type="text" id="meta_patient" placeholder="e.g. D-9022"></div>`;
+                container.innerHTML=`<div style="border-left:2px solid var(--green-border);padding-left:14px;margin-bottom:16px;"><label>PATIENT ID</label><input type="text" id="meta_patient" placeholder="e.g. D-9022"></div>`;
             }
         }
         async function submitReport(){
@@ -73,7 +75,9 @@
             const cl=parseInt(document.getElementById('clearance_level').value);
             if(!title||!content){toast('CRITICAL_ERROR: DATA_MISSING','error');return;}
             const isElevated=currentUserProfile.is_admin||currentUserProfile.is_overseer||currentUserProfile.is_terminal_admin;
-            if(!isElevated&&cl>currentUserProfile.clearance_level){toast('ACCESS_DENIED: CLEARANCE_LEVEL_EXCEEDS_YOUR_AUTHORIZATION','error');return;}
+            if(!isElevated&&cl>currentUserProfile.clearance_level){toast('ACCESS_DENIED: CLEARANCE_EXCEEDS_AUTHORIZATION','error');return;}
+            const confirmed=await showModal(`TRANSMIT DOCUMENT TO SECURE SERVERS?\n\nTITLE: ${title}\nCLEARANCE: LEVEL ${cl}`,{title:'CONFIRM_TRANSMISSION',confirmText:'TRANSMIT',cancelText:'ABORT'});
+            if(!confirmed)return;
             let finalContent='';
             document.querySelectorAll('#dynamic-fields input').forEach(input=>{
                 const lbl=input.previousElementSibling?.innerText||'';

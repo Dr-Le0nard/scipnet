@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - Personnel File</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="modal.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,46 +17,45 @@
     </div>
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html">DATABASE_ARCHIVE</a>
-        <a href="personnel.html">PERSONNEL_DIRECTORY</a>
-        <a href="profile.html" class="active">MY_PROFILE</a>
+        <a href="archive.html">ARCHIVE</a>
+        <a href="personnel.html">PERSONNEL</a>
+        <a href="profile.html" class="active">PROFILE</a>
     </nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">PERSONNEL_FILE</div>
         <div class="page-subtitle" id="profile-subtitle">LOADING...</div>
 
-        <!-- Identity Card -->
-        <div class="card" style="margin-bottom:24px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
-            <div style="flex:1;min-width:220px;">
-                <div style="font-family:var(--font-display);font-size:1.8rem;letter-spacing:3px;margin-bottom:8px;" id="profile-name">---</div>
-                <div id="profile-badge" style="margin-bottom:12px;"></div>
-                <div style="font-size:0.75rem;color:var(--text-dim);letter-spacing:2px;" id="profile-status"></div>
+        <div class="card" style="margin-bottom:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+            <div style="flex:1;min-width:200px;">
+                <div style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:3px;margin-bottom:8px;" id="profile-name">---</div>
+                <div id="profile-badge" style="margin-bottom:10px;"></div>
+                <div style="font-size:0.72rem;color:var(--text-dim);letter-spacing:2px;" id="profile-status"></div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:8px;min-width:180px;">
+            <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
                 <div class="meta-item"><span class="meta-label">DEPARTMENT</span><span class="meta-value" id="profile-dept">---</span></div>
                 <div class="meta-item"><span class="meta-label">CLEARANCE</span><span class="meta-value" id="profile-cl">---</span></div>
-                <div class="meta-item"><span class="meta-label">ACCOUNT STATUS</span><span class="meta-value" id="profile-approved">---</span></div>
+                <div class="meta-item"><span class="meta-label">STATUS</span><span class="meta-value" id="profile-approved">---</span></div>
             </div>
         </div>
 
-        <!-- Bio -->
         <div class="section-header">PERSONNEL_BIO</div>
         <div style="max-width:700px;">
-            <textarea id="bio-input" rows="5" placeholder="NO BIO ON RECORD. ENTER PERSONNEL BIOGRAPHY..."></textarea>
+            <textarea id="bio-input" rows="4" placeholder="NO BIO ON RECORD. ENTER PERSONNEL BIOGRAPHY..."></textarea>
             <div class="btn-row">
                 <button onclick="saveBio()">SAVE_BIO</button>
-                <span style="color:var(--text-dim);font-size:0.75rem;letter-spacing:1px;">BIO IS VISIBLE TO OTHER PERSONNEL IN THE DIRECTORY</span>
+                <span style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;">VISIBLE TO AUTHORIZED PERSONNEL</span>
             </div>
         </div>
 
-        <!-- Authored Documents -->
-        <div class="section-header" style="margin-top:36px;">AUTHORED_DOCUMENTS</div>
-        <table>
-            <thead><tr><th>DATE</th><th>DEPT</th><th>CL</th><th>TITLE</th><th>ACTION</th></tr></thead>
-            <tbody id="authored-list"><tr><td colspan="5" style="color:var(--text-dim);padding:20px;">LOADING...</td></tr></tbody>
-        </table>
+        <div class="section-header" style="margin-top:32px;">AUTHORED_DOCUMENTS</div>
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>DATE</th><th>DEPT</th><th>CL</th><th>TITLE</th><th>ACTION</th></tr></thead>
+                <tbody id="authored-list"><tr><td colspan="5" style="color:var(--text-dim);padding:20px;">LOADING...</td></tr></tbody>
+            </table>
+        </div>
 
-        <div style="margin-top:32px;">
+        <div style="margin-top:28px;">
             <button class="btn-red" onclick="confirmLogout()">[ TERMINATE_SESSION ]</button>
         </div>
     </div>
@@ -70,9 +71,9 @@
             document.getElementById('profile-approved').innerText=profile.is_approved?'ACTIVE':'PENDING';
             document.getElementById('profile-approved').style.color=profile.is_approved?'var(--green)':'var(--gold)';
             const badge=document.getElementById('profile-badge');
-            if(profile.is_terminal_admin){badge.innerHTML=`<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>ROOT_SYSTEM_ACCESS // TECH_ADMIN</span>`;}
-            else if(profile.is_overseer){badge.innerHTML=`<span class="clearance-badge red"><span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span>O5_COUNCIL_CHAIRMAN</span>`;}
-            else if(profile.is_admin){badge.innerHTML=`<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>O5_COUNCIL_MEMBER</span>`;}
+            if(profile.is_terminal_admin){badge.innerHTML=`<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>ROOT_SYSTEM_ACCESS</span>`;}
+            else if(profile.is_overseer){badge.innerHTML=`<span class="clearance-badge red"><span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span>O5_CHAIRMAN</span>`;}
+            else if(profile.is_admin){badge.innerHTML=`<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>O5_COUNCIL</span>`;}
             else{badge.innerHTML=`<span class="clearance-badge"><span class="status-dot"></span>FOUNDATION_PERSONNEL</span>`;}
             const statusParts=[];
             if(profile.is_terminal_admin)statusParts.push('TERMINAL_ADMIN');
@@ -82,7 +83,6 @@
             document.getElementById('bio-input').value=profile.bio||'';
             loadAuthoredDocs(profile.full_name);
         }
-
         async function loadAuthoredDocs(fullName){
             const list=document.getElementById('authored-list');
             const{data:docs,error}=await _supabase.from('articles').select('*').eq('author',fullName).order('created_at',{ascending:false});
@@ -92,14 +92,13 @@
                     <td>${new Date(d.created_at).toLocaleDateString()}</td>
                     <td style="color:var(--text-dim)">[${d.department||'N/A'}]</td>
                     <td style="color:var(--text-dim)">L${d.required_clearance}</td>
-                    <td style="color:var(--green)">${d.title||'UNTITLED_FILE'}</td>
+                    <td style="color:var(--green)">${d.title||'UNTITLED'}</td>
                     <td><div class="btn-row">
                         <button onclick="window.location.href='view.html?id=${d.id}'">OPEN</button>
                         <button class="btn-gold" onclick="window.location.href='edit.html?id=${d.id}'">EDIT</button>
                     </div></td>
                 </tr>`).join('');
         }
-
         async function saveBio(){
             const bio=document.getElementById('bio-input').value.trim();
             const{data:{user}}=await _supabase.auth.getUser();
@@ -107,11 +106,12 @@
             if(error){toast('BIO_UPDATE_FAILED: '+error.message,'error');}
             else{toast('BIO_UPDATED_SUCCESSFULLY','success');}
         }
-
         async function confirmLogout(){
-            if(confirm('TERMINATE CURRENT SESSION?')){await _supabase.auth.signOut();window.location.href='index.html';}
+            const confirmed=await showModal('TERMINATE YOUR CURRENT SESSION?',{title:'CONFIRM_LOGOUT',confirmText:'TERMINATE',cancelText:'CANCEL',danger:true});
+            if(!confirmed)return;
+            await _supabase.auth.signOut();
+            window.location.href='index.html';
         }
-
         window.onload=loadProfile;
     </script>
 </body>

@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - Admin Override</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="modal.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,29 +17,29 @@
     </div>
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html">DATABASE_ARCHIVE</a>
-        <a href="personnel.html">PERSONNEL_DIRECTORY</a>
-        <a href="profile.html">MY_PROFILE</a>
-        <a href="admin.html" class="active" id="admin-nav-label">ADMIN_OVERRIDE</a>
+        <a href="archive.html">ARCHIVE</a>
+        <a href="personnel.html">PERSONNEL</a>
+        <a href="profile.html">PROFILE</a>
+        <a href="admin.html" class="active" id="admin-nav-label">ADMIN</a>
     </nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="admin-header">ADMIN_TERMINAL_OVERRIDE</div>
         <div class="page-subtitle">PERSONNEL MANAGEMENT // RESTRICTED ACCESS</div>
 
         <!-- Alert Broadcast Panel -->
-        <div class="card card-gold" style="margin-bottom:32px;" id="alert-control-panel">
-            <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;color:var(--gold);margin-bottom:16px;">// SITE-WIDE_ALERT_BROADCAST</div>
+        <div class="card card-gold" style="margin-bottom:28px;" id="alert-control-panel">
+            <div style="font-family:var(--font-display);font-size:1.05rem;letter-spacing:3px;color:var(--gold);margin-bottom:14px;">// SITE-WIDE_ALERT_BROADCAST</div>
             <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-                <div style="flex:1;min-width:240px;">
+                <div style="flex:1;min-width:200px;">
                     <label>ALERT MESSAGE</label>
-                    <input type="text" id="alert-message-input" placeholder="ENTER ALERT MESSAGE TO BROADCAST..." style="border-color:rgba(255,215,0,0.3);color:var(--gold);background:rgba(20,16,0,0.8);margin-bottom:0;">
+                    <input type="text" id="alert-message-input" placeholder="ENTER ALERT MESSAGE..." style="border-color:rgba(255,215,0,0.3);color:var(--gold);background:rgba(20,16,0,0.8);margin-bottom:0;">
                 </div>
-                <div class="btn-row" style="padding-bottom:0;">
+                <div class="btn-row">
                     <button class="btn-gold" onclick="broadcastAlert()">BROADCAST</button>
-                    <button onclick="clearAlert()">CLEAR_ALERT</button>
+                    <button onclick="clearAlert()">CLEAR</button>
                 </div>
             </div>
-            <div style="margin-top:12px;font-size:0.75rem;color:rgba(255,215,0,0.4);letter-spacing:1px;" id="alert-current-status">CHECKING CURRENT ALERT STATUS...</div>
+            <div style="margin-top:10px;font-size:0.72rem;color:rgba(255,215,0,0.4);letter-spacing:1px;" id="alert-current-status">CHECKING...</div>
         </div>
 
         <!-- Flags -->
@@ -46,71 +48,66 @@
             <div class="grid" id="flagged-list"></div>
         </div>
 
-        <!-- Filter -->
         <div class="filter-bar">
-            <input type="text" id="user-search" placeholder="FILTER PERSONNEL BY NAME..." onkeyup="filterUsers()">
+            <input type="text" id="user-search" placeholder="FILTER PERSONNEL..." onkeyup="filterUsers()">
         </div>
 
         <div class="section-header">PENDING_ACCESS_REQUESTS</div>
-        <div class="grid" id="pending-list"><div style="color:var(--text-dim);">SCANNING FOR REQUESTS...</div></div>
+        <div class="grid" id="pending-list"><div style="color:var(--text-dim);">SCANNING...</div></div>
         <hr>
         <div class="section-header">ACTIVE_PERSONNEL_MANAGEMENT</div>
-        <div class="grid" id="active-list"><div style="color:var(--text-dim);">SCANNING ACTIVE USERS...</div></div>
+        <div class="grid" id="active-list"><div style="color:var(--text-dim);">SCANNING...</div></div>
     </div>
 
     <script>
-        let currentUserId=null, myProfile=null;
-
+        let currentUserId=null,myProfile=null;
         async function initAdmin(){
             const auth=await requireAuth(true);if(!auth)return;
-            currentUserId=auth.user.id; myProfile=auth.profile;
+            currentUserId=auth.user.id;myProfile=auth.profile;
             if(myProfile.is_terminal_admin){
                 document.getElementById('admin-header').innerText='ROOT_SYSTEM_OVERRIDE';
                 document.getElementById('admin-header').style.color='var(--gold)';
-                document.getElementById('admin-nav-label').innerText='SYSTEM_OVERRIDE';
-                loadFlags(); loadAlertStatus();
+                document.getElementById('admin-nav-label').innerText='SYSTEM';
+                loadFlags();loadAlertStatus();
             }else if(myProfile.is_overseer){
                 document.getElementById('admin-header').innerText='CHAIRMAN_OVERRIDE';
                 document.getElementById('admin-header').style.color='var(--red)';
-                document.getElementById('admin-nav-label').innerText='CHAIRMAN_OVERRIDE';
-                loadFlags(); loadAlertStatus();
+                loadFlags();loadAlertStatus();
             }else{
                 document.getElementById('alert-control-panel').style.display='none';
             }
-            loadPending(); loadActiveUsers();
+            loadPending();loadActiveUsers();
         }
 
-        // ---- ALERT CONTROL ----
         async function loadAlertStatus(){
             const{data,error}=await _supabase.from('system_status').select('*').limit(1).maybeSingle();
             const statusEl=document.getElementById('alert-current-status');
-            if(error||!data){statusEl.innerText='NO ALERT ROW FOUND IN SYSTEM_STATUS TABLE';return;}
+            if(error||!data){statusEl.innerText='NO ALERT ROW FOUND';return;}
             if(data.is_active){
-                statusEl.innerHTML=`CURRENT ALERT: <span style="color:var(--gold);">${data.alert_message}</span> &nbsp;[ACTIVE]`;
+                statusEl.innerHTML=`ACTIVE: <span style="color:var(--gold);">${data.alert_message}</span>`;
                 document.getElementById('alert-message-input').value=data.alert_message||'';
-            }else{
-                statusEl.innerText='NO ACTIVE ALERT — SYSTEM STATUS NOMINAL';
-            }
+            }else{statusEl.innerText='NO ACTIVE ALERT — STATUS NOMINAL';}
         }
 
         async function broadcastAlert(){
             const msg=document.getElementById('alert-message-input').value.trim();
             if(!msg){toast('ALERT MESSAGE CANNOT BE EMPTY','error');return;}
+            const confirmed=await showModal(`BROADCAST TO ALL ACTIVE TERMINALS:\n"${msg}"`,{title:'CONFIRM_BROADCAST',confirmText:'BROADCAST',cancelText:'ABORT',danger:false});
+            if(!confirmed)return;
             const{error}=await _supabase.rpc('set_system_alert',{p_message:msg,p_active:true});
             if(error){toast('BROADCAST_FAILED: '+error.message,'error');return;}
-            toast('ALERT BROADCAST TO ALL ACTIVE TERMINALS','warning');
-            loadAlertStatus();
+            toast('ALERT BROADCAST TO ALL ACTIVE TERMINALS','warning');loadAlertStatus();
         }
 
         async function clearAlert(){
+            const confirmed=await showModal('DEACTIVATE THE CURRENT SITE-WIDE ALERT?',{title:'CONFIRM_CLEAR',confirmText:'CLEAR',cancelText:'CANCEL'});
+            if(!confirmed)return;
             const{error}=await _supabase.rpc('set_system_alert',{p_message:'',p_active:false});
             if(error){toast('CLEAR_FAILED: '+error.message,'error');return;}
-            toast('ALERT CLEARED — SYSTEM STATUS NOMINAL','success');
-            document.getElementById('alert-message-input').value='';
-            loadAlertStatus();
+            toast('ALERT CLEARED — STATUS NOMINAL','success');
+            document.getElementById('alert-message-input').value='';loadAlertStatus();
         }
 
-        // ---- FLAGS ----
         async function loadFlags(){
             const{data:flagged,error}=await _supabase.from('profiles').select('*').not('admin_notice','is',null);
             if(error||!flagged||flagged.length===0)return;
@@ -134,12 +131,12 @@
             const{data:pending,error}=await query;
             const container=document.getElementById('pending-list');
             if(error){container.innerHTML=`<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`;return;}
-            if(pending.length===0){container.innerHTML=`<div style="color:var(--text-dim)">NO PENDING REQUESTS IN JURISDICTION</div>`;return;}
+            if(pending.length===0){container.innerHTML=`<div style="color:var(--text-dim)">NO PENDING REQUESTS</div>`;return;}
             container.innerHTML=pending.map(u=>{
                 const isMe=currentUserId===u.id;
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
                     <h3>${u.full_name}</h3>
-                    <p><strong>REQUESTED DEPT:</strong> ${u.department||'NONE'}</p>
+                    <p><strong>DEPT:</strong> ${u.department||'NONE'}</p>
                     <label>VALIDATE DEPARTMENT:</label>
                     <select id="dept-${u.id}">
                         <option value="ScD" ${u.department==='ScD'?'selected':''}>Scientific (ScD)</option>
@@ -155,10 +152,10 @@
                         <option value="1">Level 1</option><option value="2">Level 2</option>
                         <option value="3">Level 3</option><option value="4">Level 4</option>
                     </select>
-                    <div class="btn-row" style="margin-top:12px;">
-                        <button onclick="approveUser('${u.id}')">GRANT_ACCESS</button>
+                    <div class="btn-row" style="margin-top:10px;">
+                        <button onclick="approveUser('${u.id}')">GRANT</button>
                         <button class="btn-gold" onclick="flagUser('${u.id}','Departmental Misalignment Reported')" ${isMe?'disabled':''}>
-                            ${isMe?'CANNOT_FLAG_SELF':'FLAG'}
+                            ${isMe?'N/A':'FLAG'}
                         </button>
                     </div>
                 </div>`;
@@ -171,7 +168,7 @@
             const{data:active,error}=await query.order('full_name',{ascending:true});
             const container=document.getElementById('active-list');
             if(error){container.innerHTML=`<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`;return;}
-            if(active.length===0){container.innerHTML=`<div style="color:var(--text-dim)">NO ACTIVE USERS IN JURISDICTION</div>`;return;}
+            if(active.length===0){container.innerHTML=`<div style="color:var(--text-dim)">NO ACTIVE USERS</div>`;return;}
             container.innerHTML=active.map(u=>{
                 const isMe=currentUserId===u.id;
                 let canRevoke=false;
@@ -179,9 +176,9 @@
                 if(myProfile.is_overseer&&!u.is_terminal_admin&&!isMe)canRevoke=true;
                 if(myProfile.is_admin&&!u.is_admin&&!u.is_overseer&&!u.is_terminal_admin)canRevoke=true;
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
-                    <h3>${u.full_name} ${u.is_terminal_admin?`<span style="color:var(--gold);font-size:0.8rem;">[TECH_ADMIN]</span>`:''}</h3>
-                    <p><strong>DEPT:</strong> [${u.department||'NONE'}] &nbsp;|&nbsp; <strong>CL:</strong> ${u.clearance_level}</p>
-                    <div class="btn-row" style="margin-top:12px;">
+                    <h3>${u.full_name} ${u.is_terminal_admin?`<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>`:''}</h3>
+                    <p>DEPT: [${u.department||'NONE'}] | CL: ${u.clearance_level}</p>
+                    <div class="btn-row" style="margin-top:10px;">
                         <button class="btn-gold" onclick="flagUser('${u.id}','Active Personnel Audit Required')" ${isMe?'disabled':''}>
                             ${isMe?'N/A':'FLAG'}
                         </button>
@@ -197,7 +194,7 @@
             if(userId===currentUserId){toast('CANNOT_FLAG_SELF','error');return;}
             const{error}=await _supabase.from('profiles').update({admin_notice:reason}).eq('id',userId);
             if(error)toast('FLAG_FAILED: '+error.message,'error');
-            else{toast('USER FLAGGED — TERMINAL ADMINISTRATOR NOTIFIED','warning');location.reload();}
+            else{toast('USER FLAGGED','warning');location.reload();}
         }
         async function clearFlag(userId){
             if(userId===currentUserId){toast('CANNOT_UNFLAG_SELF','error');return;}
@@ -210,14 +207,14 @@
             const dept=document.getElementById(`dept-${userId}`).value;
             const{error}=await _supabase.from('profiles').update({is_approved:true,clearance_level:parseInt(level),department:dept,admin_notice:null}).eq('id',userId);
             if(error)toast('UPDATE_FAILED: '+error.message,'error');
-            else{toast('ACCESS GRANTED — PERSONNEL APPROVED','success');location.reload();}
+            else{toast('ACCESS GRANTED','success');location.reload();}
         }
         async function revokeAccess(userId){
-            if(confirm('WARNING: PERMANENTLY BAN THIS USER?')){
-                const{error}=await _supabase.from('profiles').update({is_approved:false,is_banned:true}).eq('id',userId);
-                if(error)toast('BAN_FAILED: '+error.message,'error');
-                else{toast('USER BANNED — ACCESS PERMANENTLY REVOKED','warning');location.reload();}
-            }
+            const confirmed=await showModal('THIS ACTION WILL PERMANENTLY BAN THIS USER. THEY WILL LOSE ALL ACCESS IMMEDIATELY.',{title:'CONFIRM_REVOCATION',confirmText:'REVOKE',cancelText:'ABORT',danger:true});
+            if(!confirmed)return;
+            const{error}=await _supabase.from('profiles').update({is_approved:false,is_banned:true}).eq('id',userId);
+            if(error)toast('BAN_FAILED: '+error.message,'error');
+            else{toast('USER BANNED — ACCESS REVOKED','warning');location.reload();}
         }
         function filterUsers(){
             const q=document.getElementById('user-search').value.toLowerCase();

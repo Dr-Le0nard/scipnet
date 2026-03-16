@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - Records Archive</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
@@ -15,14 +16,15 @@
     </div>
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html" class="active">DATABASE_ARCHIVE</a>
-        <a href="personnel.html">PERSONNEL_DIRECTORY</a>
-        <a href="write.html">FILE_NEW_REPORT</a>
-        <a href="profile.html">MY_PROFILE</a>
+        <a href="archive.html" class="active">ARCHIVE</a>
+        <a href="personnel.html">PERSONNEL</a>
+        <a href="write.html">NEW_REPORT</a>
+        <a href="profile.html">PROFILE</a>
     </nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">DATABASE_ARCHIVE</div>
         <div class="page-subtitle">SECURE DOCUMENT REPOSITORY // CLEARANCE-GATED ACCESS</div>
+
         <div class="overseer-filter" id="overseer-filters">
             <label>OVERSEER_VIEW:</label>
             <select id="dept-filter" onchange="fetchReports()">
@@ -36,16 +38,28 @@
                 <option value="ISD">INTELLIGENCE (ISD)</option>
             </select>
         </div>
+
         <div class="filter-bar">
             <input type="text" id="doc-search" placeholder="SEARCH DOCUMENTS..." onkeyup="filterTable()" style="max-width:360px;">
+            <span id="record-count" style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;white-space:nowrap;"></span>
         </div>
-        <table>
-            <thead><tr><th>DATE</th><th>DEPT</th><th>CL</th><th>TITLE</th><th>AUTHOR</th><th>ACTION</th></tr></thead>
-            <tbody id="report-list"><tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr></tbody>
-        </table>
+
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>DATE</th><th>DEPT</th><th>CL</th><th>TITLE</th><th>AUTHOR</th><th>ACTION</th></tr></thead>
+                <tbody id="report-list"><tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:20px;flex-wrap:wrap;"></div>
     </div>
+
     <script>
-        let currentProfile=null,isElevated=false,isAdmin=false,allReports=[];
+        const PAGE_SIZE = 20;
+        let currentProfile=null,isElevated=false,isAdmin=false;
+        let allReports=[],filteredReports=[],currentPage=1;
+
         async function initArchive(){
             const auth=await requireAuth();if(!auth)return;
             currentProfile=auth.profile;
@@ -53,6 +67,7 @@
             else if(currentProfile.is_admin){isAdmin=true;}
             fetchReports();
         }
+
         async function fetchReports(){
             const list=document.getElementById('report-list');
             list.innerHTML=`<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr>`;
@@ -66,20 +81,46 @@
             }
             const{data:reports,error}=await query;
             if(error){list.innerHTML=`<tr><td colspan="6" style="color:var(--red)">QUERY_ERROR: ${error.message}</td></tr>`;return;}
-            allReports=reports;renderTable(reports);
+            allReports=reports;
+            filteredReports=reports;
+            currentPage=1;
+            renderPage();
         }
-        function renderTable(reports){
+
+        function filterTable(){
+            const q=document.getElementById('doc-search').value.toLowerCase();
+            filteredReports=allReports.filter(r=>(r.title||'').toLowerCase().includes(q)||(r.author||'').toLowerCase().includes(q)||(r.department||'').toLowerCase().includes(q));
+            currentPage=1;
+            renderPage();
+        }
+
+        function renderPage(){
             const list=document.getElementById('report-list');
-            if(reports.length===0){list.innerHTML=`<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">NO RECORDS FOUND UNDER CURRENT CLEARANCE</td></tr>`;return;}
+            const countEl=document.getElementById('record-count');
+            const pagination=document.getElementById('pagination');
+
+            if(filteredReports.length===0){
+                list.innerHTML=`<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">NO RECORDS FOUND</td></tr>`;
+                countEl.innerText='';
+                pagination.innerHTML='';
+                return;
+            }
+
+            const totalPages=Math.ceil(filteredReports.length/PAGE_SIZE);
+            const start=(currentPage-1)*PAGE_SIZE;
+            const pageReports=filteredReports.slice(start,start+PAGE_SIZE);
+
+            countEl.innerText=`${filteredReports.length} RECORD${filteredReports.length!==1?'S':''} // PAGE ${currentPage}/${totalPages}`;
+
             const isElevatedUser=currentProfile.is_admin||currentProfile.is_overseer||currentProfile.is_terminal_admin;
-            list.innerHTML=reports.map(r=>{
+            list.innerHTML=pageReports.map(r=>{
                 const date=new Date(r.created_at).toLocaleDateString();
                 const canEdit=isElevatedUser||r.author===currentProfile.full_name;
                 return `<tr>
                     <td>${date}</td>
                     <td><span style="color:var(--text-dim)">[${r.department||'N/A'}]</span></td>
                     <td><span style="color:var(--text-dim)">L${r.required_clearance}</span></td>
-                    <td style="color:var(--green);">${r.title||'UNTITLED_FILE'}</td>
+                    <td style="color:var(--green);">${r.title||'UNTITLED'}</td>
                     <td style="color:var(--text-mid);">${r.author||'UNKNOWN'}</td>
                     <td><div class="btn-row">
                         <button onclick="window.location.href='view.html?id=${r.id}'">OPEN</button>
@@ -87,11 +128,38 @@
                     </div></td>
                 </tr>`;
             }).join('');
+
+            // Pagination controls
+            if(totalPages<=1){pagination.innerHTML='';return;}
+            let pages='';
+            // Prev button
+            pages+=`<button onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>◄</button>`;
+            // Page numbers — show max 5
+            const range=getPageRange(currentPage,totalPages);
+            range.forEach(p=>{
+                if(p==='...'){pages+=`<span style="color:var(--text-dim);padding:0 4px;">...</span>`;}
+                else{pages+=`<button ${p===currentPage?'style="border-color:var(--green);background:var(--green-glow);"':''} onclick="goToPage(${p})">${p}</button>`;}
+            });
+            // Next button
+            pages+=`<button onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>►</button>`;
+            pagination.innerHTML=pages;
         }
-        function filterTable(){
-            const q=document.getElementById('doc-search').value.toLowerCase();
-            renderTable(allReports.filter(r=>(r.title||'').toLowerCase().includes(q)||(r.author||'').toLowerCase().includes(q)||(r.department||'').toLowerCase().includes(q)));
+
+        function goToPage(page){
+            const totalPages=Math.ceil(filteredReports.length/PAGE_SIZE);
+            if(page<1||page>totalPages)return;
+            currentPage=page;
+            renderPage();
+            window.scrollTo({top:0,behavior:'smooth'});
         }
+
+        function getPageRange(current,total){
+            if(total<=7)return Array.from({length:total},(_,i)=>i+1);
+            if(current<=4)return[1,2,3,4,5,'...',total];
+            if(current>=total-3)return[1,'...',total-4,total-3,total-2,total-1,total];
+            return[1,'...',current-1,current,current+1,'...',total];
+        }
+
         window.onload=initArchive;
     </script>
 </body>

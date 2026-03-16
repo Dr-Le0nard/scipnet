@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - Personnel Directory</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
@@ -15,16 +16,16 @@
     </div>
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html">DATABASE_ARCHIVE</a>
-        <a href="personnel.html" class="active">PERSONNEL_DIRECTORY</a>
-        <a href="write.html">FILE_NEW_REPORT</a>
-        <a href="profile.html">MY_PROFILE</a>
+        <a href="archive.html">ARCHIVE</a>
+        <a href="personnel.html" class="active">PERSONNEL</a>
+        <a href="write.html">NEW_REPORT</a>
+        <a href="profile.html">PROFILE</a>
     </nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">PERSONNEL_DIRECTORY</div>
         <div class="page-subtitle" id="access-notice">FOUNDATION STAFF MANIFEST // LOADING...</div>
         <div class="filter-bar">
-            <input type="text" id="personnelSearch" placeholder="SEARCH BY NAME, CLEARANCE OR DEPARTMENT..." onkeyup="filterPersonnel()" style="max-width:480px;">
+            <input type="text" id="personnelSearch" placeholder="SEARCH BY NAME, CLEARANCE OR DEPT..." onkeyup="filterPersonnel()" style="max-width:480px;">
         </div>
         <div class="grid" id="personnel-list">
             <div style="color:var(--text-dim);">RETRIEVING STAFF MANIFEST...</div>
@@ -50,10 +51,10 @@
                 <div class="card">
                     <h3>${p.full_name}</h3>
                     <p style="margin-bottom:4px;">
-                        <span class="clearance-badge" style="font-size:0.75rem;padding:2px 8px;">CL: ${p.clearance_level}</span>
-                        &nbsp;<span style="color:var(--text-dim);font-size:0.78rem;">[${p.department||'UNASSIGNED'}]</span>
+                        <span class="clearance-badge" style="font-size:0.72rem;padding:2px 8px;">CL: ${p.clearance_level}</span>
+                        &nbsp;<span style="color:var(--text-dim);font-size:0.75rem;">[${p.department||'UNASSIGNED'}]</span>
                     </p>
-                    <p style="margin-top:8px;color:var(--text-dim);font-size:0.78rem;">${p.bio||'NO BIO ON RECORD'}</p>
+                    <p style="margin-top:6px;color:var(--text-dim);font-size:0.75rem;">${p.bio||'NO BIO ON RECORD'}</p>
                 </div>`).join('');
         }
         function filterPersonnel(){

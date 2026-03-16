@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - Edit Document</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="modal.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,9 +17,9 @@
     </div>
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html">DATABASE_ARCHIVE</a>
+        <a href="archive.html">ARCHIVE</a>
         <a href="write.html" class="active">EDIT_DOCUMENT</a>
-        <a href="profile.html">MY_PROFILE</a>
+        <a href="profile.html">PROFILE</a>
     </nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="form-header">LOADING_DOCUMENT...</div>
@@ -64,12 +66,15 @@
             const content=document.getElementById('content').value.trim();
             const clearance=parseInt(document.getElementById('clearance_level').value);
             if(!title||!content){toast('CRITICAL_ERROR: DATA_MISSING','error');return;}
+            const confirmed=await showModal(`SAVE CHANGES TO THIS DOCUMENT?`,{title:'CONFIRM_UPDATE',confirmText:'SAVE',cancelText:'CANCEL'});
+            if(!confirmed)return;
             const{error}=await _supabase.from('articles').update({title,content,required_clearance:clearance}).eq('id',articleId);
             if(error){toast('UPDATE_FAILED: '+error.message,'error');}
             else{toast('DOCUMENT_UPDATED_SUCCESSFULLY','success');setTimeout(()=>window.location.href=`view.html?id=${articleId}`,1200);}
         }
         async function deleteDocument(){
-            if(!confirm('WARNING: PERMANENTLY DELETE THIS DOCUMENT? THIS CANNOT BE UNDONE.'))return;
+            const confirmed=await showModal('THIS ACTION IS PERMANENT. THE DOCUMENT WILL BE ERASED FROM THE ARCHIVE.',{title:'CONFIRM_DELETION',confirmText:'DELETE',cancelText:'ABORT',danger:true});
+            if(!confirmed)return;
             const{error}=await _supabase.from('articles').delete().eq('id',articleId);
             if(error){toast('DELETE_FAILED: '+error.message,'error');}
             else{toast('DOCUMENT_PERMANENTLY_DELETED','warning');setTimeout(()=>window.location.href='archive.html',1200);}

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCiPNET - Document Viewer</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
@@ -15,9 +16,9 @@
     </div>
     <nav class="main-nav">
         <a href="dashboard.html">DASHBOARD</a>
-        <a href="archive.html">DATABASE_ARCHIVE</a>
-        <a href="personnel.html">PERSONNEL_DIRECTORY</a>
-        <a href="profile.html">MY_PROFILE</a>
+        <a href="archive.html">ARCHIVE</a>
+        <a href="personnel.html">PERSONNEL</a>
+        <a href="profile.html">PROFILE</a>
     </nav>
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="doc-title">ACCESSING_SECURE_FILE...</div>
@@ -29,7 +30,7 @@
             <div class="meta-item"><span class="meta-label">FILED</span><span class="meta-value" id="doc-date">---</span></div>
         </div>
         <div class="document-body" id="doc-content">LOADING...</div>
-        <div class="btn-row" style="margin-top:20px;" id="doc-actions">
+        <div class="btn-row" style="margin-top:16px;" id="doc-actions">
             <button onclick="window.location.href='archive.html'">RETURN_TO_ARCHIVE</button>
         </div>
     </div>
@@ -55,14 +56,14 @@
         }
         function showAccessDenied(){
             document.body.innerHTML=`
-                <div style="background:#020000;color:var(--red);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'VT323',monospace;border:2px solid var(--red);">
-                    <div style="font-size:3rem;animation:flicker 0.5s infinite;letter-spacing:6px;">[ ACCESS_DENIED ]</div>
-                    <div style="border:1px solid var(--red);padding:20px;margin:20px;max-width:500px;background:rgba(255,0,0,0.03);">
-                        <p style="margin-bottom:12px;">MEMETIC KILL AGENT ACTIVATED.</p>
-                        <p style="margin-bottom:12px;">REMAIN CALM. DO NOT ATTEMPT TO LEAVE YOUR TERMINAL.</p>
+                <div style="background:#020000;color:var(--red);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'VT323',monospace;border:2px solid var(--red);padding:20px;">
+                    <div style="font-size:2.5rem;animation:flicker 0.5s infinite;letter-spacing:6px;">[ ACCESS_DENIED ]</div>
+                    <div style="border:1px solid var(--red);padding:16px;margin:16px;max-width:480px;background:rgba(255,0,0,0.03);">
+                        <p style="margin-bottom:10px;">MEMETIC KILL AGENT ACTIVATED.</p>
+                        <p style="margin-bottom:10px;">REMAIN CALM. DO NOT ATTEMPT TO LEAVE YOUR TERMINAL.</p>
                         <p>SECURITY TEAMS HAVE BEEN DISPATCHED TO YOUR LOCATION.</p>
                     </div>
-                    <a href="archive.html" style="color:var(--red);border:1px solid var(--red);padding:8px 24px;font-family:'VT323',monospace;letter-spacing:2px;font-size:1rem;">RETURN_TO_ARCHIVE</a>
+                    <a href="archive.html" style="color:var(--red);border:1px solid var(--red);padding:8px 20px;font-family:'VT323',monospace;letter-spacing:2px;font-size:1rem;">RETURN_TO_ARCHIVE</a>
                 </div>`;
         }
         window.onload=displayArticle;
