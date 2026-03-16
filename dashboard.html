@@ -8,7 +8,96 @@
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="modal.js"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Containment class badges */
+        .cc-safe        { color: #00ff41; border-color: rgba(0,255,65,0.4); background: rgba(0,255,65,0.08); }
+        .cc-euclid      { color: #ffd700; border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.08); }
+        .cc-keter       { color: #ff3e3e; border-color: rgba(255,62,62,0.4); background: rgba(255,62,62,0.08); }
+        .cc-thaumiel    { color: #a78bfa; border-color: rgba(167,139,250,0.4); background: rgba(167,139,250,0.08); }
+        .cc-neutralized { color: var(--text-dim); border-color: rgba(0,255,65,0.15); background: transparent; }
+
+        .status-contained   { color: #00ff41; }
+        .status-breach      { color: #ff3e3e; animation: flicker 0.4s infinite; }
+        .status-monitoring  { color: #ffd700; }
+        .status-uncontained { color: #ff3e3e; }
+
+        .containment-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(0,255,65,0.07);
+            transition: background 0.15s;
+            cursor: default;
+            flex-wrap: wrap;
+        }
+        .containment-row:last-child { border-bottom: none; }
+        .containment-row:hover { background: rgba(0,255,65,0.03); }
+
+        .cc-badge {
+            font-family: var(--font-display);
+            font-size: 0.78rem;
+            letter-spacing: 1px;
+            border: 1px solid;
+            padding: 2px 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .scp-number {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            color: var(--green);
+            white-space: nowrap;
+            min-width: 80px;
+            flex-shrink: 0;
+        }
+
+        .scp-name {
+            font-size: 0.78rem;
+            color: var(--text-mid);
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .scp-status {
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .scp-date {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .scp-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        /* Modal form styles */
+        .modal-form-row { margin-bottom: 12px; }
+        .modal-form-row label { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 2px; display: block; margin-bottom: 4px; }
+        .modal-form-row input,
+        .modal-form-row select {
+            width: 100%; background: rgba(0,15,3,0.9); border: 1px solid var(--green-border);
+            color: var(--green); font-family: var(--font-mono); font-size: 0.82rem;
+            padding: 6px 10px; outline: none; text-transform: uppercase; margin-bottom: 0;
+        }
+        .modal-form-row input:focus, .modal-form-row select:focus { border-color: var(--green); }
+    </style>
 </head>
 <body>
     <div id="loading" class="loading-screen">
@@ -18,7 +107,6 @@
 
     <div id="main-content" style="display:none;" class="fade-in">
 
-        <!-- Identity Block -->
         <div class="identity-block">
             <div>
                 <div class="identity-name" id="welcome">WELCOME</div>
@@ -31,7 +119,6 @@
             <button class="terminate-btn" onclick="logout()">[ TERMINATE ]</button>
         </div>
 
-        <!-- System Bar -->
         <div class="system-bar">
             <div><span class="status-dot"></span>SYSTEM: <span>STABLE</span></div>
             <div>LOCATION: <span>SITE-19</span></div>
@@ -39,7 +126,6 @@
             <div id="sys-time" style="margin-left:auto;"></div>
         </div>
 
-        <!-- Nav -->
         <nav class="main-nav" id="main-nav">
             <a href="archive.html">ARCHIVE</a>
             <a href="personnel.html">PERSONNEL</a>
@@ -48,13 +134,11 @@
             <a href="admin.html" id="admin-link" style="display:none;">ADMIN</a>
         </nav>
 
-        <!-- Dashboard Content -->
         <div class="page-content page-wrapper">
-
             <div class="page-title">COMMAND_TERMINAL</div>
             <div class="page-subtitle" id="dash-subtitle">SITE-19 SECURE INTRANET // AUTHORIZED PERSONNEL ONLY</div>
 
-            <!-- Stats Row -->
+            <!-- Stats -->
             <div class="grid-4" style="margin-bottom:28px;">
                 <div class="stat-card">
                     <div class="stat-label">ACTIVE_PERSONNEL</div>
@@ -74,11 +158,23 @@
                 </div>
             </div>
 
-            <!-- Two column layout -->
+            <!-- Main grid -->
             <div class="grid-2">
 
-                <!-- Recent Documents -->
+                <!-- Left column -->
                 <div>
+                    <!-- Containment Status Widget (ScD + admins only) -->
+                    <div id="containment-widget" style="display:none; margin-bottom:28px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--green-border);padding-bottom:6px;margin-bottom:0;">
+                            <div class="section-header" style="margin:0;border:none;padding:0;">CONTAINMENT_STATUS_BOARD</div>
+                            <button id="add-scp-btn" onclick="openAddModal()" style="font-size:0.78rem;padding:3px 10px;display:none;">+ ADD_ENTRY</button>
+                        </div>
+                        <div id="containment-list" style="border:1px solid var(--green-border);border-top:none;background:var(--bg-card);">
+                            <div style="color:var(--text-dim);font-size:0.78rem;padding:14px;">LOADING...</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Documents -->
                     <div class="section-header" style="margin-top:0;">RECENT_DOCUMENTS</div>
                     <div id="recent-docs" style="display:flex;flex-direction:column;gap:8px;">
                         <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
@@ -88,7 +184,7 @@
                     </div>
                 </div>
 
-                <!-- Quick Actions + Personnel snapshot -->
+                <!-- Right column -->
                 <div>
                     <div class="section-header" style="margin-top:0;">OPEN_INCIDENTS</div>
                     <div id="incident-widget" style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px;">
@@ -116,62 +212,100 @@
                         <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Containment Entry Modal -->
+    <div id="containment-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99990;align-items:center;justify-content:center;backdrop-filter:blur(2px);">
+        <div style="border:1px solid var(--green-border);background:rgba(2,12,2,0.98);padding:28px 32px;max-width:480px;width:90%;box-shadow:0 0 40px rgba(0,255,65,0.1);animation:modal-in 0.2s ease forwards;">
+            <div style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:3px;color:var(--green);margin-bottom:16px;" id="containment-modal-title">ADD_CONTAINMENT_ENTRY</div>
+            <hr style="border:none;border-top:1px solid rgba(0,255,65,0.15);margin-bottom:20px;">
+
+            <div class="modal-form-row">
+                <label>SCP NUMBER</label>
+                <input type="text" id="cm-number" placeholder="e.g. SCP-173">
+            </div>
+            <div class="modal-form-row">
+                <label>DESIGNATION / NAME</label>
+                <input type="text" id="cm-name" placeholder="e.g. THE SCULPTURE">
+            </div>
+            <div class="modal-form-row">
+                <label>CONTAINMENT CLASS</label>
+                <select id="cm-class">
+                    <option value="Safe">SAFE</option>
+                    <option value="Euclid">EUCLID</option>
+                    <option value="Keter">KETER</option>
+                    <option value="Thaumiel">THAUMIEL</option>
+                    <option value="Neutralized">NEUTRALIZED</option>
+                </select>
+            </div>
+            <div class="modal-form-row">
+                <label>CONTAINMENT STATUS</label>
+                <select id="cm-status">
+                    <option value="Contained">CONTAINED</option>
+                    <option value="Monitoring">MONITORING</option>
+                    <option value="Breach">BREACH</option>
+                    <option value="Uncontained">UNCONTAINED</option>
+                </select>
+            </div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+                <button onclick="closeContainmentModal()" style="color:rgba(0,255,65,0.5);border-color:rgba(0,255,65,0.2);">CANCEL</button>
+                <button onclick="saveContainmentEntry()" id="cm-save-btn">SAVE_ENTRY</button>
             </div>
         </div>
     </div>
 
     <script>
+        let _currentProfile = null;
+        let _editingEntryId = null;
+        let _canEditContainment = false;
+
         function updateClock() {
             const el = document.getElementById('sys-time');
             if (el) el.innerText = new Date().toISOString().replace('T',' ').substring(0,19) + ' UTC';
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+        setInterval(updateClock, 1000); updateClock();
 
         async function loadDashboard() {
             const auth = await requireAuth();
             if (!auth) return;
             const { user, profile } = auth;
+            _currentProfile = profile;
 
-            // Realtime ban/clearance watch
             _supabase.channel('public:profiles')
                 .on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter:`id=eq.${user.id}` }, (payload) => {
                     if (payload.new.is_banned) window.location.href = 'index.html';
                     if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
                 }).subscribe();
 
-            // Identity
-            const welcomeEl = document.getElementById('welcome');
-            const badge     = document.getElementById('badge-container');
-            const adminLink = document.getElementById('admin-link');
-            const adminAction = document.getElementById('admin-action');
+            const welcomeEl  = document.getElementById('welcome');
+            const badge      = document.getElementById('badge-container');
+            const adminLink  = document.getElementById('admin-link');
+            const adminAction= document.getElementById('admin-action');
+            const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+            _canEditContainment = isElevated || profile.department === 'ScD';
 
             if (profile.is_terminal_admin) {
-                welcomeEl.innerText = 'TERMINAL_ADMINISTRATOR';
-                welcomeEl.classList.add('gold');
+                welcomeEl.innerText = 'TERMINAL_ADMINISTRATOR'; welcomeEl.classList.add('gold');
                 badge.className = 'clearance-badge gold';
                 badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> ROOT_ACCESS`;
-                adminLink.style.display = 'inline-flex';
-                adminLink.innerText = 'SYSTEM';
+                adminLink.style.display = 'inline-flex'; adminLink.innerText = 'SYSTEM';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, true);
             } else if (profile.is_overseer) {
-                welcomeEl.innerText = 'O5_COUNCIL_CHAIRMAN';
-                welcomeEl.classList.add('red');
+                welcomeEl.innerText = 'O5_COUNCIL_CHAIRMAN'; welcomeEl.classList.add('red');
                 badge.className = 'clearance-badge red';
                 badge.innerHTML = `<span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span> LEVEL 5 // O5`;
-                adminLink.style.display = 'inline-flex';
-                adminLink.innerText = 'CHAIRMAN';
+                adminLink.style.display = 'inline-flex'; adminLink.innerText = 'CHAIRMAN';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
             } else if (profile.is_admin) {
-                welcomeEl.innerText = 'O5_COUNCIL_MEMBER';
-                welcomeEl.classList.add('gold');
+                welcomeEl.innerText = 'O5_COUNCIL_MEMBER'; welcomeEl.classList.add('gold');
                 badge.className = 'clearance-badge gold';
                 badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> LEVEL ${profile.clearance_level} // ${profile.department || 'UNASSIGNED'}`;
-                adminLink.style.display = 'inline-flex';
-                adminLink.innerText = 'COUNCIL';
+                adminLink.style.display = 'inline-flex'; adminLink.innerText = 'COUNCIL';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
             } else {
@@ -179,15 +313,20 @@
                 welcomeEl.innerText = profile.full_name ? profile.full_name.toUpperCase() : 'PERSONNEL';
                 document.getElementById('lvl').innerText = profile.clearance_level;
                 document.getElementById('dept-display').innerText = profile.department || 'UNASSIGNED';
-                document.getElementById('dash-subtitle').innerText =
-                    `DEPT: [${profile.department || 'UNASSIGNED'}] // CL: ${profile.clearance_level} // SITE-19`;
+                document.getElementById('dash-subtitle').innerText = `DEPT: [${profile.department || 'UNASSIGNED'}] // CL: ${profile.clearance_level} // SITE-19`;
                 renderDeptMenu(profile.department, false);
             }
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
 
-            // Load stats and recent data in parallel
+            // Show containment widget for ScD and elevated users
+            if (_canEditContainment || isElevated) {
+                document.getElementById('containment-widget').style.display = 'block';
+                if (_canEditContainment) document.getElementById('add-scp-btn').style.display = 'inline-flex';
+                loadContainmentBoard();
+            }
+
             loadStats(profile);
             loadRecentDocs(profile);
             loadRecentPersonnel();
@@ -225,31 +364,116 @@
             }).join('');
         }
 
+        // ---- CONTAINMENT BOARD ----
+        async function loadContainmentBoard() {
+            const container = document.getElementById('containment-list');
+            const { data: entries, error } = await _supabase
+                .from('containment_status')
+                .select('*')
+                .order('scp_number', { ascending: true });
+
+            if (error) { container.innerHTML = `<div style="color:var(--red);padding:14px;">ERROR: ${error.message}</div>`; return; }
+            if (!entries || entries.length === 0) {
+                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;padding:14px;">NO ENTRIES ON RECORD — ADD AN SCP TO BEGIN TRACKING</div>`;
+                return;
+            }
+
+            const classMap = { 'Safe':'cc-safe', 'Euclid':'cc-euclid', 'Keter':'cc-keter', 'Thaumiel':'cc-thaumiel', 'Neutralized':'cc-neutralized' };
+            const statusMap = { 'Contained':'status-contained', 'Breach':'status-breach', 'Monitoring':'status-monitoring', 'Uncontained':'status-uncontained' };
+
+            container.innerHTML = entries.map(e => {
+                const ccClass     = classMap[e.containment_class] || '';
+                const statusClass = statusMap[e.status] || '';
+                const date        = new Date(e.updated_at).toLocaleDateString();
+                const editBtn     = _canEditContainment
+                    ? `<button onclick="openEditModal('${e.id}')" style="font-size:0.72rem;padding:2px 8px;">EDIT</button>`
+                    : '';
+                return `<div class="containment-row">
+                    <div class="scp-number">${e.scp_number}</div>
+                    <div class="scp-name">${e.scp_name || '—'}</div>
+                    <div class="cc-badge ${ccClass}">${e.containment_class.toUpperCase()}</div>
+                    <div class="scp-status ${statusClass}">${e.status.toUpperCase()}</div>
+                    <div class="scp-date">${date}</div>
+                    <div class="scp-actions">${editBtn}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // ---- CONTAINMENT MODAL ----
+        function openAddModal() {
+            _editingEntryId = null;
+            document.getElementById('containment-modal-title').innerText = 'ADD_CONTAINMENT_ENTRY';
+            document.getElementById('cm-save-btn').innerText = 'SAVE_ENTRY';
+            document.getElementById('cm-number').value = '';
+            document.getElementById('cm-name').value = '';
+            document.getElementById('cm-class').value = 'Safe';
+            document.getElementById('cm-status').value = 'Contained';
+            document.getElementById('containment-modal').style.display = 'flex';
+        }
+
+        async function openEditModal(entryId) {
+            const { data: entry, error } = await _supabase.from('containment_status').select('*').eq('id', entryId).single();
+            if (error || !entry) { toast('FAILED TO LOAD ENTRY', 'error'); return; }
+            _editingEntryId = entryId;
+            document.getElementById('containment-modal-title').innerText = `EDIT: ${entry.scp_number}`;
+            document.getElementById('cm-save-btn').innerText = 'UPDATE_ENTRY';
+            document.getElementById('cm-number').value = entry.scp_number;
+            document.getElementById('cm-name').value = entry.scp_name || '';
+            document.getElementById('cm-class').value = entry.containment_class;
+            document.getElementById('cm-status').value = entry.status;
+            document.getElementById('containment-modal').style.display = 'flex';
+        }
+
+        function closeContainmentModal() {
+            document.getElementById('containment-modal').style.display = 'none';
+            _editingEntryId = null;
+        }
+
+        async function saveContainmentEntry() {
+            const number = document.getElementById('cm-number').value.trim().toUpperCase();
+            const name   = document.getElementById('cm-name').value.trim().toUpperCase();
+            const cls    = document.getElementById('cm-class').value;
+            const status = document.getElementById('cm-status').value;
+
+            if (!number) { toast('SCP NUMBER IS REQUIRED', 'error'); return; }
+
+            let error;
+            if (_editingEntryId) {
+                ({ error } = await _supabase.from('containment_status').update({
+                    scp_number: number, scp_name: name || null,
+                    containment_class: cls, status,
+                    updated_by: _currentProfile.full_name
+                }).eq('id', _editingEntryId));
+                if (!error) await logAction(_currentProfile, 'CONTAINMENT_UPDATED', number, `${cls} — ${status}`);
+            } else {
+                ({ error } = await _supabase.from('containment_status').insert([{
+                    scp_number: number, scp_name: name || null,
+                    containment_class: cls, status,
+                    updated_by: _currentProfile.full_name
+                }]));
+                if (!error) await logAction(_currentProfile, 'CONTAINMENT_ADDED', number, `${cls} — ${status}`);
+            }
+
+            if (error) { toast('SAVE_FAILED: ' + error.message, 'error'); return; }
+            toast(_editingEntryId ? 'ENTRY_UPDATED' : 'ENTRY_ADDED', 'success');
+            closeContainmentModal();
+            loadContainmentBoard();
+        }
+
+        // ---- STATS ----
         async function loadStats(profile) {
             const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
-
-            // Active personnel count
-            const { count: personnelCount } = await _supabase
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('is_approved', true)
-                .eq('is_banned', false);
-
+            const { count: personnelCount } = await _supabase.from('profiles').select('*', { count:'exact', head:true }).eq('is_approved', true).eq('is_banned', false);
             document.getElementById('stat-personnel').innerText = personnelCount ?? '—';
 
-            // Total documents (dept-scoped for regular users)
-            let docsQuery = _supabase.from('articles').select('*', { count: 'exact', head: true });
+            let docsQuery = _supabase.from('articles').select('*', { count:'exact', head:true });
             if (!isElevated) docsQuery = docsQuery.eq('department', profile.department);
             const { count: docsCount } = await docsQuery;
             document.getElementById('stat-docs').innerText = docsCount ?? '—';
 
-            // Pending requests (admin only, otherwise hide)
             if (isElevated) {
-                let pendingQuery = _supabase.from('profiles').select('*', { count: 'exact', head: true })
-                    .eq('is_approved', false).eq('is_banned', false);
-                if (!profile.is_overseer && !profile.is_terminal_admin) {
-                    pendingQuery = pendingQuery.eq('department', profile.department);
-                }
+                let pendingQuery = _supabase.from('profiles').select('*', { count:'exact', head:true }).eq('is_approved', false).eq('is_banned', false);
+                if (!profile.is_overseer && !profile.is_terminal_admin) pendingQuery = pendingQuery.eq('department', profile.department);
                 const { count: pendingCount } = await pendingQuery;
                 document.getElementById('stat-pending').innerText = pendingCount ?? '0';
                 if (pendingCount > 0) {
@@ -260,31 +484,17 @@
                 document.getElementById('stat-pending-card').style.display = 'none';
             }
 
-            // Your documents count
-            const { count: yoursCount } = await _supabase
-                .from('articles')
-                .select('*', { count: 'exact', head: true })
-                .eq('author', profile.full_name);
+            const { count: yoursCount } = await _supabase.from('articles').select('*', { count:'exact', head:true }).eq('author', profile.full_name);
             document.getElementById('stat-yours').innerText = yoursCount ?? '0';
         }
 
         async function loadRecentDocs(profile) {
             const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
-            let query = _supabase.from('articles').select('id, title, author, department, required_clearance, created_at')
-                .order('created_at', { ascending: false }).limit(5);
-            if (!isElevated) {
-                query = query.eq('department', profile.department)
-                             .lte('required_clearance', profile.clearance_level);
-            }
-
+            let query = _supabase.from('articles').select('id, title, author, department, required_clearance, created_at').order('created_at', { ascending: false }).limit(5);
+            if (!isElevated) query = query.eq('department', profile.department).lte('required_clearance', profile.clearance_level);
             const { data: docs, error } = await query;
             const container = document.getElementById('recent-docs');
-
-            if (error || !docs || docs.length === 0) {
-                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO DOCUMENTS ON RECORD</div>`;
-                return;
-            }
-
+            if (error || !docs || docs.length === 0) { container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO DOCUMENTS ON RECORD</div>`; return; }
             container.innerHTML = docs.map(d => `
                 <div style="border:1px solid var(--green-border);background:var(--bg-card);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;" onclick="window.location.href='view.html?id=${d.id}'">
                     <div style="flex:1;min-width:0;">
@@ -296,20 +506,9 @@
         }
 
         async function loadRecentPersonnel() {
-            const { data: staff, error } = await _supabase
-                .from('profiles')
-                .select('full_name, clearance_level, department')
-                .eq('is_approved', true)
-                .eq('is_banned', false)
-                .order('clearance_level', { ascending: false })
-                .limit(5);
-
+            const { data: staff, error } = await _supabase.from('profiles').select('full_name, clearance_level, department').eq('is_approved', true).eq('is_banned', false).order('clearance_level', { ascending: false }).limit(5);
             const container = document.getElementById('recent-personnel');
-            if (error || !staff || staff.length === 0) {
-                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO PERSONNEL ON RECORD</div>`;
-                return;
-            }
-
+            if (error || !staff || staff.length === 0) { container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO PERSONNEL ON RECORD</div>`; return; }
             container.innerHTML = staff.map(p => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,255,65,0.07);">
                     <div style="font-size:0.78rem;color:var(--text-mid);">${p.full_name}</div>
@@ -327,27 +526,24 @@
         function renderDeptMenu(dept, isTerminalAdmin) {
             const nav = document.getElementById('main-nav');
             const modules = {
-                'AD':   { label: 'ADMIN_LOG',       type: 'admin' },
-                'RAISA':{ label: 'INFOSEC',          type: 'infosec' },
-                'ScD':  { label: 'RESEARCH_LOG',     type: 'research' },
-                'MD':   { label: 'MEDICAL_RECORD',   type: 'medical' },
-                'SLMD': { label: 'MAINTENANCE',      type: 'maintenance' },
-                'DEA':  { label: 'EXTERNAL_AFFAIRS', type: 'external' },
-                'DoA':  { label: 'ADMISSIONS',       type: 'admissions' },
-                'ITD':  { label: 'TRIBUNAL',         type: 'tribunal' },
-                'DSIS': { label: 'INTEL_BRIEFING',   type: 'intel' }
+                'AD':   { label:'ADMIN_LOG',       type:'admin' },
+                'RAISA':{ label:'INFOSEC',          type:'infosec' },
+                'ScD':  { label:'RESEARCH_LOG',     type:'research' },
+                'MD':   { label:'MEDICAL_RECORD',   type:'medical' },
+                'SLMD': { label:'MAINTENANCE',      type:'maintenance' },
+                'DEA':  { label:'EXTERNAL_AFFAIRS', type:'external' },
+                'DoA':  { label:'ADMISSIONS',       type:'admissions' },
+                'ITD':  { label:'TRIBUNAL',         type:'tribunal' },
+                'DSIS': { label:'INTEL_BRIEFING',   type:'intel' }
             };
-
             if (isTerminalAdmin) {
                 const wrap = document.createElement('div');
                 wrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto;';
                 const sel = document.createElement('select');
                 sel.style.cssText = 'background:#000;color:var(--gold);border:1px solid rgba(255,215,0,0.3);font-family:var(--font-display);font-size:0.9rem;padding:4px 8px;letter-spacing:1px;cursor:pointer;';
-                sel.innerHTML = `<option value="">-- MODULE --</option>` +
-                    Object.keys(modules).map(k => `<option value="${modules[k].type}">${modules[k].label}</option>`).join('');
+                sel.innerHTML = `<option value="">-- MODULE --</option>` + Object.keys(modules).map(k => `<option value="${modules[k].type}">${modules[k].label}</option>`).join('');
                 sel.onchange = () => { if (sel.value) window.location.href = `write.html?type=${sel.value}`; };
-                wrap.appendChild(sel);
-                nav.appendChild(wrap);
+                wrap.appendChild(sel); nav.appendChild(wrap);
             } else if (dept && modules[dept]) {
                 const a = document.createElement('a');
                 a.href = `write.html?type=${modules[dept].type}`;
@@ -356,10 +552,7 @@
             }
         }
 
-        async function logout() {
-            await _supabase.auth.signOut();
-            window.location.href = 'index.html';
-        }
+        async function logout() { await _supabase.auth.signOut(); window.location.href = 'index.html'; }
 
         window.onload = loadDashboard;
     </script>
