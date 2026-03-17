@@ -42,6 +42,10 @@
                 .eq('is_banned', false)
                 .eq('is_approved', true)
                 .order('clearance_level', { ascending: false });
+
+            if (error) { document.getElementById('personnel-list').innerHTML = `<div style="color:var(--red)">ERROR: DATABASE_ACCESS_DENIED</div>`; return; }
+            allStaff = staff;
+            renderList(allStaff);
         }
         function renderList(list){
             const div=document.getElementById('personnel-list');
