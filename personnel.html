@@ -36,9 +36,12 @@
             const notice=document.getElementById('access-notice');
             if(!isElevated){notice.innerText=`DISPLAYING PERSONNEL AT OR BELOW CLEARANCE LEVEL ${profile.clearance_level}`;notice.style.color='var(--gold)';}
             else{notice.innerText='ELEVATED ACCESS // DISPLAYING ALL FOUNDATION PERSONNEL';}
-            const{data:staff,error}=await _supabase.from('profiles').select('full_name,clearance_level,department,bio').order('clearance_level',{ascending:false});
-            if(error){document.getElementById('personnel-list').innerHTML=`<div style="color:var(--red)">ERROR: DATABASE_ACCESS_DENIED</div>`;return;}
-            allStaff=staff;renderList(allStaff);
+            const { data: staff, error } = await _supabase
+                .from('profiles')
+                .select('full_name, clearance_level, department, bio')
+                .eq('is_banned', false)
+                .eq('is_approved', true)
+                .order('clearance_level', { ascending: false });
         }
         function renderList(list){
             const div=document.getElementById('personnel-list');
