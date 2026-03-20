@@ -298,21 +298,21 @@
             if (profile.is_terminal_admin) {
                 welcomeEl.innerText = 'TERMINAL_ADMINISTRATOR'; welcomeEl.classList.add('gold');
                 badge.className = 'clearance-badge gold';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> ROOT_ACCESS`;
+                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> MASKUR // TECH_ADMIN`;
                 adminLink.style.display = 'inline-flex'; adminLink.innerText = 'SYSTEM';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, true);
             } else if (profile.is_overseer) {
                 welcomeEl.innerText = 'O5_COUNCIL_CHAIRMAN'; welcomeEl.classList.add('red');
                 badge.className = 'clearance-badge red';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span> LEVEL 5 // O5`;
+                badge.innerHTML = `<span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span> APOLLYON // O5_CHAIRMAN`;
                 adminLink.style.display = 'inline-flex'; adminLink.innerText = 'CHAIRMAN';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
             } else if (profile.is_admin) {
                 welcomeEl.innerText = 'O5_COUNCIL_MEMBER'; welcomeEl.classList.add('gold');
                 badge.className = 'clearance-badge gold';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> LEVEL ${profile.clearance_level} // ${profile.department || 'UNASSIGNED'}`;
+                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> OMNI // ${profile.department||'UNASSIGNED'}`;
                 adminLink.style.display = 'inline-flex'; adminLink.innerText = 'COUNCIL';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
