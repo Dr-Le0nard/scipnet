@@ -17,6 +17,7 @@
         <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
     </div>
     <nav class="main-nav" id="main-nav"></nav>
+
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">PERSONNEL_DIRECTORY</div>
         <div class="page-subtitle" id="access-notice">FOUNDATION STAFF MANIFEST // LOADING...</div>
@@ -27,18 +28,28 @@
             <div style="color:var(--text-dim);">RETRIEVING STAFF MANIFEST...</div>
         </div>
     </div>
+
     <script>
-        let allStaff=[];
-        async function loadPersonnel(){
-            const auth=await requireAuth();if(!auth)return;
-            const{profile}=auth;
-            const isElevated=profile.is_admin||profile.is_overseer||profile.is_terminal_admin;
-            const notice=document.getElementById('access-notice');
-            if(!isElevated){notice.innerText=`DISPLAYING PERSONNEL AT OR BELOW CLEARANCE LEVEL ${profile.clearance_level}`;notice.style.color='var(--gold)';}
-            else{notice.innerText='ELEVATED ACCESS // DISPLAYING ALL FOUNDATION PERSONNEL';}
+        let allStaff = [];
+
+        async function loadPersonnel() {
+            const auth = await requireAuth();
+            if (!auth) return;
+            const { profile } = auth;
+
+            const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+            const notice = document.getElementById('access-notice');
+
+            if (!isElevated) {
+                notice.innerText = `DISPLAYING PERSONNEL AT OR BELOW CLEARANCE LEVEL ${profile.clearance_level}`;
+                notice.style.color = 'var(--gold)';
+            } else {
+                notice.innerText = 'ELEVATED ACCESS // DISPLAYING ALL FOUNDATION PERSONNEL';
+            }
+
             const { data: staff, error } = await _supabase
                 .from('profiles')
-                .select('full_name, clearance_level, department, bio')
+                .select('full_name, clearance_level, department, bio, is_admin, is_overseer, is_terminal_admin')
                 .eq('is_banned', false)
                 .eq('is_approved', true)
                 .order('clearance_level', { ascending: false });
@@ -47,24 +58,44 @@
             allStaff = staff;
             renderList(allStaff);
         }
-        function renderList(list){
-            const div=document.getElementById('personnel-list');
-            if(list.length===0){div.innerHTML=`<div style="color:var(--text-dim)">NO MATCHING PERSONNEL FOUND</div>`;return;}
-            div.innerHTML=list.map(p=>`
+
+        function getClearanceDisplay(person) {
+            // Use getClearanceInfo from config.js for elevated roles
+            if (person.is_terminal_admin) return { label: 'MASKUR', color: 'var(--gold)' };
+            if (person.is_overseer)       return { label: 'APOLLYON', color: 'var(--red)' };
+            if (person.is_admin)          return { label: 'OMNI', color: 'var(--gold)' };
+            const CL_COLORS = ['var(--text-dim)','#4ade80','#facc15','#fb923c','var(--red)','#a78bfa'];
+            const cl = person.clearance_level ?? 0;
+            return { label: `L${cl}`, color: CL_COLORS[Math.min(cl, 5)] };
+        }
+
+        function renderList(list) {
+            const div = document.getElementById('personnel-list');
+            if (list.length === 0) { div.innerHTML = `<div style="color:var(--text-dim)">NO MATCHING PERSONNEL FOUND</div>`; return; }
+            div.innerHTML = list.map(p => {
+                const cl = getClearanceDisplay(p);
+                return `
                 <div class="card">
                     <h3>${p.full_name}</h3>
                     <p style="margin-bottom:4px;">
-                        <span class="clearance-badge" style="font-size:0.72rem;padding:2px 8px;">CL: ${p.clearance_level}</span>
+                        <span class="clearance-badge" style="font-size:0.72rem;padding:2px 8px;color:${cl.color};border-color:${cl.color}40;">${cl.label}</span>
                         &nbsp;<span style="color:var(--text-dim);font-size:0.75rem;">[${p.department||'UNASSIGNED'}]</span>
                     </p>
                     <p style="margin-top:6px;color:var(--text-dim);font-size:0.75rem;">${p.bio||'NO BIO ON RECORD'}</p>
-                </div>`).join('');
+                </div>`;
+            }).join('');
         }
-        function filterPersonnel(){
-            const q=document.getElementById('personnelSearch').value.toLowerCase();
-            renderList(allStaff.filter(p=>p.full_name.toLowerCase().includes(q)||p.clearance_level.toString().includes(q)||(p.department&&p.department.toLowerCase().includes(q))));
+
+        function filterPersonnel() {
+            const q = document.getElementById('personnelSearch').value.toLowerCase();
+            renderList(allStaff.filter(p =>
+                p.full_name.toLowerCase().includes(q) ||
+                p.clearance_level.toString().includes(q) ||
+                (p.department && p.department.toLowerCase().includes(q))
+            ));
         }
-        window.onload=loadPersonnel;
+
+        window.onload = loadPersonnel;
     </script>
 </body>
 </html>
