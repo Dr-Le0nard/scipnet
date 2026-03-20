@@ -303,6 +303,12 @@
                 const{data:profile}=await _supabase.from('profiles').select('is_banned').eq('id',user.id).maybeSingle();
                 if(profile&&profile.is_banned){showRedScreen(user.id);return;}
                 else if(profile){window.location.href='dashboard.html';return;}
+                else {
+                    // Profile missing — create it now and redirect
+                    await checkAndCreateProfile(user);
+                    window.location.href='dashboard.html';
+                    return;
+                }
             }
             const params=new URLSearchParams(window.location.search);
             if(params.get('error')==='session_terminated') setStatus('SESSION TERMINATED: ACCESS REVOKED BY ADMINISTRATOR','error');
