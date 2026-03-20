@@ -12,18 +12,25 @@
     <script src="nav.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
-        .cl-0 td:nth-child(3) { color: var(--text-dim); }
-        .cl-1 td:nth-child(3) { color: #4ade80; }
-        .cl-2 td:nth-child(3) { color: #facc15; }
-        .cl-3 td:nth-child(3) { color: #fb923c; }
-        .cl-4 td:nth-child(3) { color: var(--red); }
-        .cl-5 td:nth-child(3) { color: #a78bfa; }
         .cl-0 { border-left: 2px solid transparent; }
         .cl-1 { border-left: 2px solid rgba(74,222,128,0.3); }
         .cl-2 { border-left: 2px solid rgba(250,204,21,0.3); }
         .cl-3 { border-left: 2px solid rgba(251,146,60,0.3); }
         .cl-4 { border-left: 2px solid rgba(255,62,62,0.3); }
         .cl-5 { border-left: 2px solid rgba(167,139,250,0.4); }
+        .cl-6 { border-left: 2px solid rgba(255,215,0,0.4); }
+        .cl-7 { border-left: 2px solid rgba(255,62,62,0.5); }
+        .cl-8 { border-left: 2px solid rgba(255,215,0,0.6); }
+ 
+        .cl-0 td:nth-child(3) { color: var(--text-dim); }
+        .cl-1 td:nth-child(3) { color: #4ade80; }
+        .cl-2 td:nth-child(3) { color: #facc15; }
+        .cl-3 td:nth-child(3) { color: #fb923c; }
+        .cl-4 td:nth-child(3) { color: var(--red); }
+        .cl-5 td:nth-child(3) { color: #a78bfa; }
+        .cl-6 td:nth-child(3) { color: var(--gold); }
+        .cl-7 td:nth-child(3) { color: var(--red); }
+        .cl-8 td:nth-child(3) { color: var(--gold); }
         .sort-btn { font-size:0.75rem; padding:3px 10px; letter-spacing:1px; color:var(--text-dim); border-color:rgba(0,255,65,0.15); }
         .sort-btn.active { color:var(--green); border-color:var(--green-border); background:var(--green-glow); }
         th.sortable { cursor:pointer; user-select:none; }
@@ -74,12 +81,15 @@
             <input type="text" id="doc-search" placeholder="SEARCH DOCUMENTS..." onkeyup="filterTable()" style="max-width:280px;margin-bottom:0;">
             <select id="cl-filter" onchange="filterTable()" style="max-width:140px;margin-bottom:0;">
                 <option value="ALL">ALL CLEARANCES</option>
-                <option value="0">LEVEL 0</option>
-                <option value="1">LEVEL 1</option>
-                <option value="2">LEVEL 2</option>
-                <option value="3">LEVEL 3</option>
-                <option value="4">LEVEL 4</option>
-                <option value="5">LEVEL 5</option>
+                <option value="0">L0 — PUBLIC</option>
+                <option value="1">L1 — RESTRICTED</option>
+                <option value="2">L2 — CONFIDENTIAL</option>
+                <option value="3">L3 — SECRET</option>
+                <option value="4">L4 — TOP SECRET</option>
+                <option value="5">L5 — CLASSIFIED</option>
+                <option value="6">OMNI</option>
+                <option value="7">APOLLYON</option>
+                <option value="8">MASKUR</option>
             </select>
             <span id="record-count" style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;white-space:nowrap;margin-left:auto;"></span>
         </div>
@@ -111,7 +121,17 @@
         let allReports=[], filteredReports=[], currentPage=1;
         let sortField='date', sortDir='desc';
 
-        const CL_COLORS = ['var(--text-dim)','#4ade80','#facc15','#fb923c','var(--red)','#a78bfa'];
+        const CL_COLORS = [
+            'var(--text-dim)', // L0
+            '#4ade80',         // L1
+            '#facc15',         // L2
+            '#fb923c',         // L3
+            'var(--red)',      // L4
+            '#a78bfa',         // L5
+            'var(--gold)',     // L6 OMNI
+            'var(--red)',      // L7 APOLLYON
+            'var(--gold)',     // L8 MASKUR
+        ];
 
         async function initArchive() {
             const auth = await requireAuth();
@@ -219,11 +239,11 @@
                 const date    = new Date(r.created_at).toLocaleDateString();
                 const canEdit = isElevatedUser || r.author === currentProfile.full_name;
                 const cl      = r.required_clearance ?? 0;
-                const clColor = CL_COLORS[Math.min(cl, 5)];
+                const clColor = CL_COLORS[Math.min(cl, 8)];
                 return `<tr class="cl-${cl}">
                     <td>${date}</td>
                     <td><span style="color:var(--text-dim)">[${r.department||'N/A'}]</span></td>
-                    <td><span style="color:${clColor};font-family:var(--font-display);letter-spacing:1px;">L${cl}</span></td>
+                    <td><span style="color:${clColor};font-family:var(--font-display);letter-spacing:1px;">${cl >= 6 ? ['OMNI','APOLLYON','MASKUR'][cl-6] : 'L'+cl}</span></td>
                     <td style="color:var(--green);">${r.title||'UNTITLED'}</td>
                     <td style="color:var(--text-mid);">${r.author||'UNKNOWN'}</td>
                     <td><div class="btn-row">

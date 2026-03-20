@@ -224,8 +224,15 @@
                     <select id="dept-${u.id}"></select>
                     <label>ASSIGN CLEARANCE:</label>
                     <select id="lvl-${u.id}">
-                        <option value="1">Level 1</option><option value="2">Level 2</option>
-                        <option value="3">Level 3</option><option value="4">Level 4</option>
+                        <option value="0">L0 — Public</option>
+                        <option value="1">L1 — Restricted</option>
+                        <option value="2">L2 — Confidential</option>
+                        <option value="3">L3 — Secret</option>
+                        <option value="4">L4 — Top Secret</option>
+                        <option value="5">L5 — Classified</option>
+                        <option value="6">L6 — Omni</option>
+                        <option value="7">L7 — Apollyon</option>
+                        <option value="8">L8 — Maskur</option>
                     </select>
                     <div class="btn-row" style="margin-top:10px;">
                         <button onclick="approveUser('${u.id}', '${u.full_name}')">GRANT</button>
@@ -255,11 +262,7 @@
                 if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canRevoke = true;
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
                     <h3>${u.full_name} ${u.is_terminal_admin?`<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>`:''}</h3>
-                        <p>DEPT: [${getDeptShort(u.department)||'NONE'}] | CL: ${
-                            u.is_terminal_admin ? 'MASKUR' :
-                            u.is_overseer ? 'APOLLYON' :
-                            u.is_admin ? 'OMNI' :
-                            `L${u.clearance_level}`
+                        <p>DEPT: [${getDeptShort(u.department)||'NONE'}] | CL: ${u.clearance_level >= 6 ? ['OMNI','APOLLYON','MASKUR'][u.clearance_level-6] : 'L'+u.clearance_level}
                         }</p>
                     <div class="btn-row" style="margin-top:10px;">
                         <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Active Personnel Audit Required')" ${isMe?'disabled':''}>${isMe?'N/A':'FLAG'}</button>
