@@ -9,6 +9,7 @@
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="notifications.js"></script>
     <script src="modal.js"></script>
     <script src="nav.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -236,6 +237,10 @@
             const auth = await requireAuth();
             if (!auth) return;
             currentProfile = auth.profile;
+
+            startPresence(auth.profile);
+            initNotificationListeners(auth.profile);
+            
             isElevated = currentProfile.is_admin || currentProfile.is_overseer || currentProfile.is_terminal_admin;
 
             // Populate department dropdowns using the shared registry

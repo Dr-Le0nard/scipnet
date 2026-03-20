@@ -9,6 +9,7 @@
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="notifications.js"></script>
     <script src="modal.js"></script>
     <script src="nav.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -90,6 +91,9 @@
             if (!auth) return;
             currentUserId = auth.user.id;
             myProfile = auth.profile;
+
+            startPresence(auth.profile);
+            initNotificationListeners(auth.profile);
 
             if (myProfile.is_terminal_admin) {
                 document.getElementById('admin-header').innerText = 'ROOT_SYSTEM_OVERRIDE';

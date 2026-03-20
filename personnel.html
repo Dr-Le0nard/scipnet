@@ -8,6 +8,7 @@
     <script src="config.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="notifications.js"></script>
     <script src="modal.js"></script>
     <script src="nav.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -37,6 +38,9 @@
             const auth = await requireAuth();
             if (!auth) return;
             const { profile } = auth;
+
+            startPresence(auth.profile);
+            initNotificationListeners(auth.profile);
 
             const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
             const notice = document.getElementById('access-notice');

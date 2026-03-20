@@ -9,6 +9,7 @@
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
+    <script src="notifications.js"></script>
     <script src="modal.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -209,6 +210,10 @@
                         </a>
                     </div>
 
+                    <div class="section-header">ONLINE_PERSONNEL</div>
+                    <div id="online-users" style="display:flex;flex-direction:column;gap:6px;margin-bottom:24px;">
+                        <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
+                    </div>
                     <div class="section-header">RECENT_PERSONNEL</div>
                     <div id="recent-personnel" style="display:flex;flex-direction:column;gap:6px;">
                         <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
@@ -283,6 +288,9 @@
             const { user, profile } = auth;
             _currentProfile = profile;
 
+            startPresence(auth.profile);
+            initNotificationListeners(auth.profile);
+
             _supabase.channel('public:profiles')
                 .on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter:`id=eq.${user.id}` }, (payload) => {
                     if (payload.new.is_banned) window.location.href = 'index.html';
@@ -340,6 +348,25 @@
             loadRecentDocs(profile);
             loadRecentPersonnel();
             loadOpenIncidents();
+            loadOnlineUsers();
+            setInterval(loadOnlineUsers, 30000);
+        }
+
+        async function loadOnlineUsers() {
+            const users = await getOnlineUsers();
+            const container = document.getElementById('online-users');
+            if (!users || users.length === 0) {
+                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO PERSONNEL ONLINE</div>`;
+                return;
+            }
+            container.innerHTML = users.map(u => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,255,65,0.07);">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:inline-block;flex-shrink:0;"></span>
+                        <span style="font-size:0.78rem;color:var(--text-mid);">${u.full_name}</span>
+                    </div>
+                    <span style="font-size:0.68rem;color:var(--text-dim);">[${u.department||'N/A'}]</span>
+                </div>`).join('');
         }
 
         async function loadOpenIncidents() {
