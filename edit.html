@@ -25,14 +25,7 @@
             <label>DOCUMENT TITLE</label>
             <input type="text" id="title" placeholder="ENTER LOG TITLE...">
             <label>CLEARANCE RESTRICTION</label>
-            <select id="clearance_level">
-                <option value="0">LEVEL 0 — PUBLIC</option>
-                <option value="1">LEVEL 1 — RESTRICTED</option>
-                <option value="2">LEVEL 2 — CONFIDENTIAL</option>
-                <option value="3">LEVEL 3 — SECRET</option>
-                <option value="4">LEVEL 4 — TOP SECRET</option>
-                <option value="5">LEVEL 5 — O5 ONLY</option>
-            </select>
+            <select id="clearance_level"></select>
             <label>DOCUMENT CONTENT</label>
             <textarea id="content" rows="15"></textarea>
             <div class="btn-row" style="margin-top:8px;">
@@ -64,28 +57,30 @@
                 return;
             }
 
+            // Populate clearance dropdown — elevated users can set any level, authors capped to their own
+            populateClearanceSelect('clearance_level', art.required_clearance, isElevated ? 8 : currentProfile.clearance_level);
+
             articleTitle = art.title || 'UNTITLED';
             document.getElementById('form-header').innerText = `EDITING: ${articleTitle.toUpperCase()}`;
-            document.getElementById('title').value = art.title || '';
-            document.getElementById('clearance_level').value = art.required_clearance || 0;
+            document.getElementById('title').value   = art.title || '';
             document.getElementById('content').value = art.content || '';
         }
 
         async function saveDocument() {
-            const title    = document.getElementById('title').value.trim();
-            const content  = document.getElementById('content').value.trim();
+            const title     = document.getElementById('title').value.trim();
+            const content   = document.getElementById('content').value.trim();
             const clearance = parseInt(document.getElementById('clearance_level').value);
             if (!title || !content) { toast('CRITICAL_ERROR: DATA_MISSING', 'error'); return; }
 
+            const clInfo    = getClearanceByLevel(clearance);
             const confirmed = await showModal(`SAVE CHANGES TO THIS DOCUMENT?`, { title:'CONFIRM_UPDATE', confirmText:'SAVE', cancelText:'CANCEL' });
             if (!confirmed) return;
 
             const { error } = await _supabase.from('articles')
                 .update({ title, content, required_clearance: clearance })
                 .eq('id', articleId);
-
             if (error) { toast('UPDATE_FAILED: ' + error.message, 'error'); return; }
-            await logAction(currentProfile, 'EDITED', title, `CL: ${clearance}`);
+            await logAction(currentProfile, 'EDITED', title, `CL: ${clInfo.short}`);
             toast('DOCUMENT_UPDATED_SUCCESSFULLY', 'success');
             setTimeout(() => window.location.href = `view.html?id=${articleId}`, 1200);
         }
@@ -93,10 +88,9 @@
         async function deleteDocument() {
             const confirmed = await showModal(
                 'THIS ACTION IS PERMANENT.\nTHE DOCUMENT WILL BE ERASED FROM THE ARCHIVE.',
-                { title:'CONFIRM_DELETION', confirmText:'DELETE', cancelText:'ABORT', danger: true }
+                { title:'CONFIRM_DELETION', confirmText:'DELETE', cancelText:'ABORT', danger:true }
             );
             if (!confirmed) return;
-
             const { error } = await _supabase.from('articles').delete().eq('id', articleId);
             if (error) { toast('DELETE_FAILED: ' + error.message, 'error'); return; }
             await logAction(currentProfile, 'DELETED', articleTitle, 'Document permanently deleted');
