@@ -30,9 +30,18 @@
                 <div style="font-size:0.72rem;color:var(--text-dim);letter-spacing:2px;" id="profile-status"></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
-                <div class="meta-item"><span class="meta-label">DEPARTMENT</span><span class="meta-value" id="profile-dept">---</span></div>
-                <div class="meta-item"><span class="meta-label">CLEARANCE</span><span class="meta-value" id="profile-cl">---</span></div>
-                <div class="meta-item"><span class="meta-label">STATUS</span><span class="meta-value" id="profile-approved">---</span></div>
+                <div class="meta-item">
+                    <span class="meta-label">DEPARTMENT</span>
+                    <span class="meta-value" id="profile-dept">---</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">CLEARANCE</span>
+                    <span class="meta-value" id="profile-cl">---</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">STATUS</span>
+                    <span class="meta-value" id="profile-approved">---</span>
+                </div>
             </div>
         </div>
 
@@ -49,7 +58,7 @@
         <!-- Password Change -->
         <div class="section-header" style="margin-top:32px;">CHANGE_CREDENTIALS</div>
         <div style="max-width:700px;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" id="pw-grid">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                 <div>
                     <label>NEW CREDENTIALS</label>
                     <input type="password" id="new-password" placeholder="ENTER NEW PASSWORD..." autocomplete="new-password">
@@ -85,23 +94,33 @@
             if (!auth) return;
             const { user, profile } = auth;
 
+            // Get clearance info using shared helper
+            const clInfo = getClearanceInfo(profile);
+
             document.getElementById('profile-name').innerText     = profile.full_name || 'REDACTED';
             document.getElementById('profile-subtitle').innerText = `PERSONNEL FILE // ${profile.full_name || 'UNKNOWN'}`;
             document.getElementById('profile-dept').innerText     = `[${profile.department || 'UNASSIGNED'}]`;
-            document.getElementById('profile-cl').innerText       = `LEVEL_${profile.clearance_level}`;
             document.getElementById('profile-approved').innerText = profile.is_approved ? 'ACTIVE' : 'PENDING';
             document.getElementById('profile-approved').style.color = profile.is_approved ? 'var(--green)' : 'var(--gold)';
 
-            const badge = document.getElementById('profile-badge');
-            if (profile.is_terminal_admin)
-                badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>ROOT_SYSTEM_ACCESS</span>`;
-            else if (profile.is_overseer)
-                badge.innerHTML = `<span class="clearance-badge red"><span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span>O5_CHAIRMAN</span>`;
-            else if (profile.is_admin)
-                badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>O5_COUNCIL</span>`;
-            else
-                badge.innerHTML = `<span class="clearance-badge"><span class="status-dot"></span>FOUNDATION_PERSONNEL</span>`;
+            // Clearance display using label
+            const clEl = document.getElementById('profile-cl');
+            clEl.innerText = clInfo.label;
+            clEl.style.color = clInfo.color;
 
+            // Badge
+            const badge = document.getElementById('profile-badge');
+            if (profile.is_terminal_admin) {
+                badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>MASKUR // TECH_ADMIN</span>`;
+            } else if (profile.is_overseer) {
+                badge.innerHTML = `<span class="clearance-badge red"><span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span>APOLLYON // O5_CHAIRMAN</span>`;
+            } else if (profile.is_admin) {
+                badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>OMNI // O5_COUNCIL</span>`;
+            } else {
+                badge.innerHTML = `<span class="clearance-badge" style="color:${clInfo.color};border-color:${clInfo.color}40;"><span class="status-dot" style="background:${clInfo.color};box-shadow:0 0 6px ${clInfo.color};"></span>${clInfo.short} // FOUNDATION_PERSONNEL</span>`;
+            }
+
+            // Status line
             const statusParts = [];
             if (profile.is_terminal_admin) statusParts.push('TERMINAL_ADMIN');
             if (profile.is_overseer)       statusParts.push('O5_OVERSEER');
@@ -145,34 +164,20 @@
         }
 
         async function changePassword() {
-            const newPw      = document.getElementById('new-password').value;
-            const confirmPw  = document.getElementById('confirm-password').value;
-
+            const newPw     = document.getElementById('new-password').value;
+            const confirmPw = document.getElementById('confirm-password').value;
             if (!newPw || !confirmPw) { toast('BOTH FIELDS ARE REQUIRED', 'error'); return; }
             if (newPw.length < 6)     { toast('PASSWORD MUST BE AT LEAST 6 CHARACTERS', 'error'); return; }
             if (newPw !== confirmPw)  { toast('CREDENTIALS DO NOT MATCH', 'error'); return; }
-
-            const confirmed = await showModal(
-                'UPDATE YOUR LOGIN CREDENTIALS?\nYOU WILL REMAIN LOGGED IN.',
-                { title: 'CONFIRM_CREDENTIAL_UPDATE', confirmText: 'UPDATE', cancelText: 'CANCEL' }
-            );
+            const confirmed = await showModal('UPDATE YOUR LOGIN CREDENTIALS?\nYOU WILL REMAIN LOGGED IN.', { title:'CONFIRM_CREDENTIAL_UPDATE', confirmText:'UPDATE', cancelText:'CANCEL' });
             if (!confirmed) return;
-
             const { error } = await _supabase.auth.updateUser({ password: newPw });
-            if (error) {
-                toast('UPDATE_FAILED: ' + error.message, 'error');
-            } else {
-                toast('CREDENTIALS_UPDATED_SUCCESSFULLY', 'success');
-                document.getElementById('new-password').value     = '';
-                document.getElementById('confirm-password').value = '';
-            }
+            if (error) toast('UPDATE_FAILED: ' + error.message, 'error');
+            else { toast('CREDENTIALS_UPDATED_SUCCESSFULLY', 'success'); document.getElementById('new-password').value = ''; document.getElementById('confirm-password').value = ''; }
         }
 
         async function confirmLogout() {
-            const confirmed = await showModal(
-                'TERMINATE YOUR CURRENT SESSION?',
-                { title: 'CONFIRM_LOGOUT', confirmText: 'TERMINATE', cancelText: 'CANCEL', danger: true }
-            );
+            const confirmed = await showModal('TERMINATE YOUR CURRENT SESSION?', { title:'CONFIRM_LOGOUT', confirmText:'TERMINATE', cancelText:'CANCEL', danger:true });
             if (!confirmed) return;
             await _supabase.auth.signOut();
             window.location.href = 'index.html';
