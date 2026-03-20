@@ -255,7 +255,12 @@
                 if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canRevoke = true;
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
                     <h3>${u.full_name} ${u.is_terminal_admin?`<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>`:''}</h3>
-                    <p>DEPT: [${getDeptShort(u.department)||'NONE'}] | CL: ${u.clearance_level}</p>
+                        <p>DEPT: [${getDeptShort(u.department)||'NONE'}] | CL: ${
+                            u.is_terminal_admin ? 'MASKUR' :
+                            u.is_overseer ? 'APOLLYON' :
+                            u.is_admin ? 'OMNI' :
+                            `L${u.clearance_level}`
+                        }</p>
                     <div class="btn-row" style="margin-top:10px;">
                         <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Active Personnel Audit Required')" ${isMe?'disabled':''}>${isMe?'N/A':'FLAG'}</button>
                         <button class="btn-red" onclick="revokeAccess('${u.id}', '${u.full_name}')" ${!canRevoke?'disabled':''}>${isMe?'YOU':'REVOKE'}</button>
