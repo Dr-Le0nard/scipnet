@@ -46,11 +46,23 @@
             const auth = await requireAuth();
             if (!auth) return;
             currentUserProfile = auth.profile;
+            const _myRoles = await fetchMyRoles();
+            currentUserProfile._activeRole = getActiveRole(auth.profile, _myRoles);
 
             startPresence(auth.profile);
             initNotificationListeners(auth.profile);
             
             document.getElementById('form-header').innerText = `NEW_${reportModule.toUpperCase()}_ENTRY`;
+
+            const active = currentUserProfile._activeRole;
+            document.getElementById('form-header').insertAdjacentHTML('afterend',
+                `<div style="font-size:0.72rem;color:var(--text-dim);letter-spacing:1px;margin-bottom:12px;">
+                    FILING AS: <span style="color:var(--green);">${active.name}</span>
+                    [${active.department}]
+                    ${active.isSecondary ? '' : '— PRIMARY ROLE'}
+                    &nbsp;<a href="profile.html" style="color:rgba(0,255,65,0.4);font-size:0.7rem;">[SWITCH ROLE]</a>
+                </div>`
+            );
 
             // Populate clearance dropdown capped to user's own level
             populateClearanceSelect('clearance_level', 0, currentUserProfile.clearance_level);
@@ -97,8 +109,8 @@
 
             const { error } = await _supabase.from('articles').insert([{
                 title, content: finalContent,
-                author: currentUserProfile.full_name,
-                department: currentUserProfile.department,
+                author:     currentUserProfile._activeRole.name,
+                department: currentUserProfile._activeRole.department,
                 required_clearance: cl
             }]);
 

@@ -31,6 +31,60 @@ async function requireAuth(requireAdmin = false) {
 }
 
 /**
+ * Returns the currently active role for a profile.
+ * If the user has switched to a secondary role, returns that role's name/dept.
+ * Otherwise returns the primary profile name/dept.
+ *
+ * @param {object} profile - Full profile object from requireAuth()
+ * @param {Array}  roles   - Array of profile_roles rows (optional, pass if already fetched)
+ * @returns {{ name: string, department: string, isSecondary: boolean, roleId: string|null }}
+ */
+function getActiveRole(profile, roles = []) {
+    if (profile.active_role_id && roles.length > 0) {
+        const active = roles.find(r => r.id === profile.active_role_id);
+        if (active) {
+            return {
+                name:        active.role_name,
+                department:  active.department,
+                isSecondary: true,
+                roleId:      active.id
+            };
+        }
+    }
+    return {
+        name:        profile.full_name,
+        department:  profile.department,
+        isSecondary: false,
+        roleId:      null
+    };
+}
+
+/**
+ * Fetch all secondary roles for the current user.
+ */
+async function fetchMyRoles() {
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await _supabase
+        .from('profile_roles')
+        .select('*')
+        .eq('profile_id', user.id)
+        .order('created_at', { ascending: true });
+    return error ? [] : (data || []);
+}
+
+/**
+ * Switch the active role. Pass null to revert to primary.
+ */
+async function switchRole(roleId) {
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) return;
+    await _supabase.from('profiles')
+        .update({ active_role_id: roleId || null })
+        .eq('id', user.id);
+}
+
+/**
  * Full clearance level registry (0-8).
  */
 const CLEARANCE_LEVELS = [
@@ -45,28 +99,15 @@ const CLEARANCE_LEVELS = [
     { value: 8, label: 'LEVEL 8 — MASKUR',       short: 'MASKUR',   color: 'var(--gold)' },
 ];
 
-/**
- * Returns clearance info for a given numeric level.
- */
 function getClearanceByLevel(level) {
     return CLEARANCE_LEVELS.find(c => c.value === level) ||
            { value: level, label: `LEVEL ${level}`, short: `L${level}`, color: 'var(--text-dim)' };
 }
 
-/**
- * Returns clearance info for a profile.
- * Elevated roles automatically map to their designated level.
- */
 function getClearanceInfo(profile) {
     return getClearanceByLevel(profile.clearance_level);
 }
 
-/**
- * Populates a clearance <select> element with all levels.
- * @param {string} selectId
- * @param {number|null} selectedValue
- * @param {number} maxLevel - Maximum level to show (default 8, use profile.clearance_level to cap)
- */
 function populateClearanceSelect(selectId, selectedValue = null, maxLevel = 8) {
     const sel = document.getElementById(selectId);
     if (!sel) return;

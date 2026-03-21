@@ -194,6 +194,10 @@
                         <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
                     </div>
                     <a href="incident.html" class="btn" style="font-size:0.85rem;margin-bottom:24px;">VIEW_ALL_INCIDENTS →</a>
+                    <div class="section-header" style="margin-top:0;">ACTIVE_ROLE</div>
+                    <div id="role-switcher" style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px;">
+                        <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
+                    </div>
                     <div class="section-header" style="margin-top:0;">QUICK_ACTIONS</div>
                     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
                         <a href="write.html" class="btn" style="justify-content:flex-start;gap:10px;">
@@ -350,6 +354,7 @@
             loadOpenIncidents();
             loadOnlineUsers();
             setInterval(loadOnlineUsers, 30000);
+            loadRoleSwitcher();
         }
 
         async function loadOnlineUsers() {
@@ -414,6 +419,61 @@
                     </div>
                 </div>`;
             }).join('');
+        }
+
+        async function loadRoleSwitcher() {
+            const roles = await fetchMyRoles();
+            const activeRole = getActiveRole(_currentProfile, roles);
+            const container = document.getElementById('role-switcher');
+ 
+            // Always show primary
+            let html = `
+                <div style="border:1px solid ${!activeRole.isSecondary ? 'var(--green)' : 'var(--green-border)'};
+                            background:${!activeRole.isSecondary ? 'rgba(0,255,65,0.04)' : 'var(--bg-card)'};
+                            padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;">${_currentProfile.full_name}</div>
+                        <div style="font-size:0.68rem;color:var(--text-dim);">[${_currentProfile.department||'N/A'}] — PRIMARY</div>
+                    </div>
+                    ${!activeRole.isSecondary
+                        ? `<span style="font-size:0.7rem;color:var(--green);">● ACTIVE</span>`
+                        : `<button onclick="dashSwitchRole(null)" style="font-size:0.75rem;padding:2px 8px;">SWITCH</button>`
+                    }
+                </div>`;
+ 
+            roles.forEach(r => {
+                const isActive = activeRole.isSecondary && activeRole.roleId === r.id;
+                html += `
+                <div style="border:1px solid ${isActive ? 'var(--green)' : 'var(--green-border)'};
+                            background:${isActive ? 'rgba(0,255,65,0.04)' : 'var(--bg-card)'};
+                            padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;">${r.role_name}</div>
+                        <div style="font-size:0.68rem;color:var(--text-dim);">[${r.department}]</div>
+                    </div>
+                    ${isActive
+                        ? `<span style="font-size:0.7rem;color:var(--green);">● ACTIVE</span>`
+                        : `<button onclick="dashSwitchRole('${r.id}')" style="font-size:0.75rem;padding:2px 8px;">SWITCH</button>`
+                    }
+                </div>`;
+            });
+ 
+            if (roles.length === 0) {
+                html += `<div style="font-size:0.72rem;color:var(--text-dim);padding:4px 0;">NO SECONDARY ROLES — MANAGE IN PROFILE</div>`;
+            }
+ 
+            container.innerHTML = html;
+        }
+ 
+        async function dashSwitchRole(roleId) {
+            await switchRole(roleId);
+            // Reload profile to get updated active_role_id
+            const { data: updated } = await _supabase.from('profiles').select('*').eq('id', _currentProfile.id).single();
+            if (updated) _currentProfile = updated;
+            const roles = await fetchMyRoles();
+            const active = getActiveRole(_currentProfile, roles);
+            toast(`ACTIVE ROLE: ${active.name} [${active.department}]`, 'success');
+            loadRoleSwitcher();
         }
 
 

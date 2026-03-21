@@ -237,6 +237,8 @@
             const auth = await requireAuth();
             if (!auth) return;
             currentProfile = auth.profile;
+            const _myRoles = await fetchMyRoles();
+            currentProfile._activeRole = getActiveRole(currentProfile, _myRoles);
 
             startPresence(auth.profile);
             initNotificationListeners(auth.profile);
@@ -507,9 +509,9 @@
                 incident_type:         type,
                 custom_type:           type === 'Custom' ? customType : null,
                 description,
-                filed_by:              currentProfile.full_name,
-                filed_by_id:           currentProfile.id,
-                department:            currentProfile.department,
+                filed_by:    currentProfile._activeRole.name,
+                filed_by_id: currentProfile.id,
+                department:  currentProfile._activeRole.department,
                 status:                'Open',
                 assigned_department:   assignDept
             }]);
