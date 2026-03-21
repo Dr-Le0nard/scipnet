@@ -47,19 +47,9 @@ function getAudioCtx() {
  */
 function playAlarm() {
     try {
-        const ctx = getAudioCtx();
-        const cycles = 3;
-        const toneDuration = 0.4;
-        const gapDuration  = 0.1;
-
-        for (let i = 0; i < cycles; i++) {
-            const startTime = ctx.currentTime + i * (toneDuration * 2 + gapDuration * 2);
-
-            // Tone 1 — high
-            playTone(ctx, 880, startTime, toneDuration, 0.3);
-            // Tone 2 — low
-            playTone(ctx, 660, startTime + toneDuration + gapDuration, toneDuration, 0.3);
-        }
+        const audio = new Audio('alarm.mp3');
+        audio.volume = 0.7;
+        audio.play().catch(e => console.warn('Audio blocked:', e));
     } catch (e) {
         console.warn('Audio playback failed:', e);
     }
