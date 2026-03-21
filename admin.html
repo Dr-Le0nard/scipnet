@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="departments.js"></script>
+    <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
     <script src="notifications.js"></script>
@@ -25,6 +26,11 @@
     <div class="page-content page-wrapper fade-in">
         <div class="page-title" id="admin-header">ADMIN_TERMINAL_OVERRIDE</div>
         <div class="page-subtitle">PERSONNEL MANAGEMENT // RESTRICTED ACCESS</div>
+
+        <div id="role-requests-section" style="display:none;margin-bottom:28px;">
+            <div class="section-header" style="margin-top:0;">PENDING_ROLE_REQUESTS</div>
+            <div class="grid" id="role-requests-list"></div>
+        </div>
 
         <!-- Alert Broadcast Panel -->
         <div class="card card-gold" style="margin-bottom:28px;display:none;" id="alert-control-panel">
@@ -109,6 +115,7 @@
 
             loadPending();
             loadActiveUsers();
+            loadRoleRequests();
         }
 
         function showAlertPanel() {
@@ -275,6 +282,69 @@
                     </div>
                 </div>`;
             }).join('');
+        }
+
+        async function loadRoleRequests() {
+            let query = _supabase
+                .from('profile_roles')
+                .select('*, profiles(full_name)')
+                .eq('status', 'Pending')
+                .order('created_at', { ascending: true });
+
+            if (!myProfile.is_overseer && !myProfile.is_terminal_admin) {
+                const overseerDepts = Object.entries(DEPT_OVERSEER_MAP)
+                    .filter(([dept, overseer]) => overseer === myProfile.department)
+                    .map(([dept]) => dept);
+                if (overseerDepts.length === 0) return;
+                query = query.in('department', overseerDepts);
+            }
+
+            const { data: requests, error } = await query;
+            if (error || !requests || requests.length === 0) return;
+
+            document.getElementById('role-requests-section').style.display = 'block';
+            document.getElementById('role-requests-list').innerHTML = requests.map(r => `
+                <div class="card">
+                    <h3>${r.role_name}</h3>
+                    <p><strong>REQUESTED BY:</strong> ${r.profiles?.full_name || 'UNKNOWN'}</p>
+                    <p><strong>DEPARTMENT:</strong> [${getDeptShort(r.department)}]</p>
+                    <p style="color:var(--text-dim);font-size:0.78rem;margin-top:4px;"><strong>REASON:</strong> ${r.bio || 'NO REASON PROVIDED'}</p>
+                    <label style="margin-top:10px;">ASSIGN CLEARANCE LEVEL</label>
+                    <select id="role-cl-${r.id}"></select>
+                    <div class="btn-row" style="margin-top:8px;">
+                        <button onclick="approveRole('${r.id}', '${r.role_name}', '${r.profiles?.full_name}')">APPROVE</button>
+                        <button class="btn-red" onclick="rejectRole('${r.id}', '${r.role_name}', '${r.profiles?.full_name}')">REJECT</button>
+                    </div>
+                </div>`).join('');
+
+            requests.forEach(r => populateClearanceSelect(`role-cl-${r.id}`, 1, myProfile.clearance_level));
+        }
+
+        async function approveRole(roleId, roleName, requester) {
+            const cl = parseInt(document.getElementById(`role-cl-${roleId}`).value);
+            const { error } = await _supabase.from('profile_roles').update({
+                status: 'Approved', clearance_level: cl, bio: '',
+                reviewed_by: myProfile.full_name, reviewed_at: new Date().toISOString()
+            }).eq('id', roleId);
+            if (error) { toast('APPROVAL FAILED: ' + error.message, 'error'); return; }
+            await logAction(myProfile, 'ROLE_APPROVED', requester, roleName + ' CL:' + cl);
+            toast('ROLE APPROVED: ' + roleName, 'success');
+            loadRoleRequests();
+        }
+
+        async function rejectRole(roleId, roleName, requester) {
+            const confirmed = await showModal(
+                'REJECT ROLE REQUEST "' + roleName + '" FOR ' + requester + '?',
+                { title: 'CONFIRM_REJECTION', confirmText: 'REJECT', cancelText: 'CANCEL', danger: true }
+            );
+            if (!confirmed) return;
+            const { error } = await _supabase.from('profile_roles').update({
+                status: 'Rejected', reviewed_by: myProfile.full_name, reviewed_at: new Date().toISOString()
+            }).eq('id', roleId);
+            if (error) { toast('REJECTION FAILED: ' + error.message, 'error'); return; }
+            await logAction(myProfile, 'ROLE_REJECTED', requester, roleName);
+            toast('ROLE REJECTED: ' + roleName, 'warning');
+            loadRoleRequests();
         }
 
         async function flagUser(userId,userName,reason){

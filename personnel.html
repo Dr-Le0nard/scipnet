@@ -71,7 +71,8 @@
                     .eq('is_approved', true)
                     .order('clearance_level', { ascending: false }),
                 _supabase.from('profile_roles')
-                    .select('profile_id, role_name, department')
+                    .select('profile_id, role_name, department, bio, clearance_level')
+                    .eq('status', 'Approved')
             ]);
 
             if (staffRes.error) {
@@ -108,9 +109,14 @@
             div.innerHTML = list.map(p => {
                 const cl = getClearanceDisplay(p);
                 const secondaryRoles = allRoles[p.id] || [];
-                const rolePills = secondaryRoles.map(r =>
-                    `<span class="role-pill">${r.role_name} [${r.department}]</span>`
-                ).join('');
+                const rolePills = secondaryRoles.map(r => `
+                    <div style="border-left:2px solid var(--green-border);padding:4px 0 4px 10px;margin-top:6px;">
+                        <div style="font-size:0.75rem;color:var(--text-mid);">
+                            ${r.role_name}
+                            <span style="color:var(--text-dim);font-size:0.68rem;margin-left:6px;">[${r.department}]</span>
+                        </div>
+                        ${r.bio ? `<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">${r.bio}</div>` : ''}
+                    </div>`).join('');
 
                 return `
                 <div class="card">
@@ -120,10 +126,10 @@
                         &nbsp;<span style="color:var(--text-dim);font-size:0.75rem;">[${p.department||'UNASSIGNED'}]</span>
                     </p>
                     ${secondaryRoles.length > 0 ? `
-                    <div style="margin-bottom:6px;">
-                        <span style="font-size:0.65rem;color:var(--text-dim);letter-spacing:1px;margin-right:4px;">ALSO:</span>
-                        ${rolePills}
-                    </div>` : ''}
+                        <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,255,65,0.07);">
+                            <div style="font-size:0.65rem;color:var(--text-dim);letter-spacing:1px;margin-bottom:4px;">ADDITIONAL ROLES</div>
+                            ${rolePills}
+                        </div>` : ''}
                     <p style="margin-top:4px;color:var(--text-dim);font-size:0.75rem;">${p.bio||'NO BIO ON RECORD'}</p>
                 </div>`;
             }).join('');

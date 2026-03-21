@@ -15,20 +15,15 @@
     <script src="nav.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
-        .role-card {
-            border: 1px solid var(--green-border);
-            background: var(--bg-card);
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-        .role-card.active-role {
-            border-color: rgba(0,255,65,0.6);
-            background: rgba(0,255,65,0.04);
-        }
-        optgroup { background: #010d02; color: rgba(0,255,65,0.5); }
+        .role-card { border:1px solid var(--green-border); background:var(--bg-card); padding:14px; margin-bottom:8px; }
+        .role-card.active  { border-color:rgba(0,255,65,0.6); background:rgba(0,255,65,0.03); }
+        .role-card.pending  { border-color:rgba(255,215,0,0.35); background:rgba(20,16,0,0.8); }
+        .role-card.rejected { border-color:rgba(255,62,62,0.3); background:rgba(20,0,0,0.6); opacity:0.7; }
+        .status-pill { font-size:0.68rem; letter-spacing:1px; border:1px solid; padding:1px 8px; font-family:var(--font-display); }
+        .status-pill.approved { color:var(--green); border-color:rgba(0,255,65,0.4); }
+        .status-pill.pending  { color:var(--gold);  border-color:rgba(255,215,0,0.4); }
+        .status-pill.rejected { color:var(--red);   border-color:rgba(255,62,62,0.4); }
+        optgroup { background:#010d02; color:rgba(0,255,65,0.5); }
     </style>
 </head>
 <body>
@@ -55,34 +50,34 @@
             </div>
         </div>
 
-        <!-- Bio -->
+        <!-- Primary Bio -->
         <div class="section-header">PERSONNEL_BIO</div>
         <div style="max-width:700px;">
             <textarea id="bio-input" rows="4" placeholder="NO BIO ON RECORD. ENTER PERSONNEL BIOGRAPHY..."></textarea>
             <div class="btn-row">
                 <button onclick="saveBio()">SAVE_BIO</button>
-                <span style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;">VISIBLE TO AUTHORIZED PERSONNEL</span>
+                <span style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;">PRIMARY ROLE BIO — VISIBLE TO AUTHORIZED PERSONNEL</span>
             </div>
         </div>
 
-        <!-- Multi-Role Management -->
+        <!-- Department Roles -->
         <div class="section-header" style="margin-top:32px;">DEPARTMENT_ROLES</div>
         <div style="max-width:700px;">
-            <div style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;margin-bottom:12px;">
-                MANAGE SECONDARY DEPARTMENT ROLES. ACTIVE ROLE DETERMINES YOUR NAME AND DEPARTMENT ON ALL SUBMISSIONS.
+            <div style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;margin-bottom:14px;">
+                SECONDARY ROLES REQUIRE APPROVAL FROM THE RELEVANT DEPARTMENT O5 OR ABOVE.
+                ONLY APPROVED ROLES CAN BE SET AS ACTIVE.
             </div>
 
-            <!-- Current roles list -->
-            <div id="roles-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+            <div id="roles-list" style="margin-bottom:16px;">
                 <div style="color:var(--text-dim);font-size:0.78rem;">LOADING...</div>
             </div>
 
-            <!-- Add new role -->
-            <div style="border:1px solid var(--green-border);background:var(--bg-card);padding:14px;">
-                <div style="font-size:0.72rem;color:var(--text-dim);letter-spacing:2px;margin-bottom:10px;">ADD_SECONDARY_ROLE</div>
+            <!-- Request new role -->
+            <div style="border:1px solid var(--green-border);background:var(--bg-card);padding:16px;">
+                <div style="font-size:0.72rem;color:var(--text-dim);letter-spacing:2px;margin-bottom:12px;">REQUEST_SECONDARY_ROLE</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                     <div>
-                        <label>ROLEPLAY NAME</label>
+                        <label>ROLEPLAY NAME FOR THIS ROLE</label>
                         <input type="text" id="new-role-name" placeholder="e.g. Dr. Bright">
                     </div>
                     <div>
@@ -90,8 +85,10 @@
                         <select id="new-role-dept"></select>
                     </div>
                 </div>
-                <div class="btn-row" style="margin-top:8px;">
-                    <button onclick="addRole()">ADD_ROLE</button>
+                <label style="margin-top:4px;">REASON FOR REQUEST</label>
+                <textarea id="new-role-reason" rows="2" placeholder="EXPLAIN WHY YOU NEED THIS SECONDARY ROLE..."></textarea>
+                <div class="btn-row" style="margin-top:4px;">
+                    <button onclick="requestRole()">SUBMIT_REQUEST</button>
                 </div>
             </div>
         </div>
@@ -136,15 +133,15 @@
         async function loadProfile() {
             const auth = await requireAuth();
             if (!auth) return;
-            const { user, profile } = auth;
+            const { profile } = auth;
             myProfile = profile;
             myRoles   = await fetchMyRoles();
 
             startPresence(profile);
             initNotificationListeners(profile);
 
-            const clInfo = getClearanceInfo(profile);
-            const activeRole = getActiveRole(profile, myRoles);
+            const clInfo     = getClearanceInfo(profile);
+            const activeRole = getActiveRole(profile, myRoles.filter(r => r.status === 'Approved'));
 
             document.getElementById('profile-name').innerText     = profile.full_name;
             document.getElementById('profile-subtitle').innerText = `PERSONNEL FILE // ${profile.full_name}`;
@@ -153,19 +150,17 @@
             document.getElementById('profile-approved').style.color = profile.is_approved ? 'var(--green)' : 'var(--gold)';
 
             const clEl = document.getElementById('profile-cl');
-            clEl.innerText   = clInfo.label;
-            clEl.style.color = clInfo.color;
+            clEl.innerText = clInfo.label; clEl.style.color = clInfo.color;
 
             const badge = document.getElementById('profile-badge');
-            if (profile.is_terminal_admin) {
+            if (profile.is_terminal_admin)
                 badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>MASKUR // TECH_ADMIN</span>`;
-            } else if (profile.is_overseer) {
+            else if (profile.is_overseer)
                 badge.innerHTML = `<span class="clearance-badge red"><span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span>APOLLYON // O5_CHAIRMAN</span>`;
-            } else if (profile.is_admin) {
+            else if (profile.is_admin)
                 badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>OMNI // O5_COUNCIL</span>`;
-            } else {
-                badge.innerHTML = `<span class="clearance-badge" style="color:${clInfo.color};border-color:${clInfo.color}40;"><span class="status-dot" style="background:${clInfo.color};box-shadow:0 0 6px ${clInfo.color};"></span>${clInfo.short} // FOUNDATION_PERSONNEL</span>`;
-            }
+            else
+                badge.innerHTML = `<span class="clearance-badge" style="color:${clInfo.color};border-color:${clInfo.color}40;"><span class="status-dot" style="background:${clInfo.color};"></span>${clInfo.short} // FOUNDATION_PERSONNEL</span>`;
 
             const statusParts = [];
             if (profile.is_terminal_admin) statusParts.push('TERMINAL_ADMIN');
@@ -175,101 +170,139 @@
             document.getElementById('profile-status').innerText = statusParts.join(' // ') || 'STANDARD_PERSONNEL';
 
             document.getElementById('bio-input').value = profile.bio || '';
-
-            populateDeptSelect('new-role-dept', null, false, false);
+            populateDeptSelect('new-role-dept', null, true, false);
             renderRoles();
             loadAuthoredDocs(profile.full_name);
         }
 
         function renderRoles() {
-            const container = document.getElementById('roles-list');
-            const activeRole = getActiveRole(myProfile, myRoles);
+            const container  = document.getElementById('roles-list');
+            const approvedRoles = myRoles.filter(r => r.status === 'Approved');
+            const activeRole = getActiveRole(myProfile, approvedRoles);
 
-            // Always show primary role first
+            // Primary role card
             const primaryIsActive = !activeRole.isSecondary;
             let html = `
-                <div class="role-card ${primaryIsActive ? 'active-role' : ''}">
-                    <div>
-                        <div style="font-family:var(--font-display);font-size:0.95rem;letter-spacing:1px;">${myProfile.full_name}</div>
-                        <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">[${myProfile.department || 'UNASSIGNED'}] — PRIMARY</div>
-                    </div>
-                    <div style="display:flex;gap:6px;align-items:center;">
-                        ${primaryIsActive
-                            ? `<span style="font-size:0.72rem;color:var(--green);letter-spacing:1px;">● ACTIVE</span>`
-                            : `<button onclick="setActiveRole(null)" style="font-size:0.78rem;padding:2px 10px;">SWITCH</button>`
-                        }
+                <div class="role-card ${primaryIsActive ? 'active' : ''}">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+                        <div>
+                            <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:1px;">${myProfile.full_name}</div>
+                            <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px;">[${myProfile.department||'UNASSIGNED'}] — PRIMARY ROLE</div>
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <span class="status-pill approved">APPROVED</span>
+                            ${primaryIsActive
+                                ? `<span style="font-size:0.72rem;color:var(--green);">● ACTIVE</span>`
+                                : `<button onclick="setActiveRole(null)" style="font-size:0.78rem;padding:2px 10px;">SWITCH</button>`}
+                        </div>
                     </div>
                 </div>`;
 
-            if (myRoles.length === 0 && primaryIsActive) {
-                html += `<div style="color:var(--text-dim);font-size:0.75rem;padding:8px 0;">NO SECONDARY ROLES — ADD ONE BELOW</div>`;
-            }
-
+            // Secondary role cards
             myRoles.forEach(r => {
-                const isActive = activeRole.isSecondary && activeRole.roleId === r.id;
+                const isActive   = r.status === 'Approved' && activeRole.isSecondary && activeRole.roleId === r.id;
+                const statusClass = r.status.toLowerCase();
+                const clInfo     = getClearanceByLevel(r.clearance_level || 0);
+
                 html += `
-                    <div class="role-card ${isActive ? 'active-role' : ''}">
+                <div class="role-card ${isActive ? 'active' : statusClass}">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
                         <div>
-                            <div style="font-family:var(--font-display);font-size:0.95rem;letter-spacing:1px;">${r.role_name}</div>
-                            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">[${r.department}]</div>
+                            <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:1px;">${r.role_name}</div>
+                            <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px;">
+                                [${r.department}]
+                                ${r.status === 'Approved' ? `&nbsp;|&nbsp; CL: <span style="color:${clInfo.color}">${clInfo.short}</span>` : ''}
+                            </div>
                         </div>
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            ${isActive
-                                ? `<span style="font-size:0.72rem;color:var(--green);letter-spacing:1px;">● ACTIVE</span>`
-                                : `<button onclick="setActiveRole('${r.id}')" style="font-size:0.78rem;padding:2px 10px;">SWITCH</button>`
-                            }
-                            <button onclick="deleteRole('${r.id}', '${r.role_name}')" class="btn-red" style="font-size:0.78rem;padding:2px 8px;">✕</button>
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                            <span class="status-pill ${statusClass}">${r.status.toUpperCase()}</span>
+                            ${r.status === 'Approved' && !isActive
+                                ? `<button onclick="setActiveRole('${r.id}')" style="font-size:0.78rem;padding:2px 10px;">SWITCH</button>`
+                                : r.status === 'Approved' && isActive
+                                ? `<span style="font-size:0.72rem;color:var(--green);">● ACTIVE</span>`
+                                : ''}
+                            ${r.status !== 'Pending'
+                                ? `<button onclick="deleteRole('${r.id}', '${r.role_name}')" class="btn-red" style="font-size:0.78rem;padding:2px 8px;">✕</button>`
+                                : ''}
                         </div>
-                    </div>`;
+                    </div>
+                    ${r.status === 'Rejected'
+                        ? `<div style="font-size:0.72rem;color:var(--red);margin-bottom:8px;">REQUEST REJECTED — CONTACT YOUR DEPARTMENT O5 FOR DETAILS</div>`
+                        : r.status === 'Pending'
+                        ? `<div style="font-size:0.72rem;color:var(--gold);margin-bottom:8px;">AWAITING REVIEW BY DEPARTMENT O5</div>`
+                        : ''}
+                    ${r.status === 'Approved' ? `
+                    <div style="margin-top:4px;">
+                        <label style="font-size:0.68rem;">ROLE BIO</label>
+                        <textarea id="role-bio-${r.id}" rows="2" placeholder="BIO FOR THIS ROLE..."
+                            style="font-size:0.78rem;margin-bottom:6px;">${r.bio||''}</textarea>
+                        <button onclick="saveRoleBio('${r.id}')" style="font-size:0.75rem;padding:2px 10px;">SAVE_BIO</button>
+                    </div>` : ''}
+                </div>`;
             });
+
+            if (myRoles.length === 0) {
+                html += `<div style="color:var(--text-dim);font-size:0.75rem;padding:8px 0;">NO SECONDARY ROLES — REQUEST ONE BELOW</div>`;
+            }
 
             container.innerHTML = html;
         }
 
         async function setActiveRole(roleId) {
             await switchRole(roleId);
-            // Reload profile to get updated active_role_id
             const { data: updated } = await _supabase.from('profiles').select('*').eq('id', myProfile.id).single();
             if (updated) myProfile = updated;
-            const activeRole = getActiveRole(myProfile, myRoles);
-            // Update presence with new active role
+            const approvedRoles = myRoles.filter(r => r.status === 'Approved');
+            const active = getActiveRole(myProfile, approvedRoles);
             await _supabase.from('presence').upsert({
-                user_id:    myProfile.id,
-                full_name:  activeRole.name,
-                department: activeRole.department,
-                last_seen:  new Date().toISOString()
+                user_id: myProfile.id, full_name: active.name,
+                department: active.department, last_seen: new Date().toISOString()
             }, { onConflict: 'user_id' });
             renderRoles();
-            toast(`ACTIVE ROLE: ${activeRole.name} [${activeRole.department}]`, 'success');
+            toast(`ACTIVE ROLE: ${active.name} [${active.department}]`, 'success');
         }
 
-        async function addRole() {
-            const name = document.getElementById('new-role-name').value.trim();
-            const dept = document.getElementById('new-role-dept').value;
-            if (!name) { toast('ROLE NAME IS REQUIRED', 'error'); return; }
-            if (!dept) { toast('DEPARTMENT IS REQUIRED', 'error'); return; }
+        async function requestRole() {
+            const name   = document.getElementById('new-role-name').value.trim();
+            const dept   = document.getElementById('new-role-dept').value;
+            const reason = document.getElementById('new-role-reason').value.trim();
+            if (!name)   { toast('ROLE NAME IS REQUIRED', 'error'); return; }
+            if (!dept)   { toast('DEPARTMENT IS REQUIRED', 'error'); return; }
+            if (!reason) { toast('REASON FOR REQUEST IS REQUIRED', 'error'); return; }
 
             const { data, error } = await _supabase.from('profile_roles').insert([{
-                profile_id: myProfile.id,
-                role_name:  name,
-                department: dept
+                profile_id:     myProfile.id,
+                role_name:      name,
+                department:     dept,
+                status:         'Pending',
+                clearance_level: 0,
+                bio:            reason  // store reason in bio temporarily until approved
             }]).select().single();
 
-            if (error) { toast('FAILED: ' + error.message, 'error'); return; }
+            if (error) { toast('REQUEST FAILED: ' + error.message, 'error'); return; }
             myRoles.push(data);
-            document.getElementById('new-role-name').value = '';
-            document.getElementById('new-role-dept').value = '';
+            document.getElementById('new-role-name').value   = '';
+            document.getElementById('new-role-dept').value   = '';
+            document.getElementById('new-role-reason').value = '';
             renderRoles();
-            toast(`ROLE ADDED: ${name} [${dept}]`, 'success');
+            toast(`ROLE REQUEST SUBMITTED — AWAITING O5 APPROVAL`, 'warning');
+        }
+
+        async function saveRoleBio(roleId) {
+            const bio = document.getElementById(`role-bio-${roleId}`)?.value.trim() || '';
+            const { error } = await _supabase.from('profile_roles').update({ bio }).eq('id', roleId);
+            if (error) { toast('BIO_UPDATE_FAILED', 'error'); return; }
+            const r = myRoles.find(r => r.id === roleId);
+            if (r) r.bio = bio;
+            toast('ROLE BIO UPDATED', 'success');
         }
 
         async function deleteRole(roleId, roleName) {
             const confirmed = await showModal(
                 `REMOVE ROLE "${roleName}"?`,
-                { title: 'CONFIRM_REMOVAL', confirmText: 'REMOVE', cancelText: 'CANCEL', danger: true }
+                { title:'CONFIRM_REMOVAL', confirmText:'REMOVE', cancelText:'CANCEL', danger:true }
             );
             if (!confirmed) return;
-            // If deleting active role, revert to primary first
             if (myProfile.active_role_id === roleId) await switchRole(null);
             const { error } = await _supabase.from('profile_roles').delete().eq('id', roleId);
             if (error) { toast('FAILED: ' + error.message, 'error'); return; }
@@ -310,12 +343,12 @@
         }
 
         async function changePassword() {
-            const newPw    = document.getElementById('new-password').value;
+            const newPw = document.getElementById('new-password').value;
             const confirmPw = document.getElementById('confirm-password').value;
             if (!newPw || !confirmPw) { toast('BOTH FIELDS ARE REQUIRED', 'error'); return; }
-            if (newPw.length < 6)     { toast('PASSWORD MUST BE AT LEAST 6 CHARACTERS', 'error'); return; }
-            if (newPw !== confirmPw)  { toast('CREDENTIALS DO NOT MATCH', 'error'); return; }
-            const confirmed = await showModal('UPDATE YOUR LOGIN CREDENTIALS?\nYOU WILL REMAIN LOGGED IN.', { title:'CONFIRM_CREDENTIAL_UPDATE', confirmText:'UPDATE', cancelText:'CANCEL' });
+            if (newPw.length < 6)    { toast('PASSWORD MUST BE AT LEAST 6 CHARACTERS', 'error'); return; }
+            if (newPw !== confirmPw) { toast('CREDENTIALS DO NOT MATCH', 'error'); return; }
+            const confirmed = await showModal('UPDATE YOUR LOGIN CREDENTIALS?', { title:'CONFIRM_CREDENTIAL_UPDATE', confirmText:'UPDATE', cancelText:'CANCEL' });
             if (!confirmed) return;
             const { error } = await _supabase.auth.updateUser({ password: newPw });
             if (error) toast('UPDATE_FAILED: ' + error.message, 'error');
