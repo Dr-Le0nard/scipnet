@@ -306,6 +306,12 @@
             const adminLink  = document.getElementById('admin-link');
             const adminAction= document.getElementById('admin-action');
             const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+            const isPRID = profile.is_prid_director;
+            if (isElevated || isPRID) {
+                adminLink.style.display = 'inline-flex';
+                adminAction.style.display = 'flex';
+                adminLink.innerText = isPRID && !isElevated ? 'PRID_PANEL' : adminLink.innerText;
+            }
             _canEditContainment = isElevated || profile.department === 'ScD';
 
             if (profile.is_terminal_admin) {
@@ -695,7 +701,7 @@
                 'DEA':     { label: 'EXTERNAL_AFFAIRS',  type: 'external' },
                 'DoA':     { label: 'ADMISSIONS',        type: 'admissions' },
                 'ITD':     { label: 'TRIBUNAL',          type: 'tribunal' },
-                'ISD':     { label: 'INTEL_BRIEFING',    type: 'intel' },
+                'DSIS':     { label: 'INTEL_BRIEFING',    type: 'intel' },
                 'MTF-A1':  { label: 'MTF_OPS [α-1]',    type: 'mtf' },
                 'MTF-X13': { label: 'MTF_OPS [ξ-13]',   type: 'mtf' },
                 'MTF-T5':  { label: 'MTF_OPS [τ-5]',    type: 'mtf' },

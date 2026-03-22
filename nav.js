@@ -18,7 +18,7 @@ async function initNav() {
                 .maybeSingle();
 
             if (profile) {
-                isAdmin    = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+                isAdmin    = profile.is_admin || profile.is_overseer || profile.is_terminal_admin || profile.is_prid_director;
                 isElevated = profile.is_overseer || profile.is_terminal_admin;
             }
         }
