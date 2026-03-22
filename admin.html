@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="departments.js"></script>
-    <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
     <script src="notifications.js"></script>
@@ -84,6 +83,8 @@
         const AUDIT_PAGE_SIZE = 25;
         let currentUserId=null, myProfile=null;
         let allLogs=[], filteredLogs=[], auditPage=1;
+        let isPRIDDirector = false;
+        let isFoundationAdmin = false;
 
         const ACTION_COLORS = {
             'APPROVED':'var(--green)', 'CREATED':'var(--green)',
@@ -95,8 +96,8 @@
         async function initAdmin() {
             const auth = await requireAuth();
             if (!auth) return;
-            const isPRIDDirector = auth.profile.is_prid_director === true;
-            const isFoundationAdmin = auth.profile.is_admin || auth.profile.is_overseer || auth.profile.is_terminal_admin;
+            isPRIDDirector = auth.profile.is_prid_director === true;
+            isFoundationAdmin = auth.profile.is_admin || auth.profile.is_overseer || auth.profile.is_terminal_admin;
             if (!isFoundationAdmin && !isPRIDDirector) {
                 window.location.href = 'dashboard.html';
                 return;

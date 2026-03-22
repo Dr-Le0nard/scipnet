@@ -71,7 +71,7 @@
                     .eq('is_approved', true)
                     .order('clearance_level', { ascending: false }),
                 _supabase.from('profile_roles')
-                    .select('profile_id, role_name, department, bio, clearance_level')
+                    .select('profile_id, role_name, department, bio')
                     .eq('status', 'Approved')
             ]);
 
