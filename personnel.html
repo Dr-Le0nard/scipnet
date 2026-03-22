@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
     <script src="notifications.js"></script>
@@ -34,9 +35,23 @@
     <div class="page-content page-wrapper fade-in">
         <div class="page-title">PERSONNEL_DIRECTORY</div>
         <div class="page-subtitle" id="access-notice">FOUNDATION STAFF MANIFEST // LOADING...</div>
-        <div class="filter-bar">
-            <input type="text" id="personnelSearch" placeholder="SEARCH BY NAME, CLEARANCE OR DEPT..." onkeyup="filterPersonnel()" style="max-width:480px;">
+
+        <div class="filter-bar" style="flex-wrap:wrap;gap:8px;">
+            <input type="text" id="personnelSearch" placeholder="SEARCH BY NAME..."
+                onkeyup="filterPersonnel()" style="max-width:240px;margin-bottom:0;">
+            <select id="personnelSort" onchange="filterPersonnel()" style="max-width:200px;margin-bottom:0;">
+                <option value="cl_desc">CLEARANCE (HIGH TO LOW)</option>
+                <option value="cl_asc">CLEARANCE (LOW TO HIGH)</option>
+                <option value="name_asc">NAME (A TO Z)</option>
+                <option value="name_desc">NAME (Z TO A)</option>
+                <option value="dept_asc">DEPARTMENT (A TO Z)</option>
+            </select>
+            <select id="personnelFilter" onchange="filterPersonnel()" style="max-width:200px;margin-bottom:0;">
+                <option value="ALL">ALL DEPARTMENTS</option>
+            </select>
+            <span id="personnel-count" style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;white-space:nowrap;align-self:center;"></span>
         </div>
+
         <div class="grid" id="personnel-list">
             <div style="color:var(--text-dim);">RETRIEVING STAFF MANIFEST...</div>
         </div>
@@ -63,7 +78,6 @@
                 notice.innerText = 'ELEVATED ACCESS // DISPLAYING ALL FOUNDATION PERSONNEL';
             }
 
-            // Fetch staff and all secondary roles in parallel
             const [staffRes, rolesRes] = await Promise.all([
                 _supabase.from('profiles')
                     .select('id, full_name, clearance_level, department, bio, is_admin, is_overseer, is_terminal_admin')
@@ -80,7 +94,6 @@
                 return;
             }
 
-            // Build role map keyed by profile_id
             allRoles = {};
             (rolesRes.data || []).forEach(r => {
                 if (!allRoles[r.profile_id]) allRoles[r.profile_id] = [];
@@ -88,7 +101,19 @@
             });
 
             allStaff = staffRes.data;
-            renderList(allStaff);
+            populateFilterDepts();
+            filterPersonnel();
+        }
+
+        function populateFilterDepts() {
+            const sel = document.getElementById('personnelFilter');
+            const depts = [...new Set(allStaff.map(p => p.department).filter(Boolean))].sort();
+            depts.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.text = `[${getDeptShort(d)}]`;
+                sel.appendChild(opt);
+            });
         }
 
         function getClearanceDisplay(person) {
@@ -98,6 +123,31 @@
             const CL_COLORS = ['var(--text-dim)','#4ade80','#facc15','#fb923c','var(--red)','#a78bfa','var(--gold)','var(--red)','var(--gold)'];
             const cl = person.clearance_level ?? 0;
             return { label: cl >= 6 ? ['OMNI','APOLLYON','MASKUR'][cl-6] : `L${cl}`, color: CL_COLORS[Math.min(cl, 8)] };
+        }
+
+        function filterPersonnel() {
+            const q      = document.getElementById('personnelSearch').value.toLowerCase();
+            const sort   = document.getElementById('personnelSort').value;
+            const filter = document.getElementById('personnelFilter').value;
+
+            let list = allStaff.filter(p => {
+                const nameMatch = p.full_name.toLowerCase().includes(q);
+                const deptMatch = filter === 'ALL' || p.department === filter;
+                return nameMatch && deptMatch;
+            });
+
+            list.sort((a, b) => {
+                if (sort === 'cl_desc')   return (b.clearance_level ?? 0) - (a.clearance_level ?? 0);
+                if (sort === 'cl_asc')    return (a.clearance_level ?? 0) - (b.clearance_level ?? 0);
+                if (sort === 'name_asc')  return a.full_name.localeCompare(b.full_name);
+                if (sort === 'name_desc') return b.full_name.localeCompare(a.full_name);
+                if (sort === 'dept_asc')  return (a.department||'').localeCompare(b.department||'');
+                return 0;
+            });
+
+            document.getElementById('personnel-count').innerText =
+                `${list.length} PERSONNEL`;
+            renderList(list);
         }
 
         function renderList(list) {
@@ -133,17 +183,6 @@
                     <p style="margin-top:4px;color:var(--text-dim);font-size:0.75rem;">${p.bio||'NO BIO ON RECORD'}</p>
                 </div>`;
             }).join('');
-        }
-
-        function filterPersonnel() {
-            const q = document.getElementById('personnelSearch').value.toLowerCase();
-            renderList(allStaff.filter(p => {
-                const secondaryNames = (allRoles[p.id] || []).map(r => r.role_name.toLowerCase() + ' ' + r.department.toLowerCase()).join(' ');
-                return p.full_name.toLowerCase().includes(q) ||
-                       String(p.clearance_level).includes(q) ||
-                       (p.department && p.department.toLowerCase().includes(q)) ||
-                       secondaryNames.includes(q);
-            }));
         }
 
         window.onload = loadPersonnel;

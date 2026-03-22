@@ -81,14 +81,15 @@
 
     <script>
         const AUDIT_PAGE_SIZE = 25;
-        let currentUserId=null, myProfile=null;
-        let allLogs=[], filteredLogs=[], auditPage=1;
+        let currentUserId = null, myProfile = null;
+        let allLogs = [], filteredLogs = [], auditPage = 1;
         let isPRIDDirector = false;
         let isFoundationAdmin = false;
 
         const ACTION_COLORS = {
-            'APPROVED':'var(--green)', 'CREATED':'var(--green)',
+            'APPROVED':'var(--green)', 'CREATED':'var(--green)', 'UNBANNED':'var(--green)',
             'BANNED':'var(--red)', 'REVOKED':'var(--red)', 'DELETED':'var(--red)',
+            'RESIGNED':'var(--text-dim)',
             'FLAGGED':'var(--gold)', 'UNFLAGGED':'var(--text-mid)',
             'BROADCAST':'var(--gold)', 'ALERT_CLEARED':'var(--text-mid)',
         };
@@ -121,7 +122,6 @@
             } else if (isPRIDDirector) {
                 document.getElementById('admin-header').innerText = 'PRID_DIRECTOR_PANEL';
                 document.getElementById('admin-header').style.color = '#60a5fa';
-                loadRoleRequests();
             }
 
             loadPending();
@@ -193,24 +193,41 @@
         }
 
         function renderAuditPage() {
-            const tbody=document.getElementById('audit-list'), countEl=document.getElementById('audit-count'), pagination=document.getElementById('audit-pagination');
-            if (filteredLogs.length === 0) { tbody.innerHTML=`<tr><td colspan="5" style="color:var(--text-dim);padding:16px;">NO LOG ENTRIES FOUND</td></tr>`; countEl.innerText=''; pagination.innerHTML=''; return; }
-            const totalPages=Math.ceil(filteredLogs.length/AUDIT_PAGE_SIZE), start=(auditPage-1)*AUDIT_PAGE_SIZE, page=filteredLogs.slice(start,start+AUDIT_PAGE_SIZE);
-            countEl.innerText=`${filteredLogs.length} ENTRIES // PAGE ${auditPage}/${totalPages}`;
-            tbody.innerHTML=page.map(l=>{
-                const dt=new Date(l.created_at), stamp=dt.toLocaleDateString()+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-                const color=ACTION_COLORS[l.action]||'var(--text-mid)';
-                return `<tr><td style="white-space:nowrap;font-size:0.72rem;">${stamp}</td><td style="color:var(--text-mid);">${l.actor_name}</td><td><span style="color:${color};font-family:var(--font-display);letter-spacing:1px;">${l.action}</span></td><td style="color:var(--text-mid);">${l.target_name||'—'}</td><td style="color:var(--text-dim);font-size:0.75rem;">${l.details||'—'}</td></tr>`;
+            const tbody = document.getElementById('audit-list');
+            const countEl = document.getElementById('audit-count');
+            const pagination = document.getElementById('audit-pagination');
+            if (filteredLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim);padding:16px;">NO LOG ENTRIES FOUND</td></tr>`;
+                countEl.innerText = ''; pagination.innerHTML = ''; return;
+            }
+            const totalPages = Math.ceil(filteredLogs.length / AUDIT_PAGE_SIZE);
+            const start = (auditPage - 1) * AUDIT_PAGE_SIZE;
+            const page = filteredLogs.slice(start, start + AUDIT_PAGE_SIZE);
+            countEl.innerText = `${filteredLogs.length} ENTRIES // PAGE ${auditPage}/${totalPages}`;
+            tbody.innerHTML = page.map(l => {
+                const dt = new Date(l.created_at);
+                const stamp = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+                const color = ACTION_COLORS[l.action] || 'var(--text-mid)';
+                return `<tr>
+                    <td style="white-space:nowrap;font-size:0.72rem;">${stamp}</td>
+                    <td style="color:var(--text-mid);">${l.actor_name}</td>
+                    <td><span style="color:${color};font-family:var(--font-display);letter-spacing:1px;">${l.action}</span></td>
+                    <td style="color:var(--text-mid);">${l.target_name || '—'}</td>
+                    <td style="color:var(--text-dim);font-size:0.75rem;">${l.details || '—'}</td>
+                </tr>`;
             }).join('');
-            if(totalPages<=1){pagination.innerHTML='';return;}
-            let pages=`<button onclick="goAuditPage(${auditPage-1})" ${auditPage===1?'disabled':''}>◄</button>`;
-            getPageRange(auditPage,totalPages).forEach(p=>{if(p==='...')pages+=`<span style="color:var(--text-dim);padding:0 4px;">...</span>`;else pages+=`<button ${p===auditPage?'style="border-color:var(--green);background:var(--green-glow);"':''} onclick="goAuditPage(${p})">${p}</button>`;});
-            pages+=`<button onclick="goAuditPage(${auditPage+1})" ${auditPage===totalPages?'disabled':''}>►</button>`;
-            pagination.innerHTML=pages;
+            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
+            let pages = `<button onclick="goAuditPage(${auditPage - 1})" ${auditPage === 1 ? 'disabled' : ''}>◄</button>`;
+            getPageRange(auditPage, totalPages).forEach(p => {
+                if (p === '...') pages += `<span style="color:var(--text-dim);padding:0 4px;">...</span>`;
+                else pages += `<button ${p === auditPage ? 'style="border-color:var(--green);background:var(--green-glow);"' : ''} onclick="goAuditPage(${p})">${p}</button>`;
+            });
+            pages += `<button onclick="goAuditPage(${auditPage + 1})" ${auditPage === totalPages ? 'disabled' : ''}>►</button>`;
+            pagination.innerHTML = pages;
         }
 
-        function goAuditPage(page){const total=Math.ceil(filteredLogs.length/AUDIT_PAGE_SIZE);if(page<1||page>total)return;auditPage=page;renderAuditPage();}
-        function getPageRange(current,total){if(total<=7)return Array.from({length:total},(_,i)=>i+1);if(current<=4)return[1,2,3,4,5,'...',total];if(current>=total-3)return[1,'...',total-4,total-3,total-2,total-1,total];return[1,'...',current-1,current,current+1,'...',total];}
+        function goAuditPage(page) { const total = Math.ceil(filteredLogs.length / AUDIT_PAGE_SIZE); if (page < 1 || page > total) return; auditPage = page; renderAuditPage(); }
+        function getPageRange(current, total) { if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1); if (current <= 4) return [1,2,3,4,5,'...',total]; if (current >= total - 3) return [1,'...',total-4,total-3,total-2,total-1,total]; return [1,'...',current-1,current,current+1,'...',total]; }
 
         // ---- FLAGS ----
         async function loadFlags() {
@@ -223,18 +240,20 @@
                     <p style="color:var(--gold);"><strong>NOTICE:</strong> ${u.admin_notice}</p>
                     <p><strong>USER:</strong> ${u.full_name}</p>
                     <p><strong>DEPT:</strong> ${getDeptShort(u.department) || 'NONE'}</p>
-                    <button class="btn-gold" onclick="clearFlag('${u.id}', '${u.full_name}')" ${isMe?'disabled':''}>
-                        ${isMe?'EXTERNAL_CLEARANCE_REQUIRED':'RESOLVE_FLAG'}
+                    <button class="btn-gold" onclick="clearFlag('${u.id}', '${u.full_name}')" ${isMe ? 'disabled' : ''}>
+                        ${isMe ? 'EXTERNAL_CLEARANCE_REQUIRED' : 'RESOLVE_FLAG'}
                     </button>
                 </div>`;
             }).join('');
         }
 
+        // ---- PENDING ----
         async function loadPending() {
-            let query = _supabase.from('profiles').select('*').eq('is_approved', false).eq('is_banned', false);
-            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) query = query.eq('department', myProfile.department);
+            let query = _supabase.from('profiles').select('*').eq('is_approved', false).eq('is_banned', false).eq('is_resigned', false);
             if (isPRIDDirector && !isFoundationAdmin) {
                 query = query.eq('department', 'PRID');
+            } else if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
+                query = query.eq('department', myProfile.department);
             }
             const { data: pending, error } = await query;
             const container = document.getElementById('pending-list');
@@ -249,59 +268,76 @@
                     <label>VALIDATE DEPARTMENT:</label>
                     <select id="dept-${u.id}"></select>
                     <label>ASSIGN CLEARANCE:</label>
-                    <select id="lvl-${u.id}">
-                        <option value="0">L0 — Public</option>
-                        <option value="1">L1 — Restricted</option>
-                        <option value="2">L2 — Confidential</option>
-                        <option value="3">L3 — Secret</option>
-                        <option value="4">L4 — Top Secret</option>
-                        <option value="5">L5 — Classified</option>
-                        <option value="6">L6 — Omni</option>
-                        <option value="7">L7 — Apollyon</option>
-                        <option value="8">L8 — Maskur</option>
-                    </select>
+                    <select id="lvl-${u.id}"></select>
                     <div class="btn-row" style="margin-top:10px;">
                         <button onclick="approveUser('${u.id}', '${u.full_name}')">GRANT</button>
-                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Departmental Misalignment Reported')" ${isMe?'disabled':''}>
-                            ${isMe?'N/A':'FLAG'}
+                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Departmental Misalignment Reported')" ${isMe ? 'disabled' : ''}>
+                            ${isMe ? 'N/A' : 'FLAG'}
                         </button>
                     </div>
                 </div>`;
             }).join('');
 
-            // Populate department dropdowns after rendering
-            pending.forEach(u => populateDeptSelect(`dept-${u.id}`, u.department, false, false));
+            pending.forEach(u => {
+                populateDeptSelect(`dept-${u.id}`, u.department, false, false);
+                // Cap clearance to approver's own level
+                populateClearanceSelect(`lvl-${u.id}`, 1, myProfile.clearance_level);
+            });
         }
 
+        // ---- ACTIVE USERS ----
         async function loadActiveUsers() {
-            let query = _supabase.from('profiles').select('*').eq('is_approved', true);
-            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) query = query.eq('department', myProfile.department);
+            // Include banned users so they can be unbanned
+            let query = _supabase.from('profiles').select('*')
+                .or('is_approved.eq.true,is_banned.eq.true');
             if (isPRIDDirector && !isFoundationAdmin) {
                 query = query.eq('department', 'PRID');
+            } else if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
+                query = query.eq('department', myProfile.department);
             }
             const { data: active, error } = await query.order('full_name', { ascending: true });
             const container = document.getElementById('active-list');
             if (error) { container.innerHTML = `<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`; return; }
             if (active.length === 0) { container.innerHTML = `<div style="color:var(--text-dim)">NO ACTIVE USERS</div>`; return; }
+
             container.innerHTML = active.map(u => {
                 const isMe = currentUserId === u.id;
-                let canRevoke = false;
-                if (myProfile.is_terminal_admin && !isMe) canRevoke = true;
-                if (myProfile.is_overseer && !u.is_terminal_admin && !isMe) canRevoke = true;
-                if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canRevoke = true;
-                
+                let canAct = false;
+                if (myProfile.is_terminal_admin && !isMe) canAct = true;
+                if (myProfile.is_overseer && !u.is_terminal_admin && !isMe) canAct = true;
+                if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canAct = true;
+                if (isPRIDDirector && !isFoundationAdmin && u.department === 'PRID' && !isMe) canAct = true;
+
+                const clLabel = u.clearance_level >= 6 ? ['OMNI','APOLLYON','MASKUR'][u.clearance_level - 6] : 'L' + u.clearance_level;
+                const bannedBadge = u.is_banned ? `<span style="color:var(--red);font-size:0.72rem;margin-left:6px;">[BANNED]</span>` : '';
+                const resignedBadge = u.is_resigned ? `<span style="color:var(--text-dim);font-size:0.72rem;margin-left:6px;">[RESIGNED]</span>` : '';
+
+                let actionButtons = '';
+                if (isMe) {
+                    actionButtons = `<button disabled>YOU</button>`;
+                } else if (u.is_banned) {
+                    actionButtons = `
+                        <button onclick="unbanUser('${u.id}', '${u.full_name}')" ${!canAct ? 'disabled' : ''}>UNBAN</button>`;
+                } else {
+                    actionButtons = `
+                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Active Personnel Audit Required')" ${!canAct ? 'disabled' : ''}>FLAG</button>
+                        <button onclick="resignUser('${u.id}', '${u.full_name}')" style="color:var(--text-dim);border-color:rgba(0,255,65,0.2);" ${!canAct ? 'disabled' : ''}>RESIGN</button>
+                        <button class="btn-red" onclick="revokeAccess('${u.id}', '${u.full_name}')" ${!canAct ? 'disabled' : ''}>BAN</button>`;
+                }
+
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
-                    <h3>${u.full_name} ${u.is_terminal_admin?`<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>`:''}</h3>
-                        <p>DEPT: [${getDeptShort(u.department)||'NONE'}] | CL: ${u.clearance_level >= 6 ? ['OMNI','APOLLYON','MASKUR'][u.clearance_level-6] : 'L'+u.clearance_level}
-                        }</p>
-                    <div class="btn-row" style="margin-top:10px;">
-                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Active Personnel Audit Required')" ${isMe?'disabled':''}>${isMe?'N/A':'FLAG'}</button>
-                        <button class="btn-red" onclick="revokeAccess('${u.id}', '${u.full_name}')" ${!canRevoke?'disabled':''}>${isMe?'YOU':'REVOKE'}</button>
-                    </div>
+                    <h3>
+                        ${u.full_name}
+                        ${u.is_terminal_admin ? `<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>` : ''}
+                        ${bannedBadge}${resignedBadge}
+                    </h3>
+                    <p>DEPT: [${getDeptShort(u.department) || 'NONE'}] | CL: ${clLabel}</p>
+                    <div class="btn-row" style="margin-top:10px;">${actionButtons}</div>
                 </div>`;
             }).join('');
         }
 
+        // ---- ROLE REQUESTS ----
         async function loadRoleRequests() {
             let query = _supabase
                 .from('profile_roles')
@@ -310,11 +346,15 @@
                 .order('created_at', { ascending: true });
 
             if (!myProfile.is_overseer && !myProfile.is_terminal_admin) {
-                const overseerDepts = Object.entries(DEPT_OVERSEER_MAP)
-                    .filter(([dept, overseer]) => overseer === myProfile.department)
-                    .map(([dept]) => dept);
-                if (overseerDepts.length === 0) return;
-                query = query.in('department', overseerDepts);
+                if (isPRIDDirector && !isFoundationAdmin) {
+                    query = query.eq('department', 'PRID');
+                } else {
+                    const overseerDepts = Object.entries(DEPT_OVERSEER_MAP)
+                        .filter(([dept, overseer]) => overseer === myProfile.department)
+                        .map(([dept]) => dept);
+                    if (overseerDepts.length === 0) return;
+                    query = query.in('department', overseerDepts);
+                }
             }
 
             const { data: requests, error } = await query;
@@ -327,25 +367,20 @@
                     <p><strong>REQUESTED BY:</strong> ${r.profiles?.full_name || 'UNKNOWN'}</p>
                     <p><strong>DEPARTMENT:</strong> [${getDeptShort(r.department)}]</p>
                     <p style="color:var(--text-dim);font-size:0.78rem;margin-top:4px;"><strong>REASON:</strong> ${r.bio || 'NO REASON PROVIDED'}</p>
-                    <label style="margin-top:10px;">ASSIGN CLEARANCE LEVEL</label>
-                    <select id="role-cl-${r.id}"></select>
                     <div class="btn-row" style="margin-top:8px;">
                         <button onclick="approveRole('${r.id}', '${r.role_name}', '${r.profiles?.full_name}')">APPROVE</button>
                         <button class="btn-red" onclick="rejectRole('${r.id}', '${r.role_name}', '${r.profiles?.full_name}')">REJECT</button>
                     </div>
                 </div>`).join('');
-
-            requests.forEach(r => populateClearanceSelect(`role-cl-${r.id}`, 1, myProfile.clearance_level));
         }
 
         async function approveRole(roleId, roleName, requester) {
-            const cl = parseInt(document.getElementById(`role-cl-${roleId}`).value);
             const { error } = await _supabase.from('profile_roles').update({
-                status: 'Approved', clearance_level: cl, bio: '',
+                status: 'Approved', bio: '',
                 reviewed_by: myProfile.full_name, reviewed_at: new Date().toISOString()
             }).eq('id', roleId);
             if (error) { toast('APPROVAL FAILED: ' + error.message, 'error'); return; }
-            await logAction(myProfile, 'ROLE_APPROVED', requester, roleName + ' CL:' + cl);
+            await logAction(myProfile, 'ROLE_APPROVED', requester, roleName);
             toast('ROLE APPROVED: ' + roleName, 'success');
             loadRoleRequests();
         }
@@ -365,34 +400,82 @@
             loadRoleRequests();
         }
 
-        async function flagUser(userId,userName,reason){
-            if(userId===currentUserId){toast('CANNOT_FLAG_SELF','error');return;}
-            const{error}=await _supabase.from('profiles').update({admin_notice:reason}).eq('id',userId);
-            if(error)toast('FLAG_FAILED: '+error.message,'error');
-            else{await logAction(myProfile,'FLAGGED',userName,reason);toast('USER FLAGGED','warning');location.reload();}
+        // ---- USER ACTIONS ----
+        async function flagUser(userId, userName, reason) {
+            if (userId === currentUserId) { toast('CANNOT_FLAG_SELF', 'error'); return; }
+            const { error } = await _supabase.from('profiles').update({ admin_notice: reason }).eq('id', userId);
+            if (error) toast('FLAG_FAILED: ' + error.message, 'error');
+            else { await logAction(myProfile, 'FLAGGED', userName, reason); toast('USER FLAGGED', 'warning'); location.reload(); }
         }
-        async function clearFlag(userId,userName){
-            if(userId===currentUserId){toast('CANNOT_UNFLAG_SELF','error');return;}
-            const{error}=await _supabase.from('profiles').update({admin_notice:null}).eq('id',userId);
-            if(error)toast('CLEAR_FAILED: '+error.message,'error');
-            else{await logAction(myProfile,'UNFLAGGED',userName,null);toast('FLAG RESOLVED','success');location.reload();}
+
+        async function clearFlag(userId, userName) {
+            if (userId === currentUserId) { toast('CANNOT_UNFLAG_SELF', 'error'); return; }
+            const { error } = await _supabase.from('profiles').update({ admin_notice: null }).eq('id', userId);
+            if (error) toast('CLEAR_FAILED: ' + error.message, 'error');
+            else { await logAction(myProfile, 'UNFLAGGED', userName, null); toast('FLAG RESOLVED', 'success'); location.reload(); }
         }
-        async function approveUser(userId,userName){
-            const level=document.getElementById(`lvl-${userId}`).value;
-            const dept=document.getElementById(`dept-${userId}`).value;
-            const{error}=await _supabase.from('profiles').update({is_approved:true,clearance_level:parseInt(level),department:dept,admin_notice:null}).eq('id',userId);
-            if(error)toast('UPDATE_FAILED: '+error.message,'error');
-            else{await logAction(myProfile,'APPROVED',userName,`Dept: ${dept} | CL: ${level}`);toast('ACCESS GRANTED','success');location.reload();}
+
+        async function approveUser(userId, userName) {
+            const level = document.getElementById(`lvl-${userId}`).value;
+            const dept  = document.getElementById(`dept-${userId}`).value;
+            const { error } = await _supabase.from('profiles')
+                .update({ is_approved: true, clearance_level: parseInt(level), department: dept, admin_notice: null })
+                .eq('id', userId);
+            if (error) toast('UPDATE_FAILED: ' + error.message, 'error');
+            else { await logAction(myProfile, 'APPROVED', userName, `Dept: ${dept} | CL: ${level}`); toast('ACCESS GRANTED', 'success'); location.reload(); }
         }
-        async function revokeAccess(userId,userName){
-            const confirmed=await showModal('THIS ACTION WILL PERMANENTLY BAN THIS USER.\nTHEY WILL LOSE ALL ACCESS IMMEDIATELY.',{title:'CONFIRM_REVOCATION',confirmText:'REVOKE',cancelText:'ABORT',danger:true});
-            if(!confirmed)return;
-            const{error}=await _supabase.from('profiles').update({is_approved:false,is_banned:true}).eq('id',userId);
-            if(error)toast('BAN_FAILED: '+error.message,'error');
-            else{await logAction(myProfile,'BANNED',userName,'Permanent access revocation');toast('USER BANNED','warning');location.reload();}
+
+        async function resignUser(userId, userName) {
+            const confirmed = await showModal(
+                `PROCESS RESIGNATION FOR ${userName}?\nThey will lose access but will NOT be banned.`,
+                { title: 'CONFIRM_RESIGNATION', confirmText: 'RESIGN', cancelText: 'CANCEL' }
+            );
+            if (!confirmed) return;
+            const { error } = await _supabase.from('profiles')
+                .update({ is_approved: false, is_resigned: true })
+                .eq('id', userId);
+            if (error) { toast('RESIGNATION_FAILED: ' + error.message, 'error'); return; }
+            await logAction(myProfile, 'RESIGNED', userName, 'Voluntary resignation processed');
+            toast(`${userName} HAS BEEN RESIGNED`, 'success');
+            location.reload();
         }
-        function filterUsers(){const q=document.getElementById('user-search').value.toLowerCase();document.querySelectorAll('.user-item').forEach(u=>{u.style.display=u.getAttribute('data-name').includes(q)?'flex':'none';});}
-        window.onload=initAdmin;
+
+        async function revokeAccess(userId, userName) {
+            const confirmed = await showModal(
+                'THIS ACTION WILL PERMANENTLY BAN THIS USER.\nTHEY WILL LOSE ALL ACCESS IMMEDIATELY.',
+                { title: 'CONFIRM_REVOCATION', confirmText: 'BAN', cancelText: 'ABORT', danger: true }
+            );
+            if (!confirmed) return;
+            const { error } = await _supabase.from('profiles')
+                .update({ is_approved: false, is_banned: true })
+                .eq('id', userId);
+            if (error) toast('BAN_FAILED: ' + error.message, 'error');
+            else { await logAction(myProfile, 'BANNED', userName, 'Permanent access revocation'); toast('USER BANNED', 'warning'); location.reload(); }
+        }
+
+        async function unbanUser(userId, userName) {
+            const confirmed = await showModal(
+                `LIFT BAN FOR ${userName}?\nThey will need to be re-approved before accessing the terminal.`,
+                { title: 'CONFIRM_UNBAN', confirmText: 'UNBAN', cancelText: 'CANCEL' }
+            );
+            if (!confirmed) return;
+            const { error } = await _supabase.from('profiles')
+                .update({ is_banned: false, is_approved: false })
+                .eq('id', userId);
+            if (error) { toast('UNBAN_FAILED: ' + error.message, 'error'); return; }
+            await logAction(myProfile, 'UNBANNED', userName, 'Ban lifted — pending re-approval');
+            toast(`${userName} UNBANNED — PENDING RE-APPROVAL`, 'success');
+            location.reload();
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            document.querySelectorAll('.user-item').forEach(u => {
+                u.style.display = u.getAttribute('data-name').includes(q) ? 'flex' : 'none';
+            });
+        }
+
+        window.onload = initAdmin;
     </script>
 </body>
 </html>
