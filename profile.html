@@ -92,7 +92,23 @@
                 </div>
             </div>
         </div>
-
+        
+        <!-- Discord ID -->
+        <div class="section-header" style="margin-top:32px;">DISCORD_LINK</div>
+        <div style="max-width:700px;">
+            <div style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;margin-bottom:10px;">
+                LINK YOUR DISCORD ACCOUNT SO THE SCIPNET BOT CAN MENTION YOU DIRECTLY.
+                TO FIND YOUR DISCORD ID: ENABLE DEVELOPER MODE IN DISCORD SETTINGS, THEN RIGHT-CLICK YOUR USERNAME AND SELECT "COPY USER ID".
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;">
+                <div>
+                    <label>DISCORD USER ID</label>
+                    <input type="text" id="discord-id-input" placeholder="e.g. 123456789012345678">
+                </div>
+                <button onclick="saveDiscordId()" style="margin-bottom:0;">SAVE</button>
+            </div>
+        </div>
+        
         <!-- Password Change -->
         <div class="section-header" style="margin-top:32px;">CHANGE_CREDENTIALS</div>
         <div style="max-width:700px;">
@@ -170,6 +186,7 @@
             document.getElementById('profile-status').innerText = statusParts.join(' // ') || 'STANDARD_PERSONNEL';
 
             document.getElementById('bio-input').value = profile.bio || '';
+            document.getElementById('discord-id-input').value = profile.discord_user_id || '';
             populateDeptSelect('new-role-dept', null, true, false);
             renderRoles();
             loadAuthoredDocs(profile.full_name);
@@ -286,6 +303,19 @@
             document.getElementById('new-role-reason').value = '';
             renderRoles();
             toast(`ROLE REQUEST SUBMITTED — AWAITING O5 APPROVAL`, 'warning');
+        }
+        
+        async function saveDiscordId() {
+            const discordId = document.getElementById('discord-id-input').value.trim();
+            if (discordId && !/^\d{17,19}$/.test(discordId)) {
+                toast('INVALID DISCORD ID — MUST BE 17-19 DIGITS', 'error');
+                return;
+            }
+            const { error } = await _supabase.from('profiles')
+                .update({ discord_user_id: discordId || null })
+                .eq('id', myProfile.id);
+            if (error) { toast('SAVE FAILED: ' + error.message, 'error'); return; }
+            toast(discordId ? 'DISCORD ACCOUNT LINKED' : 'DISCORD LINK REMOVED', 'success');
         }
 
         async function saveRoleBio(roleId) {
