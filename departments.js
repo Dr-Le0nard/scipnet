@@ -56,7 +56,7 @@ const DEPT_OVERSEER_MAP = {
     'MTF-E11': 'MTF-CMD',
     'MTF-B7':  'MTF-CMD',
     'MTF-N7':  'MTF-CMD',
-    'PRID':    'PRID_DIRECTOR',
+    'PRID': 'PRID',
 };
 
 /**
