@@ -2,10 +2,10 @@
 
 const DEPARTMENTS = [
     // Supreme Authority
-    { value: 'OTA',     label: 'OFFICE OF THE ADMINISTRATOR (OTA)', group: 'SUPREME AUTHORITY' },
+    { value: 'OTA',     label: 'OFFICE OF THE ADMINISTRATOR (OTA)',  group: 'SUPREME AUTHORITY' },
 
     // Council
-    { value: 'O5',      label: 'O5 COUNCIL',                        group: 'COUNCIL' },
+    { value: 'O5',      label: 'O5 COUNCIL',                         group: 'COUNCIL' },
 
     // Main Departments
     { value: 'ScD',     label: 'SCIENTIFIC DEPARTMENT (ScD)',        group: 'DEPARTMENTS' },
@@ -23,12 +23,12 @@ const DEPARTMENTS = [
 
     // MTF
     { value: 'MTF-CMD', label: 'MTF COMMAND (MTF-CMD)',              group: 'MOBILE TASK FORCES' },
-    { value: 'MTF-A1',  label: 'MTF a-1 "Red Right Hand"',          group: 'MOBILE TASK FORCES' },
-    { value: 'MTF-X13', label: 'MTF x-13 "Sequere Nos"',            group: 'MOBILE TASK FORCES' },
-    { value: 'MTF-T5',  label: 'MTF t-5 "Samsara"',                 group: 'MOBILE TASK FORCES' },
-    { value: 'MTF-E11', label: 'MTF e-11 "Nine Tailed Fox"',        group: 'MOBILE TASK FORCES' },
-    { value: 'MTF-B7',  label: 'MTF b-7 "Maz Hatters"',             group: 'MOBILE TASK FORCES' },
-    { value: 'MTF-N7',  label: 'MTF n-7 "Hammer Down"',             group: 'MOBILE TASK FORCES' },
+    { value: 'MTF-A1',  label: 'MTF a-1 "Red Right Hand"',           group: 'MOBILE TASK FORCES' },
+    { value: 'MTF-X13', label: 'MTF x-13 "Sequere Nos"',             group: 'MOBILE TASK FORCES' },
+    { value: 'MTF-T5',  label: 'MTF t-5 "Samsara"',                  group: 'MOBILE TASK FORCES' },
+    { value: 'MTF-E11', label: 'MTF e-11 "Nine Tailed Fox"',         group: 'MOBILE TASK FORCES' },
+    { value: 'MTF-B7',  label: 'MTF b-7 "Maz Hatters"',              group: 'MOBILE TASK FORCES' },
+    { value: 'MTF-N7',  label: 'MTF n-7 "Hammer Down"',              group: 'MOBILE TASK FORCES' },
 
     // External Contractors
     { value: 'PRID',    label: 'PRISEC RESEARCH & INNOVATION (PRID)', group: 'CONTRACTED UNITS' },
