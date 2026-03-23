@@ -83,7 +83,6 @@
         const AUDIT_PAGE_SIZE = 25;
         let currentUserId = null, myProfile = null;
         let allLogs = [], filteredLogs = [], auditPage = 1;
-        let isPRIDDirector = false;
         let isFoundationAdmin = false;
 
         const ACTION_COLORS = {
@@ -97,9 +96,8 @@
         async function initAdmin() {
             const auth = await requireAuth();
             if (!auth) return;
-            isPRIDDirector = auth.profile.is_prid_director === true;
             isFoundationAdmin = auth.profile.is_admin || auth.profile.is_overseer || auth.profile.is_terminal_admin;
-            if (!isFoundationAdmin && !isPRIDDirector) {
+            if (!isFoundationAdmin) {
                 window.location.href = 'dashboard.html';
                 return;
             }
@@ -250,9 +248,7 @@
         // ---- PENDING ----
         async function loadPending() {
             let query = _supabase.from('profiles').select('*').eq('is_approved', false).eq('is_banned', false).eq('is_resigned', false);
-            if (isPRIDDirector && !isFoundationAdmin) {
-                query = query.eq('department', 'PRID');
-            } else if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
+            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
                 query = query.eq('department', myProfile.department);
             }
             const { data: pending, error } = await query;
@@ -290,9 +286,7 @@
             // Include banned users so they can be unbanned
             let query = _supabase.from('profiles').select('*')
                 .or('is_approved.eq.true,is_banned.eq.true');
-            if (isPRIDDirector && !isFoundationAdmin) {
-                query = query.eq('department', 'PRID');
-            } else if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
+            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
                 query = query.eq('department', myProfile.department);
             }
             const { data: active, error } = await query.order('full_name', { ascending: true });
