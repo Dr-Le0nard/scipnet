@@ -117,9 +117,6 @@
                 showAlertPanel(); loadFlags(); showAuditLog();
             } else if (myProfile.is_admin) {
                 showAlertPanel(); showAuditLog();
-            } else if (isPRIDDirector) {
-                document.getElementById('admin-header').innerText = 'PRID_DIRECTOR_PANEL';
-                document.getElementById('admin-header').style.color = '#60a5fa';
             }
 
             loadPending();
@@ -300,8 +297,6 @@
                 if (myProfile.is_terminal_admin && !isMe) canAct = true;
                 if (myProfile.is_overseer && !u.is_terminal_admin && !isMe) canAct = true;
                 if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canAct = true;
-                if (isPRIDDirector && !isFoundationAdmin && u.department === 'PRID' && !isMe) canAct = true;
-
                 const clLabel = u.clearance_level >= 6 ? ['OMNI','APOLLYON','MASKUR'][u.clearance_level - 6] : 'L' + u.clearance_level;
                 const bannedBadge = u.is_banned ? `<span style="color:var(--red);font-size:0.72rem;margin-left:6px;">[BANNED]</span>` : '';
                 const resignedBadge = u.is_resigned ? `<span style="color:var(--text-dim);font-size:0.72rem;margin-left:6px;">[RESIGNED]</span>` : '';
@@ -340,15 +335,11 @@
                 .order('created_at', { ascending: true });
 
             if (!myProfile.is_overseer && !myProfile.is_terminal_admin) {
-                if (isPRIDDirector && !isFoundationAdmin) {
-                    query = query.eq('department', 'PRID');
-                } else {
-                    const overseerDepts = Object.entries(DEPT_OVERSEER_MAP)
-                        .filter(([dept, overseer]) => overseer === myProfile.department)
-                        .map(([dept]) => dept);
-                    if (overseerDepts.length === 0) return;
-                    query = query.in('department', overseerDepts);
-                }
+                const overseerDepts = Object.entries(DEPT_OVERSEER_MAP)
+                    .filter(([dept, overseer]) => overseer === myProfile.department)
+                    .map(([dept]) => dept);
+                if (overseerDepts.length === 0) return;
+                query = query.in('department', overseerDepts);
             }
 
             const { data: requests, error } = await query;
