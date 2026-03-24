@@ -36,7 +36,6 @@ const DEPARTMENTS = [
 ];
 
 // Maps department to who oversees its access/role requests
-// PRID uses 'PRID_DIRECTOR' as a special sentinel — handled separately in app logic
 const DEPT_OVERSEER_MAP = {
     'OTA':     'OTA',
     'O5':      'O5',
@@ -63,11 +62,9 @@ const DEPT_OVERSEER_MAP = {
 
 /**
  * Returns true if the given profile can approve requests for the given department.
- * Handles both O5 admins and the PRID Director.
  */
 function canApproveForDept(profile, dept) {
     if (profile.is_terminal_admin || profile.is_overseer) return true;
-    if (dept === 'PRID') return profile.is_prid_director === true;
     if (!profile.is_admin) return false;
     var overseerDept = DEPT_OVERSEER_MAP[dept];
     return profile.department === overseerDept || profile.department === 'O5';
@@ -77,7 +74,7 @@ function canApproveForDept(profile, dept) {
  * Returns true if the profile has any kind of elevated/approval authority.
  */
 function isElevatedUser(profile) {
-    return profile.is_admin || profile.is_overseer || profile.is_terminal_admin || profile.is_prid_director;
+    return profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
 }
 
 function populateDeptSelect(selectId, selectedValue, includeBlank, includeO5) {
