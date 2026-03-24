@@ -310,7 +310,7 @@
             if (isElevated) {
                 adminLink.style.display = 'inline-flex';
                 adminAction.style.display = 'flex';
-                adminLink.innerText = isPRID && !isElevated ? 'PRID_PANEL' : adminLink.innerText;
+                adminLink.innerText = adminLink.innerText;
             }
             _canEditContainment = isElevated || profile.department === 'ScD';
 
