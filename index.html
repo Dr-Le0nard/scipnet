@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>SCiPNET - Secure Access Terminal</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -33,11 +33,11 @@
         .terminal-box.visible { opacity: 1; transform: translateY(0); }
         .terminal-titlebar { background: var(--green); color: #000; padding: 4px 12px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; letter-spacing: 2px; font-family: var(--font-mono); }
         .terminal-body { padding: 24px; }
-        .ascii-header { font-size: 0.7rem; line-height: 1.2; color: var(--green); text-shadow: 0 0 10px var(--green); margin-bottom: 20px; text-align: center; letter-spacing: 0; text-transform: none; opacity: 0.8; font-family: 'Share Tech Mono', monospace; }
+        .ascii-header { font-size: 0.7rem; line-height: 1.2; color: var(--green); text-shadow: 0 0 10px var(--green); margin-bottom: 20px; text-align: center; opacity: 0.8; font-family: 'Share Tech Mono', monospace; }
         .terminal-divider { border: none; border-top: 1px dashed rgba(0,255,65,0.3); margin: 16px 0; }
         .prompt-row { display: flex; align-items: center; margin-bottom: 12px; gap: 8px; }
         .prompt-label { color: var(--green); white-space: nowrap; font-size: 1rem; min-width: 180px; opacity: 0.7; font-family: var(--font-mono); }
-        .prompt-label::before { content: '> '; color: var(--green); }
+        .prompt-label::before { content: '> '; }
         .prompt-input { background: transparent !important; border: none !important; border-bottom: 1px solid rgba(0,255,65,0.4) !important; color: var(--green) !important; font-family: var(--font-mono) !important; font-size: 1rem !important; padding: 2px 4px !important; width: 100% !important; height: auto !important; margin: 0 !important; outline: none !important; caret-color: var(--green); }
         .prompt-input:focus { border-bottom-color: var(--green) !important; box-shadow: 0 2px 0 rgba(0,255,65,0.3); }
         .prompt-input::placeholder { color: rgba(0,255,65,0.25); }
@@ -45,9 +45,18 @@
         .status-line.error   { color: var(--red); }
         .status-line.success { color: var(--green); }
         .status-line.warning { color: var(--gold); }
-        .action-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; gap: 12px; }
+        .action-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; gap: 12px; flex-wrap: wrap; }
         .terminal-btn { background: transparent !important; border: 1px solid var(--green-border) !important; color: var(--green) !important; font-family: var(--font-display) !important; font-size: 1rem !important; padding: 6px 20px !important; cursor: pointer; letter-spacing: 2px; transition: all 0.15s; height: auto !important; text-transform: uppercase; }
         .terminal-btn:hover { background: var(--green-glow) !important; border-color: var(--green) !important; box-shadow: 0 0 15px rgba(0,255,65,0.3) !important; }
+        .discord-btn {
+            display: flex; align-items: center; gap: 10px; justify-content: center;
+            background: #5865F2 !important; border: none !important; color: #fff !important;
+            font-family: var(--font-display) !important; font-size: 0.95rem !important;
+            padding: 8px 20px !important; cursor: pointer; letter-spacing: 2px;
+            transition: all 0.15s; width: 100%; margin-top: 8px;
+        }
+        .discord-btn:hover { background: #4752c4 !important; box-shadow: 0 0 20px rgba(88,101,242,0.4) !important; }
+        .discord-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
         .toggle-link { color: rgba(0,255,65,0.5); cursor: pointer; font-size: 0.85rem; letter-spacing: 1px; border: none; background: none; height: auto !important; padding: 0 !important; font-family: var(--font-mono); transition: color 0.2s; }
         .toggle-link:hover { color: var(--green); background: transparent !important; box-shadow: none !important; }
         #scan-container { margin: 16px 0; display: none; }
@@ -59,10 +68,11 @@
         .cursor { display: inline-block; width: 8px; height: 14px; background: var(--green); animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
         .terminal-footer { font-size: 0.75rem; color: rgba(0,255,65,0.3); text-align: center; margin-top: 12px; letter-spacing: 2px; font-family: var(--font-mono); }
-        #reg-fields { display: none; }
-        .verify-banner { border: 1px solid rgba(255,215,0,0.4); background: rgba(20,16,0,0.95); padding: 16px 20px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--gold); letter-spacing: 0.05em; line-height: 1.6; }
+        #oauth-fields { display: none; }
+        .verify-banner { border: 1px solid rgba(255,215,0,0.4); background: rgba(20,16,0,0.95); padding: 16px 20px; margin-top: 12px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--gold); letter-spacing: 0.05em; line-height: 1.6; }
         .verify-banner strong { display: block; font-family: var(--font-display); font-size: 1rem; letter-spacing: 2px; margin-bottom: 6px; }
-        optgroup { background: #010d02; color: rgba(0,255,65,0.5); font-family: var(--font-mono); }
+        .section-label { font-size: 0.72rem; color: rgba(0,255,65,0.4); letter-spacing: 3px; margin: 16px 0 8px; font-family: var(--font-mono); }
+        optgroup { background: #010d02; color: rgba(0,255,65,0.5); }
     </style>
 </head>
 <body>
@@ -81,10 +91,12 @@
 (___/(__) (__) (__)  \_)__)(____) (__)
                 </pre>
                 <hr class="terminal-divider">
-                <div id="form-title" style="margin-bottom:16px;font-size:1rem;color:rgba(0,255,65,0.6);letter-spacing:3px;">
-                    AUTHENTICATION REQUIRED <span class="cursor"></span>
-                </div>
-                <div id="login-fields">
+
+                <!-- LOGIN MODE -->
+                <div id="login-view">
+                    <div style="margin-bottom:16px;font-size:1rem;color:rgba(0,255,65,0.6);letter-spacing:3px;">
+                        AUTHENTICATION REQUIRED <span class="cursor"></span>
+                    </div>
                     <div class="prompt-row">
                         <span class="prompt-label">IDENTIFIER</span>
                         <input type="text" id="email" class="prompt-input" placeholder="user@foundation.scp" autocomplete="off">
@@ -93,27 +105,68 @@
                         <span class="prompt-label">CREDENTIALS</span>
                         <input type="password" id="password" class="prompt-input" placeholder="••••••••••••">
                     </div>
-                </div>
-                <div id="reg-fields">
-                    <div class="prompt-row">
-                        <span class="prompt-label">FULL_NAME</span>
-                        <input type="text" id="fullname" class="prompt-input" placeholder="Dr. Bright">
+                    <div id="scan-container">
+                        <div class="scan-label">BIOMETRIC AUTHENTICATION IN PROGRESS...</div>
+                        <div class="scan-bar-outer"><div id="scan-bar-fill"></div></div>
+                        <div id="scan-status-text">AWAITING INPUT</div>
                     </div>
-                    <div class="prompt-row">
-                        <span class="prompt-label">DEPARTMENT</span>
-                        <select id="dept-choice" class="prompt-input" style="appearance:none;cursor:pointer;"></select>
+                    <div class="status-line" id="status-msg"></div>
+                    <hr class="terminal-divider">
+                    <div class="action-row">
+                        <button class="terminal-btn" onclick="startScan()">AUTHENTICATE</button>
+                        <button class="toggle-link" onclick="showSignup()">[ REQUEST_NEW_ACCESS ]</button>
                     </div>
                 </div>
-                <div id="scan-container">
-                    <div class="scan-label">BIOMETRIC AUTHENTICATION IN PROGRESS...</div>
-                    <div class="scan-bar-outer"><div id="scan-bar-fill"></div></div>
-                    <div id="scan-status-text">AWAITING INPUT</div>
-                </div>
-                <div class="status-line" id="status-msg"></div>
-                <hr class="terminal-divider">
-                <div class="action-row">
-                    <button class="terminal-btn" id="auth-btn" onclick="handleAuth()">AUTHENTICATE</button>
-                    <button class="toggle-link" id="toggle-btn" onclick="toggleMode()">[ REQUEST_NEW_ACCESS ]</button>
+
+                <!-- SIGNUP MODE -->
+                <div id="signup-view" style="display:none;">
+                    <div style="margin-bottom:16px;font-size:1rem;color:rgba(0,255,65,0.6);letter-spacing:3px;">
+                        NEW ACCESS REQUEST <span class="cursor"></span>
+                    </div>
+
+                    <div class="section-label">// STEP 1 — VERIFY IDENTITY VIA DISCORD</div>
+                    <button class="discord-btn" onclick="signupWithDiscord()">
+                        <svg viewBox="0 0 127.14 96.36" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+                        </svg>
+                        AUTHENTICATE WITH DISCORD
+                    </button>
+
+                    <div id="oauth-fields">
+                        <div class="section-label" style="margin-top:20px;">// STEP 2 — COMPLETE YOUR PROFILE</div>
+                        <div style="border:1px solid rgba(88,101,242,0.4);background:rgba(88,101,242,0.06);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;" id="discord-identity-card">
+                            <img id="discord-avatar" src="" style="width:36px;height:36px;border-radius:50%;display:none;">
+                            <div>
+                                <div style="font-size:0.78rem;color:rgba(88,101,242,0.8);letter-spacing:1px;">DISCORD IDENTITY VERIFIED</div>
+                                <div style="font-family:var(--font-display);font-size:0.95rem;" id="discord-username-display">---</div>
+                            </div>
+                        </div>
+                        <div class="prompt-row">
+                            <span class="prompt-label">RP NAME</span>
+                            <input type="text" id="fullname" class="prompt-input" placeholder="e.g. Dr. Bright">
+                        </div>
+                        <div class="prompt-row">
+                            <span class="prompt-label">DEPARTMENT</span>
+                            <select id="dept-choice" class="prompt-input" style="appearance:none;cursor:pointer;"></select>
+                        </div>
+                        <div class="prompt-row">
+                            <span class="prompt-label">PASSWORD</span>
+                            <input type="password" id="oauth-password" class="prompt-input" placeholder="Set a login password...">
+                        </div>
+                        <div class="status-line" id="oauth-status"></div>
+                        <hr class="terminal-divider">
+                        <div class="action-row">
+                            <button class="terminal-btn" onclick="completeOAuthSignup()">SUBMIT_REQUEST</button>
+                            <button class="toggle-link" onclick="showLogin()">[ BACK TO LOGIN ]</button>
+                        </div>
+                    </div>
+
+                    <div id="oauth-pending" style="display:none;">
+                        <hr class="terminal-divider">
+                        <button class="toggle-link" onclick="showLogin()">[ BACK TO LOGIN ]</button>
+                    </div>
+
+                    <div id="signup-status" class="status-line" style="margin-top:12px;"></div>
                 </div>
             </div>
         </div>
@@ -121,10 +174,14 @@
     </div>
 
     <script>
-        let isRegistering=false, isScanning=false, scanInterval=null, scanProgress=0;
+        let isScanning = false, scanInterval = null, scanProgress = 0;
+        let _oauthDiscordId = null, _oauthDiscordUsername = null, _oauthDiscordAvatar = null;
 
-        function updateClock() { document.getElementById('titlebar-time').innerText = new Date().toISOString().replace('T',' ').substring(0,19)+' UTC'; }
-        setInterval(updateClock,1000); updateClock();
+        function updateClock() {
+            document.getElementById('titlebar-time').innerText =
+                new Date().toISOString().replace('T',' ').substring(0,19)+' UTC';
+        }
+        setInterval(updateClock, 1000); updateClock();
 
         const bootLines = [
             { text:'INITIALIZING SCIPNET SECURE KERNEL...', type:'ok', delay:0 },
@@ -145,179 +202,227 @@
                     span.style.animation = `expand 0.4s steps(${line.text.length}) forwards`;
                     span.innerText = line.text;
                     container.appendChild(span);
-                    if (i === bootLines.length-1) setTimeout(() => document.getElementById('terminal-box').classList.add('visible'), 500);
+                    if (i === bootLines.length-1)
+                        setTimeout(() => document.getElementById('terminal-box').classList.add('visible'), 500);
                 }, line.delay);
             });
         }
 
-        function toggleMode() {
-            isRegistering = !isRegistering;
-            clearStatus();
-            document.getElementById('form-title').innerHTML = isRegistering
-                ? 'NEW ACCESS REQUEST <span class="cursor"></span>'
-                : 'AUTHENTICATION REQUIRED <span class="cursor"></span>';
-            document.getElementById('reg-fields').style.display  = isRegistering ? 'block' : 'none';
-            document.getElementById('auth-btn').innerText        = isRegistering ? 'SUBMIT REQUEST' : 'AUTHENTICATE';
-            document.getElementById('toggle-btn').innerText      = isRegistering ? '[ BACK TO LOGIN ]' : '[ REQUEST_NEW_ACCESS ]';
-            document.getElementById('scan-container').style.display = 'none';
-            if (isRegistering) populateDeptSelect('dept-choice', null, true, false);
-        }
+        function showLogin()  { document.getElementById('login-view').style.display='block';  document.getElementById('signup-view').style.display='none'; }
+        function showSignup() { document.getElementById('login-view').style.display='none';   document.getElementById('signup-view').style.display='block'; }
 
-        function handleAuth() { isRegistering ? executeAuth() : startScan(); }
+        function setStatus(msg, type='') { const el=document.getElementById('status-msg'); el.innerText='> '+msg; el.className='status-line '+type; }
+        function clearStatus() { const el=document.getElementById('status-msg'); el.innerText=''; el.className='status-line'; }
 
+        // ── LOGIN ────────────────────────────────────────────────────────────
         function startScan() {
-            const email = document.getElementById('email').value.trim();
+            const email    = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             if (!email || !password) { setStatus('ERROR: IDENTIFIER AND CREDENTIALS REQUIRED','error'); return; }
             if (isScanning) return;
             isScanning=true; scanProgress=0; clearStatus();
             document.getElementById('scan-container').style.display='block';
-            document.getElementById('auth-btn').disabled=true;
             const fill=document.getElementById('scan-bar-fill'), statusText=document.getElementById('scan-status-text');
             const messages=['READING BIOMETRIC SIGNATURE...','CROSS-REFERENCING PERSONNEL DATABASE...','VERIFYING CLEARANCE LEVEL...','CHECKING CONTAINMENT PROTOCOL ACCESS...','IDENTITY CONFIRMED...'];
             scanInterval=setInterval(()=>{
                 scanProgress+=1.5; fill.style.width=Math.min(scanProgress,100)+'%';
                 statusText.innerText=messages[Math.min(Math.floor((scanProgress/100)*messages.length),messages.length-1)]+' '+Math.floor(scanProgress)+'%';
-                if(scanProgress>=100){clearInterval(scanInterval);statusText.innerText='ACCESS GRANTED // AUTHENTICATING...';setTimeout(()=>executeAuth(),400);}
+                if(scanProgress>=100){clearInterval(scanInterval);statusText.innerText='ACCESS GRANTED // AUTHENTICATING...';setTimeout(executeLogin,400);}
             },30);
         }
 
-        function resetScan(){
-            isScanning=false;clearInterval(scanInterval);scanProgress=0;
+        function resetScan() {
+            isScanning=false; clearInterval(scanInterval); scanProgress=0;
             document.getElementById('scan-bar-fill').style.width='0%';
             document.getElementById('scan-status-text').innerText='AWAITING INPUT';
             document.getElementById('scan-container').style.display='none';
-            document.getElementById('auth-btn').disabled=false;
         }
 
-        function setStatus(msg,type=''){const el=document.getElementById('status-msg');el.innerText='> '+msg;el.className='status-line '+type;}
-        function clearStatus(){const el=document.getElementById('status-msg');el.innerText='';el.className='status-line';}
-
-        async function executeAuth() {
-            const email = document.getElementById('email').value.trim();
+        async function executeLogin() {
+            const email    = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            if (isRegistering) {
-                const fullName = document.getElementById('fullname').value.trim();
-                const deptChoice = document.getElementById('dept-choice').value;
-                if (!email||!password||!fullName||!deptChoice){setStatus('ERROR: ALL FIELDS REQUIRED','error');return;}
-                setStatus('TRANSMITTING REQUEST TO O5 COUNCIL...','warning');
-                const{error}=await _supabase.auth.signUp({email,password,options:{data:{full_name:fullName,department:deptChoice}}});
-                if(error){setStatus('REQUEST FAILED: '+error.message,'error');}
-                else{
-                    document.querySelector('.terminal-body').innerHTML=`
-                        <div style="text-align:center;padding:20px 0;">
-                            <div style="font-size:1.4rem;margin-bottom:16px;text-shadow:0 0 10px var(--green);">REQUEST_TRANSMITTED</div>
-                            <hr class="terminal-divider">
-                            <div class="verify-banner">
-                                <strong>⚠ VERIFICATION REQUIRED</strong>
-                                A verification link has been dispatched to:<br>
-                                <span style="color:var(--green);">${email}</span><br><br>
-                                You must verify your email address before you can log in.<br>
-                                Check your inbox and click the link to activate your account.
-                            </div>
-                            <p style="color:rgba(0,255,65,0.4);font-size:0.8rem;margin-bottom:20px;">
-                                DEPARTMENTAL O5 NOTIFIED OF PENDING REQUEST.<br>
-                                AWAIT COUNCIL APPROVAL AFTER EMAIL VERIFICATION.
-                            </p>
-                            <hr class="terminal-divider">
-                            <button class="terminal-btn" onclick="location.reload()">RETURN TO TERMINAL</button>
-                        </div>`;
-                }
-            } else {
-                const{data,error}=await _supabase.auth.signInWithPassword({email,password});
-                if(error){
-                    resetScan();
-                    if(error.message.toLowerCase().includes('email not confirmed')||error.message.toLowerCase().includes('not confirmed')){
-                        setStatus('ACCESS DENIED: EMAIL NOT VERIFIED','error');
-                        showVerificationReminder(email);
-                    } else {
-                        setStatus('ACCESS DENIED: '+error.message,'error');
-                    }
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                resetScan();
+                if (error.message.toLowerCase().includes('not confirmed')) {
+                    setStatus('ACCESS DENIED: EMAIL NOT VERIFIED','error');
                 } else {
-                    const{data:profile}=await _supabase.from('profiles').select('is_banned').eq('id',data.user.id).maybeSingle();
-                    if(profile&&profile.is_banned){showRedScreen(data.user.id);return;}
-                    await checkAndCreateProfile(data.user);
-                    setStatus('IDENTITY VERIFIED // REDIRECTING...','success');
-                    setTimeout(()=>{window.location.href='dashboard.html';},600);
+                    setStatus('ACCESS DENIED: '+error.message,'error');
                 }
+                return;
+            }
+            const { data: profile } = await _supabase.from('profiles').select('is_banned').eq('id', data.user.id).maybeSingle();
+            if (profile && profile.is_banned) { showRedScreen(data.user.id); return; }
+            setStatus('IDENTITY VERIFIED // REDIRECTING...','success');
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
+        }
+
+        // ── DISCORD OAUTH SIGNUP ─────────────────────────────────────────────
+        async function signupWithDiscord() {
+            document.getElementById('signup-status').innerText = '> CONNECTING TO DISCORD...';
+            document.getElementById('signup-status').className = 'status-line warning';
+            const { error } = await _supabase.auth.signInWithOAuth({
+                provider: 'discord',
+                options: {
+                    redirectTo: window.location.origin + '/index.html?oauth_signup=1',
+                    scopes: 'identify email'
+                }
+            });
+            if (error) {
+                document.getElementById('signup-status').innerText = '> ERROR: ' + error.message;
+                document.getElementById('signup-status').className = 'status-line error';
             }
         }
 
-        function showVerificationReminder(email) {
-            const existing = document.getElementById('verify-reminder');
-            if (existing) return;
-            const banner = document.createElement('div');
-            banner.id = 'verify-reminder';
-            banner.className = 'verify-banner';
-            banner.style.marginTop = '12px';
-            banner.innerHTML = `
-                <strong>⚠ EMAIL_NOT_VERIFIED</strong>
-                Your account exists but your email has not been verified.<br>
-                Check your inbox for a verification link.<br><br>
-                <span style="color:rgba(255,215,0,0.6);font-size:0.75rem;">Didn't receive it?</span>
-                <button onclick="resendVerification('${email}')" style="color:var(--gold);border-color:rgba(255,215,0,0.3);font-size:0.78rem;padding:2px 10px;margin-left:8px;cursor:pointer;">RESEND</button>`;
-            document.getElementById('status-msg').after(banner);
+        async function handleOAuthReturn() {
+            // User came back from Discord OAuth redirect
+            const { data: { session }, error } = await _supabase.auth.getSession();
+            if (error || !session) return false;
+
+            const user = session.user;
+            const meta = user.user_metadata || {};
+
+            // Extract Discord info
+            _oauthDiscordId       = meta.provider_id || meta.sub || user.id;
+            _oauthDiscordUsername  = meta.custom_claims?.global_name || meta.user_name || meta.preferred_username || meta.full_name || '';
+            _oauthDiscordAvatar   = meta.avatar_url || '';
+
+            // Check if they already have a completed profile
+            const { data: profile } = await _supabase.from('profiles')
+                .select('id, full_name, department, is_approved')
+                .eq('id', user.id).maybeSingle();
+
+            if (profile && profile.department && profile.full_name !== 'REDACTED_NAME') {
+                // Already completed signup — go to dashboard
+                window.location.href = 'dashboard.html';
+                return true;
+            }
+
+            // Show step 2 — complete profile
+            showSignup();
+            document.getElementById('oauth-fields').style.display = 'block';
+            document.getElementById('discord-username-display').innerText = _oauthDiscordUsername || 'Unknown';
+            if (_oauthDiscordAvatar) {
+                const img = document.getElementById('discord-avatar');
+                img.src = _oauthDiscordAvatar;
+                img.style.display = 'block';
+            }
+            populateDeptSelect('dept-choice', null, true, false);
+            return true;
         }
 
-        async function resendVerification(email) {
-            const{error}=await _supabase.auth.resend({type:'signup',email});
-            if(error){setStatus('RESEND FAILED: '+error.message,'error');}
-            else{const btn=document.querySelector('#verify-reminder button');if(btn){btn.disabled=true;btn.innerText='SENT';}setStatus('VERIFICATION LINK RESENT','success');}
+        async function completeOAuthSignup() {
+            const fullname = document.getElementById('fullname').value.trim();
+            const dept     = document.getElementById('dept-choice').value;
+            const password = document.getElementById('oauth-password').value;
+            const statusEl = document.getElementById('oauth-status');
+
+            if (!fullname) { statusEl.innerText='> RP NAME IS REQUIRED'; statusEl.className='status-line error'; return; }
+            if (!dept)     { statusEl.innerText='> DEPARTMENT IS REQUIRED'; statusEl.className='status-line error'; return; }
+            if (!password || password.length < 6) { statusEl.innerText='> PASSWORD MUST BE AT LEAST 6 CHARACTERS'; statusEl.className='status-line error'; return; }
+
+            statusEl.innerText='> TRANSMITTING...'; statusEl.className='status-line warning';
+
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) { statusEl.innerText='> SESSION EXPIRED — PLEASE TRY AGAIN'; statusEl.className='status-line error'; return; }
+
+            // Set password and update email to something stable
+            const { error: pwError } = await _supabase.auth.updateUser({ password });
+            if (pwError) { statusEl.innerText='> ERROR: '+pwError.message; statusEl.className='status-line error'; return; }
+
+            // Upsert profile with full info
+            const { error: profileError } = await _supabase.from('profiles').upsert({
+                id:               user.id,
+                full_name:        fullname,
+                department:       dept,
+                discord_user_id:  _oauthDiscordId,
+                discord_username: _oauthDiscordUsername,
+                discord_avatar:   _oauthDiscordAvatar,
+                is_approved:      false,
+                is_banned:        false,
+                clearance_level:  0,
+            }, { onConflict: 'id' });
+
+            if (profileError) { statusEl.innerText='> ERROR: '+profileError.message; statusEl.className='status-line error'; return; }
+
+            await _supabase.auth.signOut();
+            document.getElementById('oauth-fields').style.display = 'none';
+            document.getElementById('oauth-pending').style.display = 'block';
+            document.getElementById('signup-view').innerHTML = `
+                <div style="text-align:center;padding:20px 0;">
+                    <div style="font-size:1.4rem;margin-bottom:16px;text-shadow:0 0 10px var(--green);">REQUEST_TRANSMITTED</div>
+                    <hr class="terminal-divider">
+                    <div style="border:1px solid rgba(88,101,242,0.4);background:rgba(88,101,242,0.06);padding:14px 18px;margin-bottom:16px;font-family:var(--font-mono);font-size:0.82rem;color:#7289da;line-height:1.6;">
+                        <strong style="display:block;font-family:var(--font-display);font-size:1rem;letter-spacing:2px;margin-bottom:6px;">DISCORD IDENTITY VERIFIED</strong>
+                        Signed up as: <strong>${_oauthDiscordUsername}</strong><br>
+                        Your request has been forwarded to your department O5 for review.
+                    </div>
+                    <p style="color:rgba(0,255,65,0.4);font-size:0.8rem;margin-bottom:20px;">AWAIT COUNCIL APPROVAL BEFORE ACCESSING THE TERMINAL.</p>
+                    <hr class="terminal-divider">
+                    <button class="terminal-btn" onclick="showLogin()">RETURN TO TERMINAL</button>
+                </div>`;
+        }
+
+        // ── INIT ─────────────────────────────────────────────────────────────
+        async function checkInitialStatus() {
+            const params = new URLSearchParams(window.location.search);
+
+            // Coming back from Discord OAuth redirect
+            if (params.get('oauth_signup') === '1') {
+                document.getElementById('terminal-box').classList.add('visible');
+                const handled = await handleOAuthReturn();
+                if (handled) return;
+            }
+
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await _supabase.from('profiles').select('is_banned').eq('id', user.id).maybeSingle();
+                if (profile && profile.is_banned) { showRedScreen(user.id); return; }
+                else if (profile) { window.location.href = 'dashboard.html'; return; }
+                else {
+                    await checkAndCreateProfile(user);
+                    window.location.href = 'dashboard.html'; return;
+                }
+            }
+
+            if (params.get('error') === 'session_terminated')
+                setStatus('SESSION TERMINATED: ACCESS REVOKED BY ADMINISTRATOR','error');
+
+            runBootSequence();
         }
 
         async function checkAndCreateProfile(user) {
-            const{data:profile}=await _supabase.from('profiles').select('id').eq('id',user.id).maybeSingle();
-            if(!profile){
+            const { data: profile } = await _supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+            if (!profile) {
                 await _supabase.from('profiles').insert([{
-                    id:user.id, full_name:user.user_metadata?.full_name||'REDACTED_NAME',
-                    department:user.user_metadata?.department||null,
-                    is_approved:false, is_banned:false, clearance_level:0
+                    id: user.id, full_name: user.user_metadata?.full_name || 'REDACTED_NAME',
+                    department: user.user_metadata?.department || null,
+                    is_approved: false, is_banned: false, clearance_level: 0
                 }]);
             }
         }
 
-        function typeWriter(text,elementId,speed=30){
-            let i=0;const el=document.getElementById(elementId);if(!el)return;el.innerHTML='';
-            function type(){if(i<text.length){el.innerHTML+=text.charAt(i);i++;setTimeout(type,speed);}}type();
-        }
-
-        function showRedScreen(userId){
+        function showRedScreen(userId) {
             document.body.innerHTML=`
                 <div style="background:#020000;color:var(--red);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'VT323',monospace;border:2px solid var(--red);">
                     <div style="font-size:3rem;font-weight:bold;animation:flicker 0.5s infinite;letter-spacing:6px;">TERMINAL_LOCKED</div>
                     <div style="border:1px solid var(--red);padding:20px;margin:20px;background:rgba(255,0,0,0.05);max-width:500px;">
                         <h2 style="margin-bottom:12px;">[ SECURITY_BREACH_DETECTED ]</h2>
-                        <p id="typewriter-revocation"></p>
-                        <hr style="border:1px solid var(--red);margin:12px 0;">
-                        <p id="typewriter-threat" style="color:#ff5555;"></p>
+                        <p id="tw1"></p><hr style="border:1px solid var(--red);margin:12px 0;"><p id="tw2" style="color:#ff5555;"></p>
                     </div>
                     <button id="ack-btn" style="display:none;background:var(--red);color:#000;border:none;padding:12px 30px;cursor:pointer;font-family:'VT323';font-size:1.1rem;letter-spacing:2px;">ACKNOWLEDGE_TERMINATION</button>
                 </div>`;
-            typeWriter(`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`,'typewriter-revocation',40);
-            setTimeout(()=>{typeWriter('MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.','typewriter-threat',30);document.getElementById('ack-btn').style.display='block';},2000);
+            let i=0; const t1=`USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`;
+            function type1(){if(i<t1.length){document.getElementById('tw1').innerHTML+=t1[i];i++;setTimeout(type1,40);} else setTimeout(()=>{
+                let j=0; const t2='MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.';
+                function type2(){if(j<t2.length){document.getElementById('tw2').innerHTML+=t2[j];j++;setTimeout(type2,30);}
+                else document.getElementById('ack-btn').style.display='block';}type2();
+            },500);}type1();
             document.getElementById('ack-btn').onclick=async()=>{await _supabase.auth.signOut();location.reload();};
         }
 
-        async function checkInitialStatus(){
-            const{data:{user}}=await _supabase.auth.getUser();
-            if(user){
-                const{data:profile}=await _supabase.from('profiles').select('is_banned').eq('id',user.id).maybeSingle();
-                if(profile&&profile.is_banned){showRedScreen(user.id);return;}
-                else if(profile){window.location.href='dashboard.html';return;}
-                else {
-                    // Profile missing — create it now and redirect
-                    await checkAndCreateProfile(user);
-                    window.location.href='dashboard.html';
-                    return;
-                }
-            }
-            const params=new URLSearchParams(window.location.search);
-            if(params.get('error')==='session_terminated') setStatus('SESSION TERMINATED: ACCESS REVOKED BY ADMINISTRATOR','error');
-            runBootSequence();
-        }
-
-        document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!isScanning)handleAuth();});
-        window.onload=checkInitialStatus;
+        document.addEventListener('keydown', e => { if (e.key==='Enter' && !isScanning && document.getElementById('login-view').style.display!=='none') startScan(); });
+        window.onload = checkInitialStatus;
     </script>
 </body>
 </html>

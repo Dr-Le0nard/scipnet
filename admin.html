@@ -257,6 +257,17 @@
                 const isMe = currentUserId === u.id;
                 return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
                     <h3>${u.full_name}</h3>
+                    ${u.discord_username ? `
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;border:1px solid rgba(88,101,242,0.35);background:rgba(88,101,242,0.06);">
+                        ${u.discord_avatar ? `<img src="${u.discord_avatar}" style="width:28px;height:28px;border-radius:50%;">` : ''}
+                        <div>
+                            <div style="font-size:0.65rem;color:rgba(88,101,242,0.7);letter-spacing:1px;">DISCORD VERIFIED</div>
+                            <div style="font-size:0.82rem;color:#7289da;font-family:var(--font-mono);">${u.discord_username}</div>
+                        </div>
+                    </div>` : `
+                    <div style="font-size:0.72rem;color:rgba(255,215,0,0.5);margin-bottom:8px;padding:4px 8px;border:1px solid rgba(255,215,0,0.2);">
+                        ⚠ NO DISCORD IDENTITY LINKED
+                    </div>`}
                     <p><strong>REQUESTED DEPT:</strong> ${getDeptShort(u.department) || 'NONE'}</p>
                     <label>VALIDATE DEPARTMENT:</label>
                     <select id="dept-${u.id}"></select>
