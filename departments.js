@@ -32,6 +32,7 @@ const DEPARTMENTS = [
 
     // External Contractors
     { value: 'PRID',    label: 'PRISEC RESEARCH & INNOVATION (PRID)', group: 'CONTRACTED UNITS' },
+    { value: 'DEV',     label: 'DEVELOPMENT TEAM (DEV)',              group: 'CONTRACTED UNITS' },
 ];
 
 // Maps department to who oversees its access/role requests
@@ -56,7 +57,8 @@ const DEPT_OVERSEER_MAP = {
     'MTF-E11': 'MTF-CMD',
     'MTF-B7':  'MTF-CMD',
     'MTF-N7':  'MTF-CMD',
-    'PRID': 'PRID',
+    'PRID':    'PRID',
+    'DEV':     'DEV',
 };
 
 /**
@@ -123,6 +125,7 @@ function getDeptShort(value) {
         'MTF-A1':'MTF a-1', 'MTF-X13':'MTF x-13', 'MTF-T5':'MTF t-5',
         'MTF-E11':'MTF e-11', 'MTF-B7':'MTF b-7', 'MTF-N7':'MTF n-7',
         'PRID':'PRID',
+        'DEV':'DEV',
     };
     return labels[value] || value || 'N/A';
 }
