@@ -292,8 +292,8 @@
                 .select('id, full_name, department, is_approved')
                 .eq('id', user.id).maybeSingle();
 
-            if (profile && profile.department && profile.full_name !== 'REDACTED_NAME') {
-                // Already completed signup — go to dashboard
+            if (profile && profile.department) {
+                // department is only set after Step 2 completes
                 window.location.href = 'dashboard.html';
                 return true;
             }
