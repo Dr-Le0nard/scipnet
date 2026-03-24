@@ -326,28 +326,25 @@
             const { data: { user } } = await _supabase.auth.getUser();
             if (!user) { statusEl.innerText='> SESSION EXPIRED — PLEASE TRY AGAIN'; statusEl.className='status-line error'; return; }
 
-            // Set password and update email to something stable
+            // Set password for future logins
             const { error: pwError } = await _supabase.auth.updateUser({ password });
             if (pwError) { statusEl.innerText='> ERROR: '+pwError.message; statusEl.className='status-line error'; return; }
 
-            // Upsert profile with full info
-            const { error: profileError } = await _supabase.from('profiles').upsert({
-                id:               user.id,
+            // UPDATE the existing row (trigger already created it) — don't upsert
+            const { error: profileError } = await _supabase.from('profiles').update({
                 full_name:        fullname,
                 department:       dept,
                 discord_user_id:  _oauthDiscordId,
                 discord_username: _oauthDiscordUsername,
                 discord_avatar:   _oauthDiscordAvatar,
-                is_approved:      false,
-                is_banned:        false,
-                clearance_level:  0,
-            }, { onConflict: 'id' });
+            }).eq('id', user.id);
 
             if (profileError) { statusEl.innerText='> ERROR: '+profileError.message; statusEl.className='status-line error'; return; }
 
+            // Sign out cleanly without triggering ban screen
             await _supabase.auth.signOut();
-            document.getElementById('oauth-fields').style.display = 'none';
-            document.getElementById('oauth-pending').style.display = 'block';
+
+            // Show success — replace signup view directly
             document.getElementById('signup-view').innerHTML = `
                 <div style="text-align:center;padding:20px 0;">
                     <div style="font-size:1.4rem;margin-bottom:16px;text-shadow:0 0 10px var(--green);">REQUEST_TRANSMITTED</div>
