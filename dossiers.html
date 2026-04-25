@@ -269,10 +269,7 @@
             const canApprove = activeRole.clearance >= 4 && dossier.status !== DOSSIERS.DOSSIER_STATUSES.APPROVED;
             const canEdit = activeRole.clearance >= 4;
 
-            document.getElementById('approve-button').disabled = !canApprove;
-            document.getElementById('edit-button').disabled = !canEdit;
             document.getElementById('document-summary').style.display = 'block';
-
             document.getElementById('document-summary').innerHTML = `
                 <div style="display:grid;gap:10px;">
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
@@ -291,6 +288,11 @@
                     <div><strong>Incident Reports:</strong> ${summary.incidentReportCount}</div>
                 </div>
             `;
+
+            const approveButton = document.getElementById('approve-button');
+            const editButton = document.getElementById('edit-button');
+            if (approveButton) approveButton.disabled = !canApprove;
+            if (editButton) editButton.disabled = !canEdit;
 
             renderTestLogList(dossier);
             renderIncidentList(dossier);
