@@ -30,9 +30,43 @@
             UNAUTHORIZED_FOR_DOCUMENT_APPROVAL: CL4+ REQUIRED FOR APPROVAL, EDITS, AND LOG MODIFICATION.
         </div>
 
-        <div class="section-header">CREATE NEW DOSSIER ENTRY</div>
-        <div class="section-block" style="margin-bottom:24px;">
-            <div style="max-width:860px;">
+        <div class="section-header">DOSSIERS LIST</div>
+        <div class="section-block" style="margin-bottom:20px; display:grid; gap:14px;">
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+                <input id="dossier-search" type="text" placeholder="SEARCH DOSSIERS..." oninput="renderDossierList()" style="flex:1; min-width:220px;">
+                <select id="filter-status" onchange="renderDossierList()" style="min-width:170px;">
+                    <option value="">ALL STATUSES</option>
+                    <option value="Pending Approval">Pending Approval</option>
+                    <option value="Approved">Approved</option>
+                </select>
+                <select id="filter-class" onchange="renderDossierList()" style="min-width:170px;">
+                    <option value="">ALL CLASSES</option>
+                    <option value="Safe">Safe</option>
+                    <option value="Euclid">Euclid</option>
+                    <option value="Keter">Keter</option>
+                    <option value="Apollyon">Apollyon</option>
+                </select>
+                <select id="filter-clearance" onchange="renderDossierList()" style="min-width:170px;">
+                    <option value="">ALL CLEARANCES</option>
+                    <option value="0">CL0+</option>
+                    <option value="1">CL1+</option>
+                    <option value="2">CL2+</option>
+                    <option value="3">CL3+</option>
+                    <option value="4">CL4+</option>
+                    <option value="5">CL5+</option>
+                    <option value="6">CL6+</option>
+                    <option value="7">CL7+</option>
+                    <option value="8">CL8+</option>
+                </select>
+                <button class="btn-full" onclick="toggleNewDossierSection()">NEW DOSSIER</button>
+            </div>
+        </div>
+
+        <div id="dossier-list" class="section-block" style="margin-bottom:20px; display:grid; gap:14px;"></div>
+
+        <div id="new-dossier-section" class="section-block" style="display:none; margin-bottom:20px;">
+            <div class="section-header">NEW DOSSIER</div>
+            <div style="max-width:860px; display:grid; gap:12px;">
                 <label>DOSSIER DESIGNATION</label>
                 <input type="text" id="dossier-designation" placeholder="ENTER DOSSIER-XXX...">
 
@@ -54,23 +88,14 @@
                 <label>RECONTAINMENT PROCEDURES</label>
                 <textarea id="dossier-recontainment" rows="4" placeholder="BREACH RESPONSE STEPS..."></textarea>
 
-                <div class="btn-row" style="margin-top:10px;">
+                <div class="btn-row" style="margin-top:10px; gap:12px;">
                     <button class="btn-full" onclick="createDossierEntry()">CREATE DOSSIER ENTRY</button>
+                    <button class="btn" onclick="toggleNewDossierSection()">CANCEL</button>
                 </div>
             </div>
         </div>
 
-        <div class="section-header">REGISTERED DOSSIERS</div>
-        <div class="section-block" style="margin-bottom:20px;">
-            <label>SELECT DOSSIER</label>
-            <select id="dossier-document-select" onchange="selectDocument(this.value)"></select>
-            <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
-                <button id="approve-button" class="btn" onclick="approveSelectedDocument()">APPROVE DOCUMENT</button>
-                <button id="edit-button" class="btn" onclick="openEditDossier()">EDIT DOSSIER</button>
-            </div>
-        </div>
-
-        <div id="document-summary" class="section-block" style="margin-bottom:20px;"></div>
+        <div id="document-summary" class="section-block" style="margin-bottom:20px; display:none;"></div>
 
         <div id="edit-document-section" class="section-block" style="display:none; margin-bottom:20px;">
             <div class="section-header">EDIT DOSSIER</div>
@@ -90,7 +115,7 @@
             </div>
         </div>
 
-        <div id="test-log-section" class="section-block" style="margin-bottom:20px;">
+        <div id="test-log-section" class="section-block" style="display:none; margin-bottom:20px;">
             <div class="section-header">TESTING LOGS</div>
             <label>TEST PERSONNEL</label>
             <input type="text" id="test-personnel" placeholder="Comma-separated personnel..."></input>
@@ -105,7 +130,7 @@
             <div id="test-log-list" style="margin-top:16px;"></div>
         </div>
 
-        <div id="incident-section" class="section-block" style="margin-bottom:32px;">
+        <div id="incident-section" class="section-block" style="display:none; margin-bottom:32px;">
             <div class="section-header">INCIDENT REPORTS</div>
             <label>DATE</label>
             <input type="date" id="incident-date">
@@ -149,6 +174,17 @@
 
         function saveRepository() {
             repository.saveToLocalStorage(STORAGE_KEY);
+            saveRepositorySupabase();
+        }
+
+        async function saveRepositorySupabase() {
+            if (typeof _supabase === 'undefined') return;
+            try {
+                await repository.saveToSupabase();
+            } catch (error) {
+                console.warn('Failed to sync DOSSIERS to Supabase:', error);
+                toast('WARNING: DOSSIERS SAVE NOT SYNCED TO SERVER', 'warning');
+            }
         }
 
         function renderObjectClassOptions(selectId, selectedValue) {
@@ -156,24 +192,77 @@
             select.innerHTML = DOSSIERS.OBJECT_CLASSES.map(cls => `<option value="${cls}"${cls === selectedValue ? ' selected' : ''}>${cls}</option>`).join('');
         }
 
-        function renderDocumentSelect() {
-            const select = document.getElementById('dossier-document-select');
-            const documents = repository.listDocuments();
-            if (documents.length === 0) {
-                select.innerHTML = '<option value="">NO DOSSIERS AVAILABLE</option>';
-                document.getElementById('document-summary').innerHTML = '<div style="color:var(--text-dim);">No DOSSIERS registered yet.</div>';
+        function getDossierFilterValues() {
+            const search = document.getElementById('dossier-search').value.trim().toLowerCase();
+            const status = document.getElementById('filter-status').value;
+            const objectClass = document.getElementById('filter-class').value;
+            const minClearance = document.getElementById('filter-clearance').value;
+            return {
+                search,
+                status,
+                objectClass,
+                minClearance: minClearance === '' ? null : parseInt(minClearance, 10)
+            };
+        }
+
+        function matchesDossierFilters(dossier, filters) {
+            if (filters.status && dossier.status !== filters.status) return false;
+            if (filters.objectClass && dossier.objectClass !== filters.objectClass) return false;
+            if (filters.minClearance !== null && dossier.clearanceLevel < filters.minClearance) return false;
+            if (!filters.search) return true;
+            return [dossier.designation, dossier.author, dossier.objectClass, dossier.description].some(field =>
+                field && field.toLowerCase().includes(filters.search)
+            );
+        }
+
+        function renderDossierList() {
+            const container = document.getElementById('dossier-list');
+            const filters = getDossierFilterValues();
+            const documents = repository.listDocuments().filter(doc => matchesDossierFilters(doc, filters));
+            if (!documents.length) {
+                container.innerHTML = '<div style="color:var(--text-dim);">No dossiers match the current search and filters.</div>';
                 return;
             }
-            select.innerHTML = documents.map(doc => `<option value="${doc.designation}">${doc.designation} — ${doc.objectClass} — ${doc.status}</option>`).join('');
-            if (!selectedDesignation || !repository.documents.has(selectedDesignation)) {
-                selectedDesignation = documents[0].designation;
+            container.innerHTML = documents.map(doc => {
+                const active = selectedDesignation === doc.designation;
+                const canApprove = activeRole.clearance >= 4 && doc.status !== DOSSIERS.DOSSIER_STATUSES.APPROVED;
+                const canEdit = activeRole.clearance >= 4;
+                const labelStyle = active ? 'background:rgba(0,255,65,0.06);border-color:rgba(0,255,65,0.25);' : '';
+                return `
+                    <div style="border:1px solid rgba(255,255,255,0.08); padding:18px; border-radius:12px; display:grid; gap:10px; ${labelStyle}">
+                        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; align-items:flex-start;">
+                            <div style="min-width:220px;">
+                                <div style="font-weight:700;">${doc.designation} — ${doc.objectClass} — CL${doc.clearanceLevel}</div>
+                                <div style="color:var(--text-dim); margin-top:4px;">${doc.status} — AUTHOR: ${doc.author}</div>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                                <button class="btn" onclick="selectDocument('${doc.designation}')">VIEW</button>
+                                <button class="btn" ${canApprove ? '' : 'disabled'} onclick="approveSelectedDocument('${doc.designation}')">APPROVE</button>
+                                <button class="btn" ${canEdit ? '' : 'disabled'} onclick="openEditDossier('${doc.designation}')">EDIT</button>
+                                <button class="btn" onclick="prepareTestLog('${doc.designation}')">TESTS</button>
+                                <button class="btn" onclick="prepareIncidentReport('${doc.designation}')">INCIDENTS</button>
+                            </div>
+                        </div>
+                        <div style="color:var(--text-dim);">${doc.description ? doc.description.substring(0, 180) : 'No description available.'}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleNewDossierSection() {
+            const section = document.getElementById('new-dossier-section');
+            const isVisible = section.style.display === 'block';
+            section.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                document.getElementById('dossier-designation').focus();
             }
-            select.value = selectedDesignation;
-            renderSelectedDocument();
         }
 
         function renderSelectedDocument() {
-            if (!selectedDesignation) return;
+            if (!selectedDesignation) {
+                document.getElementById('document-summary').style.display = 'none';
+                return;
+            }
             const dossier = repository.getDocument(selectedDesignation);
             const summary = dossier.summary();
             const canApprove = activeRole.clearance >= 4 && dossier.status !== DOSSIERS.DOSSIER_STATUSES.APPROVED;
@@ -181,6 +270,7 @@
 
             document.getElementById('approve-button').disabled = !canApprove;
             document.getElementById('edit-button').disabled = !canEdit;
+            document.getElementById('document-summary').style.display = 'block';
 
             document.getElementById('document-summary').innerHTML = `
                 <div style="display:grid;gap:10px;">
@@ -206,6 +296,8 @@
             selectedDesignation = designation;
             resetEditState();
             renderSelectedDocument();
+            renderDossierList();
+            document.getElementById('document-summary').style.display = 'block';
         }
 
         function resetEditState() {
@@ -267,7 +359,9 @@
                 });
                 saveRepository();
                 selectedDesignation = designation;
-                renderDocumentSelect();
+                renderDossierList();
+                renderSelectedDocument();
+                document.getElementById('new-dossier-section').style.display = 'none';
                 showMessage('DOSSIER_ENTRY_CREATED: Draft saved as Pending Approval.');
                 document.getElementById('dossier-designation').value = '';
                 document.getElementById('dossier-description').value = '';
@@ -278,25 +372,50 @@
             }
         }
 
-        function approveSelectedDocument() {
+        function approveSelectedDocument(designation) {
+            if (designation) selectDocument(designation);
             try {
                 repository.approveDocument(getActiveScDUser(), selectedDesignation);
                 saveRepository();
                 renderSelectedDocument();
+                renderDossierList();
                 showMessage('DOSSIER_ENTRY_APPROVED: Document is now official.');
             } catch (error) {
                 showMessage(error.message, 'error');
             }
         }
 
-        function openEditDossier() {
+        function openEditDossier(designation) {
+            if (designation) selectDocument(designation);
             const dossier = repository.getDocument(selectedDesignation);
             document.getElementById('edit-document-section').style.display = 'block';
+            document.getElementById('test-log-section').style.display = 'none';
+            document.getElementById('incident-section').style.display = 'none';
             renderObjectClassOptions('edit-object-class', dossier.objectClass);
             populateClearanceSelect('edit-clearance-level', dossier.clearanceLevel, activeRole.clearance);
             document.getElementById('edit-description').value = dossier.description;
             document.getElementById('edit-containment').value = dossier.containmentProcedures;
             document.getElementById('edit-recontainment').value = dossier.recontainmentProcedures;
+        }
+
+        function prepareTestLog(designation) {
+            if (designation) selectDocument(designation);
+            document.getElementById('test-log-section').style.display = 'block';
+            document.getElementById('incident-section').style.display = 'none';
+            document.getElementById('edit-document-section').style.display = 'none';
+            resetTestLogForm();
+            renderSelectedDocument();
+            document.getElementById('test-personnel').focus();
+        }
+
+        function prepareIncidentReport(designation) {
+            if (designation) selectDocument(designation);
+            document.getElementById('incident-section').style.display = 'block';
+            document.getElementById('test-log-section').style.display = 'none';
+            document.getElementById('edit-document-section').style.display = 'none';
+            resetIncidentForm();
+            renderSelectedDocument();
+            document.getElementById('incident-date').focus();
         }
 
         function closeEditSection() {
@@ -489,12 +608,30 @@
             populateClearanceSelect('dossier-clearance-level', activeRole.clearance, activeRole.clearance);
             populateClearanceSelect('edit-clearance-level', activeRole.clearance, activeRole.clearance);
 
-            repository = DOSSIERS.DossierRepository.loadFromLocalStorage(STORAGE_KEY);
-            if (repository.listDocuments().length === 0) {
-                repository = DOSSIERS.createExampleRepository();
-                saveRepository();
+            let loaded = false;
+            if (typeof _supabase !== 'undefined') {
+                try {
+                    repository = await DOSSIERS.DossierRepository.loadFromSupabase();
+                    loaded = true;
+                } catch (error) {
+                    console.warn('Failed to load DOSSIERS from Supabase:', error);
+                }
             }
-            renderDocumentSelect();
+
+            if (!loaded) {
+                repository = DOSSIERS.DossierRepository.loadFromLocalStorage(STORAGE_KEY);
+                if (repository.listDocuments().length === 0) {
+                    repository = DOSSIERS.createExampleRepository();
+                    saveRepository();
+                }
+            }
+
+            document.getElementById('document-summary').style.display = 'none';
+            document.getElementById('edit-document-section').style.display = 'none';
+            document.getElementById('test-log-section').style.display = 'none';
+            document.getElementById('incident-section').style.display = 'none';
+            document.getElementById('new-dossier-section').style.display = 'none';
+            renderDossierList();
         }
 
         window.onload = initializeDossiersPage;

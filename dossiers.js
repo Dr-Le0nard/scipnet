@@ -368,6 +368,75 @@ class DossierRepository {
     localStorage.setItem(key, JSON.stringify(this.toJSON()));
   }
 
+  async saveToSupabase() {
+    if (typeof _supabase === 'undefined') {
+      throw new Error('Supabase is not initialized.');
+    }
+    const rows = this.listDocuments().map((document) => ({
+      designation: document.designation,
+      object_class: document.objectClass,
+      clearance_level: document.clearanceLevel,
+      author: document.author,
+      description: document.description,
+      containment_procedures: document.containmentProcedures,
+      recontainment_procedures: document.recontainmentProcedures,
+      status: document.status,
+      test_logs: document.testLogs.map((log) => ({
+        testId: log.testId,
+        personnel: log.personnel,
+        procedure: log.procedure,
+        result: log.result,
+        createdAt: log.createdAt
+      })),
+      incident_reports: document.incidentReports.map((report) => ({
+        reportId: report.reportId,
+        date: report.date,
+        units: report.units,
+        cause: report.cause,
+        resolution: report.resolution,
+        preventionNotes: report.preventionNotes,
+        createdAt: report.createdAt
+      })),
+      created_at: document.createdAt,
+      updated_at: document.updatedAt
+    }));
+
+    const { error } = await _supabase.from('dossiers').upsert(rows, { onConflict: 'designation' });
+    if (error) {
+      throw error;
+    }
+    return true;
+  }
+
+  static async loadFromSupabase() {
+    if (typeof _supabase === 'undefined') {
+      throw new Error('Supabase is not initialized.');
+    }
+    const { data, error } = await _supabase.from('dossiers').select('*');
+    if (error) {
+      throw error;
+    }
+    return DossierRepository.fromSupabaseRows(data || []);
+  }
+
+  static fromSupabaseRows(rows) {
+    const entries = (rows || []).map((row) => ({
+      designation: row.designation,
+      objectClass: row.object_class || row.objectClass,
+      clearanceLevel: row.clearance_level || row.clearanceLevel,
+      author: row.author,
+      description: row.description,
+      containmentProcedures: row.containment_procedures || row.containmentProcedures,
+      recontainmentProcedures: row.recontainment_procedures || row.recontainmentProcedures,
+      status: row.status,
+      testLogs: row.test_logs || row.testLogs || [],
+      incidentReports: row.incident_reports || row.incidentReports || [],
+      createdAt: row.created_at || row.createdAt,
+      updatedAt: row.updated_at || row.updatedAt
+    }));
+    return new DossierRepository(entries);
+  }
+
   static loadFromLocalStorage(key = 'dossiers_storage') {
     if (typeof localStorage === 'undefined') {
       throw new Error('Local storage is not available.');
