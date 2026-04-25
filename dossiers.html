@@ -473,7 +473,7 @@
             currentRoles = await fetchMyRoles();
             activeRole = getActiveRole(currentProfile, currentRoles);
             if (activeRole.department !== 'ScD') {
-                toast('ACCESS_DENIED: ONLY ScD PERSONNEL MAY ACCESS DOSSIERS', 'error');
+                toast('ACCESS_DENIED: ONLY ScD OR O5 PERSONNEL MAY ACCESS DOSSIERS', 'error');
                 setTimeout(() => window.location.href = 'dashboard.html', 1200);
                 return;
             }

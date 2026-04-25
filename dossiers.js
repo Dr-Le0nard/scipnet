@@ -22,7 +22,7 @@ class ScDUser {
   }
 
   get isScD() {
-    return this.department === DEPARTMENT_SCD;
+    return this.department === 'ScD';
   }
 
   get isCL4Plus() {
@@ -32,7 +32,7 @@ class ScDUser {
 
 function requireScDAccess(user) {
   if (!(user instanceof ScDUser) || !user.isScD) {
-    throw new PermissionError("Access denied: only Scientific Department personnel may use the DOSSIERS repository.");
+    throw new PermissionError("Access denied: only ScD personnel may use the DOSSIERS repository.");
   }
 }
 
