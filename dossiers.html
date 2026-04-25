@@ -182,8 +182,9 @@
             try {
                 await repository.saveToSupabase();
             } catch (error) {
+                const message = (error && (error.message || error.details || error.msg || JSON.stringify(error))) || 'Unknown Supabase error';
                 console.warn('Failed to sync DOSSIERS to Supabase:', error);
-                toast('WARNING: DOSSIERS SAVE NOT SYNCED TO SERVER', 'warning');
+                toast(`WARNING: DOSSIERS SAVE NOT SYNCED TO SERVER — ${message}`, 'warning');
             }
         }
 
@@ -274,6 +275,10 @@
 
             document.getElementById('document-summary').innerHTML = `
                 <div style="display:grid;gap:10px;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <button id="approve-button" class="btn" onclick="approveSelectedDocument('${summary.designation}')">APPROVE</button>
+                        <button id="edit-button" class="btn" onclick="openEditDossier('${summary.designation}')">EDIT</button>
+                    </div>
                     <div><strong>Designation:</strong> ${summary.designation}</div>
                     <div><strong>Object Class:</strong> ${summary.objectClass}</div>
                     <div><strong>Clearance:</strong> CL${summary.clearanceLevel}</div>
@@ -353,6 +358,9 @@
                     objectClass,
                     clearanceLevel,
                     author: activeRole.name,
+                    ownerId: currentProfile?.id || null,
+                    createdBy: activeRole.name,
+                    updatedBy: activeRole.name,
                     description,
                     containmentProcedures,
                     recontainmentProcedures

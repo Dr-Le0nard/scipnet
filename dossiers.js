@@ -87,7 +87,7 @@ class IncidentReport {
 }
 
 class DossierDocument {
-  constructor({ designation, objectClass, clearanceLevel, author, description, containmentProcedures, recontainmentProcedures, status = DOSSIER_STATUSES.PENDING, testLogs = [], incidentReports = [] }) {
+  constructor({ designation, objectClass, clearanceLevel, author, ownerId = null, createdBy = null, updatedBy = null, description, containmentProcedures, recontainmentProcedures, status = DOSSIER_STATUSES.PENDING, testLogs = [], incidentReports = [] }) {
     if (!designation || !objectClass || clearanceLevel === undefined || !author) {
       throw new Error("Missing required DOSSIER fields: designation, objectClass, clearanceLevel, author.");
     }
@@ -100,6 +100,9 @@ class DossierDocument {
     this.clearanceLevel = clearanceLevel;
     this.status = status;
     this.author = author;
+    this.ownerId = ownerId;
+    this.createdBy = createdBy || author;
+    this.updatedBy = updatedBy || author;
     this.description = description || "";
     this.containmentProcedures = containmentProcedures || "";
     this.recontainmentProcedures = recontainmentProcedures || "";
@@ -112,6 +115,7 @@ class DossierDocument {
   approve(user) {
     requireCL4(user);
     this.status = DOSSIER_STATUSES.APPROVED;
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
   }
 
@@ -139,6 +143,7 @@ class DossierDocument {
       this.status = updates.status;
     }
 
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
   }
 
@@ -146,6 +151,7 @@ class DossierDocument {
     requireScDAccess(user);
     const entry = new TestLogEntry(logData);
     this.testLogs.push(entry);
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
     return entry;
   }
@@ -154,6 +160,7 @@ class DossierDocument {
     requireScDAccess(user);
     const entry = new IncidentReport(reportData);
     this.incidentReports.push(entry);
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
     return entry;
   }
@@ -165,6 +172,7 @@ class DossierDocument {
       throw new Error(`Test log '${testId}' not found.`);
     }
     entry.update(updates);
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
     return entry;
   }
@@ -176,6 +184,7 @@ class DossierDocument {
       throw new Error(`Test log '${testId}' not found.`);
     }
     const [deleted] = this.testLogs.splice(index, 1);
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
     return deleted;
   }
@@ -187,6 +196,7 @@ class DossierDocument {
       throw new Error(`Incident report '${reportId}' not found.`);
     }
     entry.update(updates);
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
     return entry;
   }
@@ -198,6 +208,7 @@ class DossierDocument {
       throw new Error(`Incident report '${reportId}' not found.`);
     }
     const [deleted] = this.incidentReports.splice(index, 1);
+    this.updatedBy = user.name;
     this.updatedAt = new Date().toISOString();
     return deleted;
   }
@@ -230,6 +241,9 @@ class DossierDocument {
       clearanceLevel: this.clearanceLevel,
       status: this.status,
       author: this.author,
+      ownerId: this.ownerId,
+      createdBy: this.createdBy,
+      updatedBy: this.updatedBy,
       description: this.description,
       containmentProcedures: this.containmentProcedures,
       recontainmentProcedures: this.recontainmentProcedures,
@@ -270,7 +284,14 @@ class DossierRepository {
 
   createDocument(user, documentData) {
     requireScDAccess(user);
-    const data = { ...documentData, status: DOSSIER_STATUSES.PENDING, author: documentData.author || user.name };
+    const data = {
+      ...documentData,
+      status: DOSSIER_STATUSES.PENDING,
+      author: documentData.author || user.name,
+      ownerId: documentData.ownerId || null,
+      createdBy: documentData.createdBy || (documentData.author || user.name),
+      updatedBy: documentData.updatedBy || (documentData.author || user.name)
+    };
     if (this.documents.has(data.designation)) {
       throw new Error(`A DOSSIER with designation '${data.designation}' already exists.`);
     }
@@ -377,6 +398,9 @@ class DossierRepository {
       object_class: document.objectClass,
       clearance_level: document.clearanceLevel,
       author: document.author,
+      owner_id: document.ownerId,
+      created_by: document.createdBy,
+      updated_by: document.updatedBy,
       description: document.description,
       containment_procedures: document.containmentProcedures,
       recontainment_procedures: document.recontainmentProcedures,
@@ -401,7 +425,7 @@ class DossierRepository {
       updated_at: document.updatedAt
     }));
 
-    const { error } = await _supabase.from('dossiers').upsert(rows, { onConflict: 'designation' });
+    const { error } = await _supabase.from('dossiers').upsert(rows, { onConflict: 'designation', returning: 'minimal' });
     if (error) {
       throw error;
     }
@@ -425,6 +449,9 @@ class DossierRepository {
       objectClass: row.object_class || row.objectClass,
       clearanceLevel: row.clearance_level || row.clearanceLevel,
       author: row.author,
+      ownerId: row.owner_id || row.ownerId || null,
+      createdBy: row.created_by || row.createdBy || null,
+      updatedBy: row.updated_by || row.updatedBy || null,
       description: row.description,
       containmentProcedures: row.containment_procedures || row.containmentProcedures,
       recontainmentProcedures: row.recontainment_procedures || row.recontainmentProcedures,
