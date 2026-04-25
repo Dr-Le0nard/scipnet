@@ -426,14 +426,14 @@
             }
         }
 
-        function renderTestLogList(document) {
+        function renderTestLogList(dossier) {
             const container = document.getElementById('test-log-list');
-            if (!document.testLogs.length) {
+            if (!dossier.testLogs.length) {
                 container.innerHTML = '<div style="color:var(--text-dim);">No test logs yet.</div>';
                 return;
             }
             const isEditAllowed = activeRole.clearance >= 4;
-            container.innerHTML = document.testLogs.map(log => {
+            container.innerHTML = dossier.testLogs.map(log => {
                 const controls = isEditAllowed ?
                     `<button class="btn" onclick="editTestLog('${log.testId}')">EDIT</button> <button class="btn" onclick="deleteTestLog('${log.testId}')">DELETE</button>` : '';
                 return `<div style="border:1px solid rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:8px;">
@@ -445,14 +445,14 @@
             }).join('');
         }
 
-        function renderIncidentList(document) {
+        function renderIncidentList(dossier) {
             const container = document.getElementById('incident-list');
-            if (!document.incidentReports.length) {
+            if (!dossier.incidentReports.length) {
                 container.innerHTML = '<div style="color:var(--text-dim);">No incident reports yet.</div>';
                 return;
             }
             const isEditAllowed = activeRole.clearance >= 4;
-            container.innerHTML = document.incidentReports.map(report => {
+            container.innerHTML = dossier.incidentReports.map(report => {
                 const controls = isEditAllowed ?
                     `<button class="btn" onclick="editIncidentReport('${report.reportId}')">EDIT</button> <button class="btn" onclick="deleteIncidentReport('${report.reportId}')">DELETE</button>` : '';
                 return `<div style="border:1px solid rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:8px;">
