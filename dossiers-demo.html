@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOSSIERS Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; background: #111; color: #e9e9e9; }
+    pre { background: #1f1f1f; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    .card { border: 1px solid #333; border-radius: 12px; padding: 18px; margin-bottom: 16px; background: #161616; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; background: #2b7afb; color: white; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>DOSSIERS Demo</h1>
+  <div class="card">
+    <h2>Role / Permission Example</h2>
+    <p>Only Scientific Department members can access the DOSSIERS repository. Edits and approvals require CL4+.</p>
+    <pre id="user-info"></pre>
+  </div>
+  <div class="card">
+    <h2>Example DOSSIER Summary</h2>
+    <pre id="dossier-summary"></pre>
+  </div>
+  <div class="card">
+    <h2>Action Log</h2>
+    <pre id="action-log"></pre>
+  </div>
+
+  <script src="./dossiers.js"></script>
+  <script>
+    const { ScDUser, DossierRepository, DOSSIER_STATUSES, displayDossierSummary, createExampleRepository } = DOSSIERS;
+
+    const userInfo = document.getElementById('user-info');
+    const dossierSummary = document.getElementById('dossier-summary');
+    const actionLog = document.getElementById('action-log');
+
+    const author = new ScDUser({ name: 'Dr. Aurora Vale', clearanceLevel: 5 });
+    const analyst = new ScDUser({ name: 'Agent Sera', clearanceLevel: 2 });
+
+    userInfo.textContent = `Author: ${author.name} (CL${author.clearanceLevel})\nAnalyst: ${analyst.name} (CL${analyst.clearanceLevel})`;
+
+    const repository = createExampleRepository();
+    const dossier001 = repository.getDocument('DOSSIER-001');
+
+    actionLog.textContent = 'Creating DOSSIER-001 as Pending Approval...\n';
+    dossierSummary.textContent = displayDossierSummary(dossier001);
+
+    try {
+      repository.approveDocument(author, 'DOSSIER-001');
+      actionLog.textContent += 'CL4+ authorization successful: DOSSIER-001 approved.\n';
+    } catch (error) {
+      actionLog.textContent += `Approval failed: ${error.message}\n`;
+    }
+
+    dossierSummary.textContent = displayDossierSummary(dossier001);
+
+    actionLog.textContent += 'Adding a new test log as Analyst...\n';
+    repository.addTestLog(analyst, 'DOSSIER-001', {
+      personnel: ['Agent Sera', 'Dr. Vale'],
+      procedure: 'Monitor ambient readings after temporary containment seal change.',
+      result: 'Containment stable; no anomalous energy release detected.'
+    });
+
+    actionLog.textContent += 'Adding a new incident report as Analyst...\n';
+    repository.addIncidentReport(analyst, 'DOSSIER-001', {
+      date: '2026-04-20',
+      units: ['MTF Epsilon-11'],
+      cause: 'Routine power fluctuation during containment cycle.',
+      resolution: 'Rebooted containment systems and restored backup field.',
+      preventionNotes: 'Install secondary power routing and constant field monitoring.'
+    });
+
+    actionLog.textContent += 'Attempting CL2 edit (should fail)...\n';
+    try {
+      repository.editDocument(analyst, 'DOSSIER-001', {
+        description: 'Unauthorized edit attempted by CL2 personnel.'
+      });
+    } catch (error) {
+      actionLog.textContent += `Edit blocked: ${error.message}\n`;
+    }
+
+    dossierSummary.textContent = displayDossierSummary(dossier001);
+    actionLog.textContent += '\nCurrent document status updated.';
+  </script>
+</body>
+</html>

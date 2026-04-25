@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCIPNET - DOSSIERS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="departments.js"></script>
+    <script src="alert.js"></script>
+    <script src="toast.js"></script>
+    <script src="notifications.js"></script>
+    <script src="modal.js"></script>
+    <script src="nav.js"></script>
+    <script src="dossiers.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="identity-block">
+        <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
+    </div>
+    <nav class="main-nav" id="main-nav"></nav>
+
+    <div class="page-content page-wrapper fade-in">
+        <div class="page-title">DOSSIERS</div>
+        <div class="page-subtitle">DOSSIERS STORAGE FOR SCIENTIFIC DEPARTMENT CONTAINMENT RECORDS</div>
+        <div id="access-summary" style="margin-bottom:18px; color:var(--text-dim);"></div>
+        <div id="dossier-cl4-warning" class="alert-section" style="display:none;margin-bottom:18px; padding:12px; border:1px solid rgba(255,62,62,0.25); background:rgba(255,62,62,0.06);">
+            UNAUTHORIZED_FOR_DOCUMENT_APPROVAL: CL4+ REQUIRED FOR APPROVAL, EDITS, AND LOG MODIFICATION.
+        </div>
+
+        <div class="section-header">CREATE NEW DOSSIER ENTRY</div>
+        <div class="section-block" style="margin-bottom:24px;">
+            <div style="max-width:860px;">
+                <label>DOSSIER DESIGNATION</label>
+                <input type="text" id="dossier-designation" placeholder="ENTER DOSSIER-XXX...">
+
+                <label>OBJECT CLASS</label>
+                <select id="dossier-object-class"></select>
+
+                <label>CLEARANCE LEVEL</label>
+                <select id="dossier-clearance-level"></select>
+
+                <label>AUTHOR</label>
+                <input type="text" id="dossier-author" readonly>
+
+                <label>DESCRIPTION</label>
+                <textarea id="dossier-description" rows="4" placeholder="PHYSICAL TRAITS, BEHAVIOR, ANOMALOUS EFFECTS..."></textarea>
+
+                <label>SPECIAL CONTAINMENT PROCEDURES</label>
+                <textarea id="dossier-containment" rows="4" placeholder="CONTAINMENT METHOD, ENVIRONMENT, REQUIRED PERSONNEL..."></textarea>
+
+                <label>RECONTAINMENT PROCEDURES</label>
+                <textarea id="dossier-recontainment" rows="4" placeholder="BREACH RESPONSE STEPS..."></textarea>
+
+                <div class="btn-row" style="margin-top:10px;">
+                    <button class="btn-full" onclick="createDossierEntry()">CREATE DOSSIER ENTRY</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-header">REGISTERED DOSSIERS</div>
+        <div class="section-block" style="margin-bottom:20px;">
+            <label>SELECT DOSSIER</label>
+            <select id="dossier-document-select" onchange="selectDocument(this.value)"></select>
+            <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
+                <button id="approve-button" class="btn" onclick="approveSelectedDocument()">APPROVE DOCUMENT</button>
+                <button id="edit-button" class="btn" onclick="openEditDossier()">EDIT DOSSIER</button>
+            </div>
+        </div>
+
+        <div id="document-summary" class="section-block" style="margin-bottom:20px;"></div>
+
+        <div id="edit-document-section" class="section-block" style="display:none; margin-bottom:20px;">
+            <div class="section-header">EDIT DOSSIER</div>
+            <label>OBJECT CLASS</label>
+            <select id="edit-object-class"></select>
+            <label>CLEARANCE LEVEL</label>
+            <select id="edit-clearance-level"></select>
+            <label>DESCRIPTION</label>
+            <textarea id="edit-description" rows="4"></textarea>
+            <label>CONTAINMENT PROCEDURES</label>
+            <textarea id="edit-containment" rows="4"></textarea>
+            <label>RECONTAINMENT PROCEDURES</label>
+            <textarea id="edit-recontainment" rows="4"></textarea>
+            <div class="btn-row" style="margin-top:10px; gap:12px;">
+                <button class="btn-full" onclick="saveDocumentEdit()">SAVE CHANGES</button>
+                <button class="btn" onclick="closeEditSection()">CANCEL</button>
+            </div>
+        </div>
+
+        <div id="test-log-section" class="section-block" style="margin-bottom:20px;">
+            <div class="section-header">TESTING LOGS</div>
+            <label>TEST PERSONNEL</label>
+            <input type="text" id="test-personnel" placeholder="Comma-separated personnel..."></input>
+            <label>PROCEDURE</label>
+            <textarea id="test-procedure" rows="3"></textarea>
+            <label>RESULT</label>
+            <textarea id="test-result" rows="3"></textarea>
+            <div class="btn-row" style="margin-top:10px; gap:12px;">
+                <button class="btn-full" onclick="saveTestLog()">ADD TEST LOG</button>
+                <button id="clear-test-edit" class="btn" style="display:none;" onclick="resetTestLogForm()">CLEAR EDIT</button>
+            </div>
+            <div id="test-log-list" style="margin-top:16px;"></div>
+        </div>
+
+        <div id="incident-section" class="section-block" style="margin-bottom:32px;">
+            <div class="section-header">INCIDENT REPORTS</div>
+            <label>DATE</label>
+            <input type="date" id="incident-date">
+            <label>INVOLVED UNITS</label>
+            <input type="text" id="incident-units" placeholder="MTF, SD, ScD..."></input>
+            <label>CAUSE</label>
+            <textarea id="incident-cause" rows="2"></textarea>
+            <label>RESOLUTION</label>
+            <textarea id="incident-resolution" rows="2"></textarea>
+            <label>PREVENTION NOTES</label>
+            <textarea id="incident-prevention" rows="2"></textarea>
+            <div class="btn-row" style="margin-top:10px; gap:12px;">
+                <button class="btn-full" onclick="saveIncidentReport()">ADD INCIDENT REPORT</button>
+                <button id="clear-incident-edit" class="btn" style="display:none;" onclick="resetIncidentForm()">CLEAR EDIT</button>
+            </div>
+            <div id="incident-list" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'dossiers_storage';
+        let currentProfile = null;
+        let currentRoles = [];
+        let activeRole = null;
+        let repository = null;
+        let selectedDesignation = null;
+        let editingTestLogId = null;
+        let editingIncidentId = null;
+
+        function getActiveScDUser() {
+            return new DOSSIERS.ScDUser({
+                name: activeRole.name,
+                clearanceLevel: activeRole.clearance,
+                department: activeRole.department
+            });
+        }
+
+        function showMessage(text, type = 'info') {
+            toast(text, type === 'error' ? 'error' : 'success');
+        }
+
+        function saveRepository() {
+            repository.saveToLocalStorage(STORAGE_KEY);
+        }
+
+        function renderObjectClassOptions(selectId, selectedValue) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = DOSSIERS.OBJECT_CLASSES.map(cls => `<option value="${cls}"${cls === selectedValue ? ' selected' : ''}>${cls}</option>`).join('');
+        }
+
+        function renderDocumentSelect() {
+            const select = document.getElementById('dossier-document-select');
+            const documents = repository.listDocuments();
+            if (documents.length === 0) {
+                select.innerHTML = '<option value="">NO DOSSIERS AVAILABLE</option>';
+                document.getElementById('document-summary').innerHTML = '<div style="color:var(--text-dim);">No DOSSIERS registered yet.</div>';
+                return;
+            }
+            select.innerHTML = documents.map(doc => `<option value="${doc.designation}">${doc.designation} — ${doc.objectClass} — ${doc.status}</option>`).join('');
+            if (!selectedDesignation || !repository.documents.has(selectedDesignation)) {
+                selectedDesignation = documents[0].designation;
+            }
+            select.value = selectedDesignation;
+            renderSelectedDocument();
+        }
+
+        function renderSelectedDocument() {
+            if (!selectedDesignation) return;
+            const dossier = repository.getDocument(selectedDesignation);
+            const summary = dossier.summary();
+            const canApprove = activeRole.clearance >= 4 && dossier.status !== DOSSIERS.DOSSIER_STATUSES.APPROVED;
+            const canEdit = activeRole.clearance >= 4;
+
+            document.getElementById('approve-button').disabled = !canApprove;
+            document.getElementById('edit-button').disabled = !canEdit;
+
+            document.getElementById('document-summary').innerHTML = `
+                <div style="display:grid;gap:10px;">
+                    <div><strong>Designation:</strong> ${summary.designation}</div>
+                    <div><strong>Object Class:</strong> ${summary.objectClass}</div>
+                    <div><strong>Clearance:</strong> CL${summary.clearanceLevel}</div>
+                    <div><strong>Status:</strong> ${summary.status} ${summary.official ? '(OFFICIAL)' : '(UNOFFICIAL)'}</div>
+                    <div><strong>Author:</strong> ${summary.author}</div>
+                    <div><strong>Description:</strong> ${summary.description || 'N/A'}</div>
+                    <div><strong>Containment Procedures:</strong> ${summary.containmentProcedures || 'N/A'}</div>
+                    <div><strong>Recontainment Procedures:</strong> ${summary.recontainmentProcedures || 'N/A'}</div>
+                    <div><strong>Test Logs:</strong> ${summary.testLogCount}</div>
+                    <div><strong>Incident Reports:</strong> ${summary.incidentReportCount}</div>
+                </div>
+            `;
+
+            renderTestLogList(dossier);
+            renderIncidentList(dossier);
+        }
+
+        function selectDocument(designation) {
+            if (!designation) return;
+            selectedDesignation = designation;
+            resetEditState();
+            renderSelectedDocument();
+        }
+
+        function resetEditState() {
+            editingTestLogId = null;
+            editingIncidentId = null;
+            document.getElementById('clear-test-edit').style.display = 'none';
+            document.getElementById('clear-incident-edit').style.display = 'none';
+            document.getElementById('test-personnel').value = '';
+            document.getElementById('test-procedure').value = '';
+            document.getElementById('test-result').value = '';
+            document.getElementById('incident-date').value = '';
+            document.getElementById('incident-units').value = '';
+            document.getElementById('incident-cause').value = '';
+            document.getElementById('incident-resolution').value = '';
+            document.getElementById('incident-prevention').value = '';
+            document.getElementById('edit-document-section').style.display = 'none';
+        }
+
+        function resetTestLogForm() {
+            editingTestLogId = null;
+            document.getElementById('clear-test-edit').style.display = 'none';
+            document.getElementById('test-personnel').value = '';
+            document.getElementById('test-procedure').value = '';
+            document.getElementById('test-result').value = '';
+        }
+
+        function resetIncidentForm() {
+            editingIncidentId = null;
+            document.getElementById('clear-incident-edit').style.display = 'none';
+            document.getElementById('incident-date').value = '';
+            document.getElementById('incident-units').value = '';
+            document.getElementById('incident-cause').value = '';
+            document.getElementById('incident-resolution').value = '';
+            document.getElementById('incident-prevention').value = '';
+        }
+
+        function createDossierEntry() {
+            const designation = document.getElementById('dossier-designation').value.trim();
+            const objectClass = document.getElementById('dossier-object-class').value;
+            const clearanceLevel = parseInt(document.getElementById('dossier-clearance-level').value, 10);
+            const description = document.getElementById('dossier-description').value.trim();
+            const containmentProcedures = document.getElementById('dossier-containment').value.trim();
+            const recontainmentProcedures = document.getElementById('dossier-recontainment').value.trim();
+
+            if (!designation || !objectClass || isNaN(clearanceLevel)) {
+                showMessage('DATA_MISSING: Please complete designation, object class, and clearance.', 'error');
+                return;
+            }
+
+            try {
+                repository.createDocument(getActiveScDUser(), {
+                    designation,
+                    objectClass,
+                    clearanceLevel,
+                    author: activeRole.name,
+                    description,
+                    containmentProcedures,
+                    recontainmentProcedures
+                });
+                saveRepository();
+                selectedDesignation = designation;
+                renderDocumentSelect();
+                showMessage('DOSSIER_ENTRY_CREATED: Draft saved as Pending Approval.');
+                document.getElementById('dossier-designation').value = '';
+                document.getElementById('dossier-description').value = '';
+                document.getElementById('dossier-containment').value = '';
+                document.getElementById('dossier-recontainment').value = '';
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function approveSelectedDocument() {
+            try {
+                repository.approveDocument(getActiveScDUser(), selectedDesignation);
+                saveRepository();
+                renderSelectedDocument();
+                showMessage('DOSSIER_ENTRY_APPROVED: Document is now official.');
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function openEditDossier() {
+            const dossier = repository.getDocument(selectedDesignation);
+            document.getElementById('edit-document-section').style.display = 'block';
+            renderObjectClassOptions('edit-object-class', dossier.objectClass);
+            populateClearanceSelect('edit-clearance-level', dossier.clearanceLevel, activeRole.clearance);
+            document.getElementById('edit-description').value = dossier.description;
+            document.getElementById('edit-containment').value = dossier.containmentProcedures;
+            document.getElementById('edit-recontainment').value = dossier.recontainmentProcedures;
+        }
+
+        function closeEditSection() {
+            document.getElementById('edit-document-section').style.display = 'none';
+        }
+
+        function saveDocumentEdit() {
+            const updates = {
+                objectClass: document.getElementById('edit-object-class').value,
+                clearanceLevel: parseInt(document.getElementById('edit-clearance-level').value, 10),
+                description: document.getElementById('edit-description').value.trim(),
+                containmentProcedures: document.getElementById('edit-containment').value.trim(),
+                recontainmentProcedures: document.getElementById('edit-recontainment').value.trim()
+            };
+            try {
+                repository.editDocument(getActiveScDUser(), selectedDesignation, updates);
+                saveRepository();
+                renderSelectedDocument();
+                closeEditSection();
+                showMessage('DOSSIER_DOCUMENT_UPDATED: Changes recorded.');
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function saveTestLog() {
+            const personnel = document.getElementById('test-personnel').value.split(',').map(p => p.trim()).filter(Boolean);
+            const procedure = document.getElementById('test-procedure').value.trim();
+            const result = document.getElementById('test-result').value.trim();
+
+            if (!personnel.length || !procedure || !result) {
+                showMessage('DATA_MISSING: Complete all test log fields.', 'error');
+                return;
+            }
+
+            try {
+                if (editingTestLogId) {
+                    repository.updateTestLog(getActiveScDUser(), selectedDesignation, editingTestLogId, { personnel, procedure, result });
+                    showMessage('TEST_LOG_UPDATED.');
+                } else {
+                    repository.addTestLog(getActiveScDUser(), selectedDesignation, { personnel, procedure, result });
+                    showMessage('TEST_LOG_CREATED.');
+                }
+                saveRepository();
+                resetTestLogForm();
+                renderSelectedDocument();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function editTestLog(testId) {
+            const dossier = repository.getDocument(selectedDesignation);
+            const entry = dossier.testLogs.find(log => log.testId === testId);
+            if (!entry) return;
+            editingTestLogId = entry.testId;
+            document.getElementById('test-personnel').value = entry.personnel.join(', ');
+            document.getElementById('test-procedure').value = entry.procedure;
+            document.getElementById('test-result').value = entry.result;
+            document.getElementById('clear-test-edit').style.display = 'inline-block';
+        }
+
+        function deleteTestLog(testId) {
+            try {
+                repository.deleteTestLog(getActiveScDUser(), selectedDesignation, testId);
+                saveRepository();
+                renderSelectedDocument();
+                showMessage('TEST_LOG_DELETED.');
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function saveIncidentReport() {
+            const date = document.getElementById('incident-date').value;
+            const units = document.getElementById('incident-units').value.split(',').map(u => u.trim()).filter(Boolean);
+            const cause = document.getElementById('incident-cause').value.trim();
+            const resolution = document.getElementById('incident-resolution').value.trim();
+            const preventionNotes = document.getElementById('incident-prevention').value.trim();
+
+            if (!date || !units.length || !cause || !resolution || !preventionNotes) {
+                showMessage('DATA_MISSING: Complete all incident report fields.', 'error');
+                return;
+            }
+
+            try {
+                if (editingIncidentId) {
+                    repository.updateIncidentReport(getActiveScDUser(), selectedDesignation, editingIncidentId, {
+                        date, units, cause, resolution, preventionNotes
+                    });
+                    showMessage('INCIDENT_REPORT_UPDATED.');
+                } else {
+                    repository.addIncidentReport(getActiveScDUser(), selectedDesignation, {
+                        date, units, cause, resolution, preventionNotes
+                    });
+                    showMessage('INCIDENT_REPORT_CREATED.');
+                }
+                saveRepository();
+                resetIncidentForm();
+                renderSelectedDocument();
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function editIncidentReport(reportId) {
+            const dossier = repository.getDocument(selectedDesignation);
+            const entry = dossier.incidentReports.find(report => report.reportId === reportId);
+            if (!entry) return;
+            editingIncidentId = entry.reportId;
+            document.getElementById('incident-date').value = entry.date;
+            document.getElementById('incident-units').value = entry.units.join(', ');
+            document.getElementById('incident-cause').value = entry.cause;
+            document.getElementById('incident-resolution').value = entry.resolution;
+            document.getElementById('incident-prevention').value = entry.preventionNotes;
+            document.getElementById('clear-incident-edit').style.display = 'inline-block';
+        }
+
+        function deleteIncidentReport(reportId) {
+            try {
+                repository.deleteIncidentReport(getActiveScDUser(), selectedDesignation, reportId);
+                saveRepository();
+                renderSelectedDocument();
+                showMessage('INCIDENT_REPORT_DELETED.');
+            } catch (error) {
+                showMessage(error.message, 'error');
+            }
+        }
+
+        function renderTestLogList(document) {
+            const container = document.getElementById('test-log-list');
+            if (!document.testLogs.length) {
+                container.innerHTML = '<div style="color:var(--text-dim);">No test logs yet.</div>';
+                return;
+            }
+            const isEditAllowed = activeRole.clearance >= 4;
+            container.innerHTML = document.testLogs.map(log => {
+                const controls = isEditAllowed ?
+                    `<button class="btn" onclick="editTestLog('${log.testId}')">EDIT</button> <button class="btn" onclick="deleteTestLog('${log.testId}')">DELETE</button>` : '';
+                return `<div style="border:1px solid rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:8px;">
+                    <strong>${log.testId}</strong> — <span>${log.personnel.join(', ')}</span>
+                    <div style="margin-top:6px;"><strong>Procedure:</strong> ${log.procedure}</div>
+                    <div style="margin-top:6px;"><strong>Result:</strong> ${log.result}</div>
+                    <div style="margin-top:8px; display:flex; gap:8px;">${controls}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderIncidentList(document) {
+            const container = document.getElementById('incident-list');
+            if (!document.incidentReports.length) {
+                container.innerHTML = '<div style="color:var(--text-dim);">No incident reports yet.</div>';
+                return;
+            }
+            const isEditAllowed = activeRole.clearance >= 4;
+            container.innerHTML = document.incidentReports.map(report => {
+                const controls = isEditAllowed ?
+                    `<button class="btn" onclick="editIncidentReport('${report.reportId}')">EDIT</button> <button class="btn" onclick="deleteIncidentReport('${report.reportId}')">DELETE</button>` : '';
+                return `<div style="border:1px solid rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:8px;">
+                    <strong>${report.reportId}</strong> — <span>${report.date}</span>
+                    <div style="margin-top:6px;"><strong>Units:</strong> ${report.units.join(', ')}</div>
+                    <div style="margin-top:6px;"><strong>Cause:</strong> ${report.cause}</div>
+                    <div style="margin-top:6px;"><strong>Resolution:</strong> ${report.resolution}</div>
+                    <div style="margin-top:6px;"><strong>Prevention Notes:</strong> ${report.preventionNotes}</div>
+                    <div style="margin-top:8px; display:flex; gap:8px;">${controls}</div>
+                </div>`;
+            }).join('');
+        }
+
+        async function initializeDossiersPage() {
+            const auth = await requireAuth();
+            if (!auth) return;
+            currentProfile = auth.profile;
+            currentRoles = await fetchMyRoles();
+            activeRole = getActiveRole(currentProfile, currentRoles);
+            if (activeRole.department !== 'ScD') {
+                toast('ACCESS_DENIED: ONLY ScD PERSONNEL MAY ACCESS DOSSIERS', 'error');
+                setTimeout(() => window.location.href = 'dashboard.html', 1200);
+                return;
+            }
+
+            document.getElementById('access-summary').innerHTML = `SIGNED IN AS <strong>${activeRole.name}</strong> — ${activeRole.department} — CL${activeRole.clearance}`;
+            document.getElementById('dossier-author').value = activeRole.name;
+            if (activeRole.clearance < 4) {
+                document.getElementById('dossier-cl4-warning').style.display = 'block';
+            }
+
+            renderObjectClassOptions('dossier-object-class', DOSSIERS.OBJECT_CLASSES[0]);
+            renderObjectClassOptions('edit-object-class', DOSSIERS.OBJECT_CLASSES[0]);
+            populateClearanceSelect('dossier-clearance-level', activeRole.clearance, activeRole.clearance);
+            populateClearanceSelect('edit-clearance-level', activeRole.clearance, activeRole.clearance);
+
+            repository = DOSSIERS.DossierRepository.loadFromLocalStorage(STORAGE_KEY);
+            if (repository.listDocuments().length === 0) {
+                repository = DOSSIERS.createExampleRepository();
+                saveRepository();
+            }
+            renderDocumentSelect();
+        }
+
+        window.onload = initializeDossiersPage;
+    </script>
+</body>
+</html>

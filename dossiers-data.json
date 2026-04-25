@@ -1,0 +1,32 @@
+{
+  "entries": [
+    {
+      "designation": "SCP-001",
+      "objectClass": "Euclid",
+      "clearanceLevel": 4,
+      "status": "Pending Approval",
+      "author": "Dr. Aurora Vale",
+      "description": "A living archive that rewrites memory when contained.",
+      "containmentProcedures": "Store inside a hermetically sealed, Class-3 archive chamber. Only CL4+ personnel may access.",
+      "recontainmentProcedures": "If the archive breaches, isolate the wing, deploy MTF Rho-7, and restore memory nodes using Procedure 7-A.",
+      "testLogs": [
+        {
+          "testId": "test-001",
+          "personnel": ["Dr. Vale", "Agent Kael"],
+          "procedure": "Subject was presented with recovered entries for verification.",
+          "result": "Object recorded a 30% anomaly increase, but containment remained stable."
+        }
+      ],
+      "incidentReports": [
+        {
+          "reportId": "incident-001",
+          "date": "2026-04-05",
+          "units": ["MTF Epsilon-11", "ScD"],
+          "cause": "Unauthorized low-clearance access attempt.",
+          "resolution": "Access revoked and door lock firmware replaced.",
+          "preventionNotes": "Enforce CL4+ biometric verification and audit all entry logs."
+        }
+      ]
+    }
+  ]
+}

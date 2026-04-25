@@ -27,6 +27,7 @@ async function initNav() {
     const links = [
         { href: 'dashboard.html', label: 'DASHBOARD' },
         { href: 'archive.html',   label: 'ARCHIVE' },
+        { href: 'dossiers.html',    label: 'DOSSIERS' },
         { href: 'incident.html',  label: 'INCIDENTS' },
         { href: 'personnel.html', label: 'PERSONNEL' },
         { href: 'write.html',     label: 'NEW_REPORT' },
