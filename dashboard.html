@@ -135,6 +135,7 @@
             <a href="personnel.html">PERSONNEL</a>
             <a href="write.html">NEW_REPORT</a>
             <a href="profile.html">PROFILE</a>
+            <a href="dossiers.html" id="dossiers-link" style="display:none;">DOSSIERS</a>
             <a href="admin.html" id="admin-link" style="display:none;">ADMIN</a>
         </nav>
 
@@ -302,15 +303,19 @@
                     if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
                 }).subscribe();
 
-            const welcomeEl  = document.getElementById('welcome');
-            const badge      = document.getElementById('badge-container');
-            const adminLink  = document.getElementById('admin-link');
-            const adminAction= document.getElementById('admin-action');
-            const isElevated = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
+            const welcomeEl   = document.getElementById('welcome');
+            const badge       = document.getElementById('badge-container');
+            const adminLink   = document.getElementById('admin-link');
+            const adminAction = document.getElementById('admin-action');
+            const dossiersLink= document.getElementById('dossiers-link');
+            const isElevated  = profile.is_admin || profile.is_overseer || profile.is_terminal_admin;
             if (isElevated) {
                 adminLink.style.display = 'inline-flex';
                 adminAction.style.display = 'flex';
                 adminLink.innerText = adminLink.innerText;
+            }
+            if (profile.department === 'ScD') {
+                dossiersLink.style.display = 'inline-flex';
             }
             _canEditContainment = isElevated || profile.department === 'ScD';
 
