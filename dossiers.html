@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCIPNET - DOSSIERS</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
     <script src="config.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
@@ -14,6 +15,30 @@
     <script src="nav.js"></script>
     <script src="dossiers.js"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .formatted-text {
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+            line-height: 1.65;
+            letter-spacing: 0.02em;
+            margin: 0;
+        }
+        .formatted-text h1,
+        .formatted-text h2,
+        .formatted-text h3 {
+            margin: 1rem 0 0.5rem;
+        }
+        .formatted-text p {
+            margin: 0.75rem 0;
+        }
+        .formatted-text ul,
+        .formatted-text ol {
+            margin: 0.75rem 0 0.75rem 1.25rem;
+        }
+        .formatted-text li {
+            margin: 0.25rem 0;
+        }
+    </style>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
@@ -160,12 +185,27 @@
         let editingTestLogId = null;
         let editingIncidentId = null;
 
+        const markdownRenderer = window.markdownit ? window.markdownit({ html: false, linkify: true, typographer: true, breaks: true }) : null;
+
         function getActiveScDUser() {
             return new DOSSIERS.ScDUser({
                 name: activeRole.name,
                 clearanceLevel: activeRole.clearance,
                 department: activeRole.department
             });
+        }
+
+        function renderFormattedText(text) {
+            if (!text) return '';
+            const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            if (markdownRenderer) {
+                return markdownRenderer.render(normalized);
+            }
+            const escaped = normalized
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            return escaped.replace(/\n/g, '<br>');
         }
 
         function showMessage(text, type = 'info') {
@@ -281,9 +321,12 @@
                     <div><strong>Clearance:</strong> CL${summary.clearanceLevel}</div>
                     <div><strong>Status:</strong> ${summary.status} ${summary.official ? '(OFFICIAL)' : '(UNOFFICIAL)'}</div>
                     <div><strong>Author:</strong> ${summary.author}</div>
-                    <div><strong>Description:</strong> ${summary.description || 'N/A'}</div>
-                    <div><strong>Containment Procedures:</strong> ${summary.containmentProcedures || 'N/A'}</div>
-                    <div><strong>Recontainment Procedures:</strong> ${summary.recontainmentProcedures || 'N/A'}</div>
+                    <div><strong>Description:</strong></div>
+                    <div class="formatted-text">${summary.description ? renderFormattedText(summary.description) : 'N/A'}</div>
+                    <div><strong>Containment Procedures:</strong></div>
+                    <div class="formatted-text">${summary.containmentProcedures ? renderFormattedText(summary.containmentProcedures) : 'N/A'}</div>
+                    <div><strong>Recontainment Procedures:</strong></div>
+                    <div class="formatted-text">${summary.recontainmentProcedures ? renderFormattedText(summary.recontainmentProcedures) : 'N/A'}</div>
                     <div><strong>Test Logs:</strong> ${summary.testLogCount}</div>
                     <div><strong>Incident Reports:</strong> ${summary.incidentReportCount}</div>
                 </div>
