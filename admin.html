@@ -6,6 +6,7 @@
     <title>SCiPNET - Admin Override</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="dom.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
@@ -135,7 +136,11 @@
             const statusEl = document.getElementById('alert-current-status');
             if (error || !data) { statusEl.innerText = 'NO ALERT ROW FOUND'; return; }
             if (data.is_active) {
-                statusEl.innerHTML = `ACTIVE: <span style="color:var(--gold);">${data.alert_message}</span>`;
+                clearElement(statusEl);
+                appendText(statusEl, 'ACTIVE: ');
+                const msg = createSafeElement('span', data.alert_message || '');
+                msg.style.color = 'var(--gold)';
+                statusEl.appendChild(msg);
                 document.getElementById('alert-message-input').value = data.alert_message || '';
             } else { statusEl.innerText = 'NO ACTIVE ALERT — STATUS NOMINAL'; }
         }
@@ -172,7 +177,17 @@
 
         async function loadAuditLog() {
             const { data: logs, error } = await _supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(500);
-            if (error) { document.getElementById('audit-list').innerHTML = `<tr><td colspan="5" style="color:var(--red)">ERROR: ${error.message}</td></tr>`; return; }
+            if (error) {
+                const tbody = document.getElementById('audit-list');
+                clearElement(tbody);
+                const tr = document.createElement('tr');
+                const td = createSafeElement('td', `ERROR: ${error.message || 'UNKNOWN_ERROR'}`);
+                td.colSpan = 5;
+                td.style.color = 'var(--red)';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
             allLogs = logs; filteredLogs = logs; auditPage = 1; renderAuditPage();
         }
 
@@ -192,33 +207,87 @@
             const countEl = document.getElementById('audit-count');
             const pagination = document.getElementById('audit-pagination');
             if (filteredLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim);padding:16px;">NO LOG ENTRIES FOUND</td></tr>`;
-                countEl.innerText = ''; pagination.innerHTML = ''; return;
+                clearElement(tbody);
+                const tr = document.createElement('tr');
+                const td = createSafeElement('td', 'NO LOG ENTRIES FOUND');
+                td.colSpan = 5;
+                td.style.color = 'var(--text-dim)';
+                td.style.padding = '16px';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                countEl.innerText = '';
+                clearElement(pagination);
+                return;
             }
             const totalPages = Math.ceil(filteredLogs.length / AUDIT_PAGE_SIZE);
             const start = (auditPage - 1) * AUDIT_PAGE_SIZE;
             const page = filteredLogs.slice(start, start + AUDIT_PAGE_SIZE);
             countEl.innerText = `${filteredLogs.length} ENTRIES // PAGE ${auditPage}/${totalPages}`;
-            tbody.innerHTML = page.map(l => {
+            clearElement(tbody);
+            page.forEach(l => {
                 const dt = new Date(l.created_at);
                 const stamp = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
                 const color = ACTION_COLORS[l.action] || 'var(--text-mid)';
-                return `<tr>
-                    <td style="white-space:nowrap;font-size:0.72rem;">${stamp}</td>
-                    <td style="color:var(--text-mid);">${l.actor_name}</td>
-                    <td><span style="color:${color};font-family:var(--font-display);letter-spacing:1px;">${l.action}</span></td>
-                    <td style="color:var(--text-mid);">${l.target_name || '—'}</td>
-                    <td style="color:var(--text-dim);font-size:0.75rem;">${l.details || '—'}</td>
-                </tr>`;
-            }).join('');
-            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
-            let pages = `<button onclick="goAuditPage(${auditPage - 1})" ${auditPage === 1 ? 'disabled' : ''}>◄</button>`;
-            getPageRange(auditPage, totalPages).forEach(p => {
-                if (p === '...') pages += `<span style="color:var(--text-dim);padding:0 4px;">...</span>`;
-                else pages += `<button ${p === auditPage ? 'style="border-color:var(--green);background:var(--green-glow);"' : ''} onclick="goAuditPage(${p})">${p}</button>`;
+
+                const tr = document.createElement('tr');
+                const tdStamp = createSafeElement('td', stamp);
+                tdStamp.style.whiteSpace = 'nowrap';
+                tdStamp.style.fontSize = '0.72rem';
+
+                const tdActor = createSafeElement('td', l.actor_name || '—');
+                tdActor.style.color = 'var(--text-mid)';
+
+                const tdAction = document.createElement('td');
+                const actionSpan = createSafeElement('span', l.action || '—');
+                actionSpan.style.color = color;
+                actionSpan.style.fontFamily = 'var(--font-display)';
+                actionSpan.style.letterSpacing = '1px';
+                tdAction.appendChild(actionSpan);
+
+                const tdTarget = createSafeElement('td', l.target_name || '—');
+                tdTarget.style.color = 'var(--text-mid)';
+
+                const tdDetails = createSafeElement('td', l.details || '—');
+                tdDetails.style.color = 'var(--text-dim)';
+                tdDetails.style.fontSize = '0.75rem';
+
+                tr.appendChild(tdStamp);
+                tr.appendChild(tdActor);
+                tr.appendChild(tdAction);
+                tr.appendChild(tdTarget);
+                tr.appendChild(tdDetails);
+                tbody.appendChild(tr);
             });
-            pages += `<button onclick="goAuditPage(${auditPage + 1})" ${auditPage === totalPages ? 'disabled' : ''}>►</button>`;
-            pagination.innerHTML = pages;
+
+            clearElement(pagination);
+            if (totalPages <= 1) return;
+
+            const prev = createSafeElement('button', '◄');
+            prev.disabled = auditPage === 1;
+            prev.addEventListener('click', () => goAuditPage(auditPage - 1));
+            pagination.appendChild(prev);
+
+            getPageRange(auditPage, totalPages).forEach(p => {
+                if (p === '...') {
+                    const dots = createSafeElement('span', '...');
+                    dots.style.color = 'var(--text-dim)';
+                    dots.style.padding = '0 4px';
+                    pagination.appendChild(dots);
+                    return;
+                }
+                const btn = createSafeElement('button', String(p));
+                if (p === auditPage) {
+                    btn.style.borderColor = 'var(--green)';
+                    btn.style.background = 'var(--green-glow)';
+                }
+                btn.addEventListener('click', () => goAuditPage(p));
+                pagination.appendChild(btn);
+            });
+
+            const next = createSafeElement('button', '►');
+            next.disabled = auditPage === totalPages;
+            next.addEventListener('click', () => goAuditPage(auditPage + 1));
+            pagination.appendChild(next);
         }
 
         function goAuditPage(page) { const total = Math.ceil(filteredLogs.length / AUDIT_PAGE_SIZE); if (page < 1 || page > total) return; auditPage = page; renderAuditPage(); }
@@ -229,17 +298,36 @@
             const { data: flagged, error } = await _supabase.from('profiles').select('*').not('admin_notice', 'is', null);
             if (error || !flagged || flagged.length === 0) return;
             document.getElementById('alert-section').style.display = 'block';
-            document.getElementById('flagged-list').innerHTML = flagged.map(u => {
+            const host = document.getElementById('flagged-list');
+            clearElement(host);
+            flagged.forEach(u => {
                 const isMe = currentUserId === u.id;
-                return `<div class="card card-gold">
-                    <p style="color:var(--gold);"><strong>NOTICE:</strong> ${u.admin_notice}</p>
-                    <p><strong>USER:</strong> ${u.full_name}</p>
-                    <p><strong>DEPT:</strong> ${getDeptShort(u.department) || 'NONE'}</p>
-                    <button class="btn-gold" onclick="clearFlag('${u.id}', '${u.full_name}')" ${isMe ? 'disabled' : ''}>
-                        ${isMe ? 'EXTERNAL_CLEARANCE_REQUIRED' : 'RESOLVE_FLAG'}
-                    </button>
-                </div>`;
-            }).join('');
+                const card = document.createElement('div');
+                card.className = 'card card-gold';
+
+                const p1 = document.createElement('p');
+                p1.style.color = 'var(--gold)';
+                p1.appendChild(createSafeElement('strong', 'NOTICE:'));
+                appendText(p1, ' ' + (u.admin_notice || '—'));
+
+                const p2 = document.createElement('p');
+                p2.appendChild(createSafeElement('strong', 'USER:'));
+                appendText(p2, ' ' + (u.full_name || 'UNKNOWN'));
+
+                const p3 = document.createElement('p');
+                p3.appendChild(createSafeElement('strong', 'DEPT:'));
+                appendText(p3, ' ' + (getDeptShort(u.department) || 'NONE'));
+
+                const btn = createSafeElement('button', isMe ? 'EXTERNAL_CLEARANCE_REQUIRED' : 'RESOLVE_FLAG', 'btn-gold');
+                btn.disabled = isMe;
+                if (!isMe) btn.addEventListener('click', () => clearFlag(u.id, u.full_name || 'UNKNOWN'));
+
+                card.appendChild(p1);
+                card.appendChild(p2);
+                card.appendChild(p3);
+                card.appendChild(btn);
+                host.appendChild(card);
+            });
         }
 
         // ---- PENDING ----
@@ -250,37 +338,105 @@
             }
             const { data: pending, error } = await query;
             const container = document.getElementById('pending-list');
-            if (error) { container.innerHTML = `<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`; return; }
-            if (pending.length === 0) { container.innerHTML = `<div style="color:var(--text-dim)">NO PENDING REQUESTS</div>`; return; }
+            if (error) {
+                clearElement(container);
+                const msg = createSafeElement('div', 'ERROR_FETCHING_DATA');
+                msg.style.color = 'var(--red)';
+                container.appendChild(msg);
+                return;
+            }
+            if (pending.length === 0) {
+                clearElement(container);
+                const msg = createSafeElement('div', 'NO PENDING REQUESTS');
+                msg.style.color = 'var(--text-dim)';
+                container.appendChild(msg);
+                return;
+            }
 
-            container.innerHTML = pending.map(u => {
+            clearElement(container);
+            pending.forEach(u => {
                 const isMe = currentUserId === u.id;
-                return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
-                    <h3>${u.full_name}</h3>
-                    ${u.discord_username ? `
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;border:1px solid rgba(88,101,242,0.35);background:rgba(88,101,242,0.06);">
-                        ${u.discord_avatar ? `<img src="${u.discord_avatar}" style="width:28px;height:28px;border-radius:50%;">` : ''}
-                        <div>
-                            <div style="font-size:0.65rem;color:rgba(88,101,242,0.7);letter-spacing:1px;">DISCORD VERIFIED</div>
-                            <div style="font-size:0.82rem;color:#7289da;font-family:var(--font-mono);">${u.discord_username}</div>
-                        </div>
-                    </div>` : `
-                    <div style="font-size:0.72rem;color:rgba(255,215,0,0.5);margin-bottom:8px;padding:4px 8px;border:1px solid rgba(255,215,0,0.2);">
-                        ⚠ NO DISCORD IDENTITY LINKED
-                    </div>`}
-                    <p><strong>REQUESTED DEPT:</strong> ${getDeptShort(u.department) || 'NONE'}</p>
-                    <label>VALIDATE DEPARTMENT:</label>
-                    <select id="dept-${u.id}"></select>
-                    <label>ASSIGN CLEARANCE:</label>
-                    <select id="lvl-${u.id}"></select>
-                    <div class="btn-row" style="margin-top:10px;">
-                        <button onclick="approveUser('${u.id}', '${u.full_name}')">GRANT</button>
-                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Departmental Misalignment Reported')" ${isMe ? 'disabled' : ''}>
-                            ${isMe ? 'N/A' : 'FLAG'}
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
+                const card = document.createElement('div');
+                card.className = 'card user-item';
+                card.dataset.name = String(u.full_name || '').toLowerCase();
+
+                card.appendChild(createSafeElement('h3', u.full_name || 'UNKNOWN'));
+
+                if (u.discord_username) {
+                    const box = document.createElement('div');
+                    box.style.display = 'flex';
+                    box.style.alignItems = 'center';
+                    box.style.gap = '8px';
+                    box.style.marginBottom = '8px';
+                    box.style.padding = '6px 10px';
+                    box.style.border = '1px solid rgba(88,101,242,0.35)';
+                    box.style.background = 'rgba(88,101,242,0.06)';
+
+                    if (u.discord_avatar && /^https?:\/\//i.test(u.discord_avatar)) {
+                        const img = document.createElement('img');
+                        img.src = u.discord_avatar;
+                        img.alt = 'Discord avatar';
+                        img.style.width = '28px';
+                        img.style.height = '28px';
+                        img.style.borderRadius = '50%';
+                        box.appendChild(img);
+                    }
+
+                    const info = document.createElement('div');
+                    const t = createSafeElement('div', 'DISCORD VERIFIED');
+                    t.style.fontSize = '0.65rem';
+                    t.style.color = 'rgba(88,101,242,0.7)';
+                    t.style.letterSpacing = '1px';
+                    const uEl = createSafeElement('div', u.discord_username);
+                    uEl.style.fontSize = '0.82rem';
+                    uEl.style.color = '#7289da';
+                    uEl.style.fontFamily = 'var(--font-mono)';
+                    info.appendChild(t);
+                    info.appendChild(uEl);
+                    box.appendChild(info);
+                    card.appendChild(box);
+                } else {
+                    const warn = createSafeElement('div', '⚠ NO DISCORD IDENTITY LINKED');
+                    warn.style.fontSize = '0.72rem';
+                    warn.style.color = 'rgba(255,215,0,0.5)';
+                    warn.style.marginBottom = '8px';
+                    warn.style.padding = '4px 8px';
+                    warn.style.border = '1px solid rgba(255,215,0,0.2)';
+                    card.appendChild(warn);
+                }
+
+                const req = document.createElement('p');
+                req.appendChild(createSafeElement('strong', 'REQUESTED DEPT:'));
+                appendText(req, ' ' + (getDeptShort(u.department) || 'NONE'));
+                card.appendChild(req);
+
+                card.appendChild(createSafeElement('label', 'VALIDATE DEPARTMENT:'));
+                const deptSel = document.createElement('select');
+                deptSel.id = `dept-${u.id}`;
+                card.appendChild(deptSel);
+
+                card.appendChild(createSafeElement('label', 'ASSIGN CLEARANCE:'));
+                const lvlSel = document.createElement('select');
+                lvlSel.id = `lvl-${u.id}`;
+                card.appendChild(lvlSel);
+
+                const btnRow = document.createElement('div');
+                btnRow.className = 'btn-row';
+                btnRow.style.marginTop = '10px';
+
+                const grant = createSafeElement('button', 'GRANT');
+                grant.addEventListener('click', () => approveUser(u.id, u.full_name || 'UNKNOWN'));
+
+                const flag = createSafeElement('button', isMe ? 'N/A' : 'FLAG', 'btn-gold');
+                flag.disabled = isMe;
+                if (!isMe) flag.addEventListener('click', () => flagUser(u.id, u.full_name || 'UNKNOWN', 'Departmental Misalignment Reported'));
+
+                btnRow.appendChild(grant);
+                btnRow.appendChild(flag);
+                card.appendChild(btnRow);
+
+                container.appendChild(card);
+            });
 
             pending.forEach(u => {
                 populateDeptSelect(`dept-${u.id}`, u.department, false, false);
@@ -299,42 +455,101 @@
             }
             const { data: active, error } = await query.order('full_name', { ascending: true });
             const container = document.getElementById('active-list');
-            if (error) { container.innerHTML = `<div style="color:var(--red)">ERROR_FETCHING_DATA</div>`; return; }
-            if (active.length === 0) { container.innerHTML = `<div style="color:var(--text-dim)">NO ACTIVE USERS</div>`; return; }
+            if (error) {
+                clearElement(container);
+                const msg = createSafeElement('div', 'ERROR_FETCHING_DATA');
+                msg.style.color = 'var(--red)';
+                container.appendChild(msg);
+                return;
+            }
+            if (active.length === 0) {
+                clearElement(container);
+                const msg = createSafeElement('div', 'NO ACTIVE USERS');
+                msg.style.color = 'var(--text-dim)';
+                container.appendChild(msg);
+                return;
+            }
 
-            container.innerHTML = active.map(u => {
+            clearElement(container);
+            active.forEach(u => {
                 const isMe = currentUserId === u.id;
                 let canAct = false;
                 if (myProfile.is_terminal_admin && !isMe) canAct = true;
                 if (myProfile.is_overseer && !u.is_terminal_admin && !isMe) canAct = true;
                 if (myProfile.is_admin && !u.is_admin && !u.is_overseer && !u.is_terminal_admin) canAct = true;
-                const clLabel = u.clearance_level >= 6 ? ['OMNI','APOLLYON','MASKUR'][u.clearance_level - 6] : 'L' + u.clearance_level;
-                const bannedBadge = u.is_banned ? `<span style="color:var(--red);font-size:0.72rem;margin-left:6px;">[BANNED]</span>` : '';
-                const resignedBadge = u.is_resigned ? `<span style="color:var(--text-dim);font-size:0.72rem;margin-left:6px;">[RESIGNED]</span>` : '';
 
-                let actionButtons = '';
-                if (isMe) {
-                    actionButtons = `<button disabled>YOU</button>`;
-                } else if (u.is_banned) {
-                    actionButtons = `
-                        <button onclick="unbanUser('${u.id}', '${u.full_name}')" ${!canAct ? 'disabled' : ''}>UNBAN</button>`;
-                } else {
-                    actionButtons = `
-                        <button class="btn-gold" onclick="flagUser('${u.id}', '${u.full_name}', 'Active Personnel Audit Required')" ${!canAct ? 'disabled' : ''}>FLAG</button>
-                        <button onclick="resignUser('${u.id}', '${u.full_name}')" style="color:var(--text-dim);border-color:rgba(0,255,65,0.2);" ${!canAct ? 'disabled' : ''}>RESIGN</button>
-                        <button class="btn-red" onclick="revokeAccess('${u.id}', '${u.full_name}')" ${!canAct ? 'disabled' : ''}>BAN</button>`;
+                const cl = u.clearance_level ?? 0;
+                const clLabel = cl >= 6 ? ['OMNI','APOLLYON','MASKUR'][cl - 6] : 'L' + cl;
+
+                const card = document.createElement('div');
+                card.className = 'card user-item';
+                card.dataset.name = String(u.full_name || '').toLowerCase();
+
+                const h3 = document.createElement('h3');
+                appendText(h3, u.full_name || 'UNKNOWN');
+
+                if (u.is_terminal_admin) {
+                    const tech = createSafeElement('span', '[TECH_ADMIN]');
+                    tech.style.color = 'var(--gold)';
+                    tech.style.fontSize = '0.75rem';
+                    tech.style.marginLeft = '6px';
+                    h3.appendChild(tech);
+                }
+                if (u.is_banned) {
+                    const b = createSafeElement('span', '[BANNED]');
+                    b.style.color = 'var(--red)';
+                    b.style.fontSize = '0.72rem';
+                    b.style.marginLeft = '6px';
+                    h3.appendChild(b);
+                }
+                if (u.is_resigned) {
+                    const r = createSafeElement('span', '[RESIGNED]');
+                    r.style.color = 'var(--text-dim)';
+                    r.style.fontSize = '0.72rem';
+                    r.style.marginLeft = '6px';
+                    h3.appendChild(r);
                 }
 
-                return `<div class="card user-item" data-name="${u.full_name.toLowerCase()}">
-                    <h3>
-                        ${u.full_name}
-                        ${u.is_terminal_admin ? `<span style="color:var(--gold);font-size:0.75rem;">[TECH_ADMIN]</span>` : ''}
-                        ${bannedBadge}${resignedBadge}
-                    </h3>
-                    <p>DEPT: [${getDeptShort(u.department) || 'NONE'}] | CL: ${clLabel}</p>
-                    <div class="btn-row" style="margin-top:10px;">${actionButtons}</div>
-                </div>`;
-            }).join('');
+                const p = createSafeElement('p', `DEPT: [${getDeptShort(u.department) || 'NONE'}] | CL: ${clLabel}`);
+
+                const btnRow = document.createElement('div');
+                btnRow.className = 'btn-row';
+                btnRow.style.marginTop = '10px';
+
+                if (isMe) {
+                    const you = createSafeElement('button', 'YOU');
+                    you.disabled = true;
+                    btnRow.appendChild(you);
+                } else if (u.is_banned) {
+                    const unban = createSafeElement('button', 'UNBAN');
+                    unban.disabled = !canAct;
+                    unban.addEventListener('click', () => unbanUser(u.id, u.full_name || 'UNKNOWN'));
+                    btnRow.appendChild(unban);
+                } else {
+                    const flag = createSafeElement('button', 'FLAG', 'btn-gold');
+                    flag.disabled = !canAct;
+                    flag.addEventListener('click', () => flagUser(u.id, u.full_name || 'UNKNOWN', 'Active Personnel Audit Required'));
+
+                    const resign = createSafeElement('button', 'RESIGN');
+                    resign.disabled = !canAct;
+                    resign.style.color = 'var(--text-dim)';
+                    resign.style.borderColor = 'rgba(0,255,65,0.2)';
+                    resign.addEventListener('click', () => resignUser(u.id, u.full_name || 'UNKNOWN'));
+
+                    const ban = createSafeElement('button', 'BAN', 'btn-red');
+                    ban.disabled = !canAct;
+                    ban.addEventListener('click', () => revokeAccess(u.id, u.full_name || 'UNKNOWN'));
+
+                    btnRow.appendChild(flag);
+                    btnRow.appendChild(resign);
+                    btnRow.appendChild(ban);
+                }
+
+                card.appendChild(h3);
+                card.appendChild(p);
+                card.appendChild(btnRow);
+                container.appendChild(card);
+            });
         }
 
         // ---- ROLE REQUESTS ----
@@ -357,17 +572,47 @@
             if (error || !requests || requests.length === 0) return;
 
             document.getElementById('role-requests-section').style.display = 'block';
-            document.getElementById('role-requests-list').innerHTML = requests.map(r => `
-                <div class="card">
-                    <h3>${r.role_name}</h3>
-                    <p><strong>REQUESTED BY:</strong> ${r.profiles?.full_name || 'UNKNOWN'}</p>
-                    <p><strong>DEPARTMENT:</strong> [${getDeptShort(r.department)}]</p>
-                    <p style="color:var(--text-dim);font-size:0.78rem;margin-top:4px;"><strong>REASON:</strong> ${r.bio || 'NO REASON PROVIDED'}</p>
-                    <div class="btn-row" style="margin-top:8px;">
-                        <button onclick="approveRole('${r.id}', '${r.role_name}', '${r.profiles?.full_name}')">APPROVE</button>
-                        <button class="btn-red" onclick="rejectRole('${r.id}', '${r.role_name}', '${r.profiles?.full_name}')">REJECT</button>
-                    </div>
-                </div>`).join('');
+            const host = document.getElementById('role-requests-list');
+            clearElement(host);
+            requests.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                card.appendChild(createSafeElement('h3', r.role_name || 'UNKNOWN'));
+
+                const p1 = document.createElement('p');
+                p1.appendChild(createSafeElement('strong', 'REQUESTED BY:'));
+                appendText(p1, ' ' + (r.profiles?.full_name || 'UNKNOWN'));
+
+                const p2 = document.createElement('p');
+                p2.appendChild(createSafeElement('strong', 'DEPARTMENT:'));
+                appendText(p2, ' [' + (getDeptShort(r.department) || 'N/A') + ']');
+
+                const p3 = document.createElement('p');
+                p3.style.color = 'var(--text-dim)';
+                p3.style.fontSize = '0.78rem';
+                p3.style.marginTop = '4px';
+                p3.appendChild(createSafeElement('strong', 'REASON:'));
+                appendText(p3, ' ' + (r.bio || 'NO REASON PROVIDED'));
+
+                const btnRow = document.createElement('div');
+                btnRow.className = 'btn-row';
+                btnRow.style.marginTop = '8px';
+
+                const approve = createSafeElement('button', 'APPROVE');
+                approve.addEventListener('click', () => approveRole(r.id, r.role_name || 'ROLE', r.profiles?.full_name || 'UNKNOWN'));
+                const reject = createSafeElement('button', 'REJECT', 'btn-red');
+                reject.addEventListener('click', () => rejectRole(r.id, r.role_name || 'ROLE', r.profiles?.full_name || 'UNKNOWN'));
+
+                btnRow.appendChild(approve);
+                btnRow.appendChild(reject);
+
+                card.appendChild(p1);
+                card.appendChild(p2);
+                card.appendChild(p3);
+                card.appendChild(btnRow);
+                host.appendChild(card);
+            });
         }
 
         async function approveRole(roleId, roleName, requester) {

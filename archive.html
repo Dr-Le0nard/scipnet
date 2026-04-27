@@ -6,6 +6,7 @@
     <title>SCiPNET - Records Archive</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="dom.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
     <script src="notifications.js"></script>
@@ -154,7 +155,16 @@
 
         async function fetchReports() {
             const list = document.getElementById('report-list');
-            list.innerHTML = `<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">RETRIEVING DATA...</td></tr>`;
+            clearElement(list);
+            {
+                const tr = document.createElement('tr');
+                const td = createSafeElement('td', 'RETRIEVING DATA...');
+                td.colSpan = 6;
+                td.style.color = 'var(--text-dim)';
+                td.style.padding = '20px';
+                tr.appendChild(td);
+                list.appendChild(tr);
+            }
             let query = _supabase.from('articles').select('*');
             if (!isElevated) {
                 query = query.eq('department', currentProfile.department);
@@ -164,7 +174,16 @@
                 if (filter && filter !== 'ALL') query = query.eq('department', filter);
             }
             const { data: reports, error } = await query;
-            if (error) { list.innerHTML = `<tr><td colspan="6" style="color:var(--red)">QUERY_ERROR: ${error.message}</td></tr>`; return; }
+            if (error) {
+                clearElement(list);
+                const tr = document.createElement('tr');
+                const td = createSafeElement('td', `QUERY_ERROR: ${error.message || 'UNKNOWN_ERROR'}`);
+                td.colSpan = 6;
+                td.style.color = 'var(--red)';
+                tr.appendChild(td);
+                list.appendChild(tr);
+                return;
+            }
             allReports = reports;
             filteredReports = reports;
             currentPage = 1;
@@ -230,8 +249,17 @@
             const pagination = document.getElementById('pagination');
 
             if (filteredReports.length === 0) {
-                list.innerHTML = `<tr><td colspan="6" style="color:var(--text-dim);padding:20px;">NO RECORDS FOUND</td></tr>`;
-                countEl.innerText = ''; pagination.innerHTML = ''; return;
+                clearElement(list);
+                const tr = document.createElement('tr');
+                const td = createSafeElement('td', 'NO RECORDS FOUND');
+                td.colSpan = 6;
+                td.style.color = 'var(--text-dim)';
+                td.style.padding = '20px';
+                tr.appendChild(td);
+                list.appendChild(tr);
+                countEl.innerText = '';
+                clearElement(pagination);
+                return;
             }
 
             const totalPages = Math.ceil(filteredReports.length / PAGE_SIZE);
@@ -241,32 +269,86 @@
 
             countEl.innerText = `${filteredReports.length} RECORD${filteredReports.length !== 1 ? 'S' : ''} // PAGE ${currentPage}/${totalPages}`;
 
-            list.innerHTML = pageReports.map(r => {
+            clearElement(list);
+            pageReports.forEach(r => {
                 const date    = new Date(r.created_at).toLocaleDateString();
                 const canEdit = isElevatedUser || r.author === currentProfile.full_name;
                 const cl      = r.required_clearance ?? 0;
                 const clColor = CL_COLORS[Math.min(cl, 8)];
-                return `<tr class="cl-${cl}">
-                    <td>${date}</td>
-                    <td><span style="color:var(--text-dim)">[${r.department||'N/A'}]</span></td>
-                    <td><span style="color:${clColor};font-family:var(--font-display);letter-spacing:1px;">${cl >= 6 ? ['OMNI','APOLLYON','MASKUR'][cl-6] : 'L'+cl}</span></td>
-                    <td style="color:var(--green);">${r.title||'UNTITLED'}</td>
-                    <td style="color:var(--text-mid);">${r.author||'UNKNOWN'}</td>
-                    <td><div class="btn-row">
-                        <button onclick="window.location.href='view.html?id=${r.id}'">OPEN</button>
-                        ${canEdit ? `<button class="btn-gold" onclick="window.location.href='edit.html?id=${r.id}'">EDIT</button>` : ''}
-                    </div></td>
-                </tr>`;
-            }).join('');
 
-            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
-            let pages = `<button onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>◄</button>`;
-            getPageRange(currentPage, totalPages).forEach(p => {
-                if (p === '...') pages += `<span style="color:var(--text-dim);padding:0 4px;">...</span>`;
-                else pages += `<button ${p===currentPage?'style="border-color:var(--green);background:var(--green-glow);"':''} onclick="goToPage(${p})">${p}</button>`;
+                const tr = document.createElement('tr');
+                tr.className = `cl-${cl}`;
+
+                tr.appendChild(createSafeElement('td', date));
+
+                const tdDept = document.createElement('td');
+                const deptSpan = createSafeElement('span', `[${r.department || 'N/A'}]`);
+                deptSpan.style.color = 'var(--text-dim)';
+                tdDept.appendChild(deptSpan);
+                tr.appendChild(tdDept);
+
+                const tdCl = document.createElement('td');
+                const clSpan = createSafeElement('span', cl >= 6 ? ['OMNI','APOLLYON','MASKUR'][cl-6] : 'L' + cl);
+                clSpan.style.color = clColor;
+                clSpan.style.fontFamily = 'var(--font-display)';
+                clSpan.style.letterSpacing = '1px';
+                tdCl.appendChild(clSpan);
+                tr.appendChild(tdCl);
+
+                const tdTitle = createSafeElement('td', r.title || 'UNTITLED');
+                tdTitle.style.color = 'var(--green)';
+                tr.appendChild(tdTitle);
+
+                const tdAuthor = createSafeElement('td', r.author || 'UNKNOWN');
+                tdAuthor.style.color = 'var(--text-mid)';
+                tr.appendChild(tdAuthor);
+
+                const tdAct = document.createElement('td');
+                const row = document.createElement('div');
+                row.className = 'btn-row';
+                const open = createSafeElement('button', 'OPEN');
+                open.addEventListener('click', () => { window.location.href = `view.html?id=${r.id}`; });
+                row.appendChild(open);
+                if (canEdit) {
+                    const edit = createSafeElement('button', 'EDIT', 'btn-gold');
+                    edit.addEventListener('click', () => { window.location.href = `edit.html?id=${r.id}`; });
+                    row.appendChild(edit);
+                }
+                tdAct.appendChild(row);
+                tr.appendChild(tdAct);
+
+                list.appendChild(tr);
             });
-            pages += `<button onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>►</button>`;
-            pagination.innerHTML = pages;
+
+            clearElement(pagination);
+            if (totalPages <= 1) return;
+
+            const prev = createSafeElement('button', '◄');
+            prev.disabled = currentPage === 1;
+            prev.addEventListener('click', () => goToPage(currentPage - 1));
+            pagination.appendChild(prev);
+
+            getPageRange(currentPage, totalPages).forEach(p => {
+                if (p === '...') {
+                    const dots = createSafeElement('span', '...');
+                    dots.style.color = 'var(--text-dim)';
+                    dots.style.padding = '0 4px';
+                    pagination.appendChild(dots);
+                    return;
+                }
+                const btn = createSafeElement('button', String(p));
+                if (p === currentPage) {
+                    btn.style.borderColor = 'var(--green)';
+                    btn.style.background = 'var(--green-glow)';
+                }
+                btn.addEventListener('click', () => goToPage(p));
+                pagination.appendChild(btn);
+            });
+
+            const next = createSafeElement('button', '►');
+            next.disabled = currentPage === totalPages;
+            next.addEventListener('click', () => goToPage(currentPage + 1));
+            pagination.appendChild(next);
         }
 
         function goToPage(page) {

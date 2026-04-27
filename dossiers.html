@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
     <script src="config.js"></script>
+    <script src="dom.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
@@ -230,7 +231,15 @@
 
         function renderObjectClassOptions(selectId, selectedValue) {
             const select = document.getElementById(selectId);
-            select.innerHTML = DOSSIERS.OBJECT_CLASSES.map(cls => `<option value="${cls}"${cls === selectedValue ? ' selected' : ''}>${cls}</option>`).join('');
+            // Static list (no user input) — build safely anyway
+            clearElement(select);
+            DOSSIERS.OBJECT_CLASSES.forEach(cls => {
+                const opt = document.createElement('option');
+                opt.value = cls;
+                opt.textContent = cls;
+                if (cls === selectedValue) opt.selected = true;
+                select.appendChild(opt);
+            });
         }
 
         function getDossierFilterValues() {
@@ -261,33 +270,80 @@
             const filters = getDossierFilterValues();
             const documents = repository.listDocuments().filter(doc => matchesDossierFilters(doc, filters));
             if (!documents.length) {
-                container.innerHTML = '<div style="color:var(--text-dim);">No dossiers match the current search and filters.</div>';
+                clearElement(container);
+                const msg = createSafeElement('div', 'No dossiers match the current search and filters.');
+                msg.style.color = 'var(--text-dim)';
+                container.appendChild(msg);
                 return;
             }
-            container.innerHTML = documents.map(doc => {
+            clearElement(container);
+            documents.forEach(doc => {
                 const active = selectedDesignation === doc.designation;
                 const canApprove = activeRole.clearance >= 4 && doc.status !== DOSSIERS.DOSSIER_STATUSES.APPROVED;
                 const canEdit = activeRole.clearance >= 4;
-                const labelStyle = active ? 'background:rgba(0,255,65,0.06);border-color:rgba(0,255,65,0.25);' : '';
-                return `
-                    <div style="border:1px solid rgba(255,255,255,0.08); padding:18px; border-radius:12px; display:grid; gap:10px; ${labelStyle}">
-                        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; align-items:flex-start;">
-                            <div style="min-width:220px;">
-                                <div style="font-weight:700;">${doc.designation} — ${doc.objectClass} — CL${doc.clearanceLevel}</div>
-                                <div style="color:var(--text-dim); margin-top:4px;">${doc.status} — AUTHOR: ${doc.author}</div>
-                            </div>
-                            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-                                <button class="btn" onclick="selectDocument('${doc.designation}')">VIEW</button>
-                                <button class="btn" ${canApprove ? '' : 'disabled'} onclick="approveSelectedDocument('${doc.designation}')">APPROVE</button>
-                                <button class="btn" ${canEdit ? '' : 'disabled'} onclick="openEditDossier('${doc.designation}')">EDIT</button>
-                                <button class="btn" onclick="prepareTestLog('${doc.designation}')">TESTS</button>
-                                <button class="btn" onclick="prepareIncidentReport('${doc.designation}')">INCIDENTS</button>
-                            </div>
-                        </div>
-                        <div style="color:var(--text-dim);">${doc.description ? doc.description.substring(0, 180) : 'No description available.'}</div>
-                    </div>
-                `;
-            }).join('');
+
+                const card = document.createElement('div');
+                card.style.border = '1px solid rgba(255,255,255,0.08)';
+                card.style.padding = '18px';
+                card.style.borderRadius = '12px';
+                card.style.display = 'grid';
+                card.style.gap = '10px';
+                if (active) {
+                    card.style.background = 'rgba(0,255,65,0.06)';
+                    card.style.borderColor = 'rgba(0,255,65,0.25)';
+                }
+
+                const top = document.createElement('div');
+                top.style.display = 'flex';
+                top.style.justifyContent = 'space-between';
+                top.style.flexWrap = 'wrap';
+                top.style.gap = '12px';
+                top.style.alignItems = 'flex-start';
+
+                const left = document.createElement('div');
+                left.style.minWidth = '220px';
+                left.appendChild(createSafeElement('div', `${doc.designation} — ${doc.objectClass} — CL${doc.clearanceLevel}`));
+                left.firstChild.style.fontWeight = '700';
+                const sub = createSafeElement('div', `${doc.status} — AUTHOR: ${doc.author}`);
+                sub.style.color = 'var(--text-dim)';
+                sub.style.marginTop = '4px';
+                left.appendChild(sub);
+
+                const actions = document.createElement('div');
+                actions.style.display = 'flex';
+                actions.style.gap = '8px';
+                actions.style.flexWrap = 'wrap';
+                actions.style.justifyContent = 'flex-end';
+
+                const view = createSafeElement('button', 'VIEW', 'btn');
+                view.addEventListener('click', () => selectDocument(doc.designation));
+                const approve = createSafeElement('button', 'APPROVE', 'btn');
+                approve.disabled = !canApprove;
+                approve.addEventListener('click', () => approveSelectedDocument(doc.designation));
+                const edit = createSafeElement('button', 'EDIT', 'btn');
+                edit.disabled = !canEdit;
+                edit.addEventListener('click', () => openEditDossier(doc.designation));
+                const tests = createSafeElement('button', 'TESTS', 'btn');
+                tests.addEventListener('click', () => prepareTestLog(doc.designation));
+                const incidents = createSafeElement('button', 'INCIDENTS', 'btn');
+                incidents.addEventListener('click', () => prepareIncidentReport(doc.designation));
+
+                actions.appendChild(view);
+                actions.appendChild(approve);
+                actions.appendChild(edit);
+                actions.appendChild(tests);
+                actions.appendChild(incidents);
+
+                top.appendChild(left);
+                top.appendChild(actions);
+
+                const preview = createSafeElement('div', doc.description ? doc.description.substring(0, 180) : 'No description available.');
+                preview.style.color = 'var(--text-dim)';
+
+                card.appendChild(top);
+                card.appendChild(preview);
+                container.appendChild(card);
+            });
         }
 
         function toggleNewDossierSection() {
@@ -310,27 +366,69 @@
             const canEdit = activeRole.clearance >= 4;
 
             document.getElementById('document-summary').style.display = 'block';
-            document.getElementById('document-summary').innerHTML = `
-                <div style="display:grid;gap:10px;">
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                        <button id="approve-button" class="btn" onclick="approveSelectedDocument('${summary.designation}')">APPROVE</button>
-                        <button id="edit-button" class="btn" onclick="openEditDossier('${summary.designation}')">EDIT</button>
-                    </div>
-                    <div><strong>Designation:</strong> ${summary.designation}</div>
-                    <div><strong>Object Class:</strong> ${summary.objectClass}</div>
-                    <div><strong>Clearance:</strong> CL${summary.clearanceLevel}</div>
-                    <div><strong>Status:</strong> ${summary.status} ${summary.official ? '(OFFICIAL)' : '(UNOFFICIAL)'}</div>
-                    <div><strong>Author:</strong> ${summary.author}</div>
-                    <div><strong>Description:</strong></div>
-                    <div class="formatted-text">${summary.description ? renderFormattedText(summary.description) : 'N/A'}</div>
-                    <div><strong>Containment Procedures:</strong></div>
-                    <div class="formatted-text">${summary.containmentProcedures ? renderFormattedText(summary.containmentProcedures) : 'N/A'}</div>
-                    <div><strong>Recontainment Procedures:</strong></div>
-                    <div class="formatted-text">${summary.recontainmentProcedures ? renderFormattedText(summary.recontainmentProcedures) : 'N/A'}</div>
-                    <div><strong>Test Logs:</strong> ${summary.testLogCount}</div>
-                    <div><strong>Incident Reports:</strong> ${summary.incidentReportCount}</div>
-                </div>
-            `;
+            const host = document.getElementById('document-summary');
+            clearElement(host);
+            const grid = document.createElement('div');
+            grid.style.display = 'grid';
+            grid.style.gap = '10px';
+
+            const btnRow = document.createElement('div');
+            btnRow.style.display = 'flex';
+            btnRow.style.gap = '10px';
+            btnRow.style.flexWrap = 'wrap';
+            btnRow.style.alignItems = 'center';
+
+            const approveBtn = createSafeElement('button', 'APPROVE', 'btn');
+            approveBtn.id = 'approve-button';
+            approveBtn.addEventListener('click', () => approveSelectedDocument(summary.designation));
+            const editBtn = createSafeElement('button', 'EDIT', 'btn');
+            editBtn.id = 'edit-button';
+            editBtn.addEventListener('click', () => openEditDossier(summary.designation));
+            btnRow.appendChild(approveBtn);
+            btnRow.appendChild(editBtn);
+            grid.appendChild(btnRow);
+
+            function row(label, value) {
+                const d = document.createElement('div');
+                d.appendChild(createSafeElement('strong', label));
+                appendText(d, ' ' + value);
+                return d;
+            }
+
+            grid.appendChild(row('Designation:', summary.designation || '—'));
+            grid.appendChild(row('Object Class:', summary.objectClass || '—'));
+            grid.appendChild(row('Clearance:', `CL${summary.clearanceLevel ?? 0}`));
+            grid.appendChild(row('Status:', `${summary.status || '—'} ${summary.official ? '(OFFICIAL)' : '(UNOFFICIAL)'}`));
+            grid.appendChild(row('Author:', summary.author || '—'));
+
+            grid.appendChild(createSafeElement('div', 'Description:').appendChild(createSafeElement('strong','Description:'))?.parentNode || document.createElement('div'));
+            const desc = document.createElement('div');
+            desc.className = 'formatted-text';
+            // renderFormattedText escapes HTML (or markdown-it runs with html:false), safe to set as HTML
+            desc.innerHTML = summary.description ? renderFormattedText(summary.description) : 'N/A';
+            grid.appendChild(createSafeElement('div', '').appendChild(createSafeElement('strong','Description:'))?.parentNode || document.createElement('div'));
+            grid.appendChild(desc);
+
+            const cpLabel = document.createElement('div');
+            cpLabel.appendChild(createSafeElement('strong', 'Containment Procedures:'));
+            grid.appendChild(cpLabel);
+            const cp = document.createElement('div');
+            cp.className = 'formatted-text';
+            cp.innerHTML = summary.containmentProcedures ? renderFormattedText(summary.containmentProcedures) : 'N/A';
+            grid.appendChild(cp);
+
+            const rpLabel = document.createElement('div');
+            rpLabel.appendChild(createSafeElement('strong', 'Recontainment Procedures:'));
+            grid.appendChild(rpLabel);
+            const rp = document.createElement('div');
+            rp.className = 'formatted-text';
+            rp.innerHTML = summary.recontainmentProcedures ? renderFormattedText(summary.recontainmentProcedures) : 'N/A';
+            grid.appendChild(rp);
+
+            grid.appendChild(row('Test Logs:', String(summary.testLogCount ?? 0)));
+            grid.appendChild(row('Incident Reports:', String(summary.incidentReportCount ?? 0)));
+
+            host.appendChild(grid);
 
             const approveButton = document.getElementById('approve-button');
             const editButton = document.getElementById('edit-button');
@@ -601,41 +699,117 @@
         function renderTestLogList(dossier) {
             const container = document.getElementById('test-log-list');
             if (!dossier.testLogs.length) {
-                container.innerHTML = '<div style="color:var(--text-dim);">No test logs yet.</div>';
+                clearElement(container);
+                const msg = createSafeElement('div', 'No test logs yet.');
+                msg.style.color = 'var(--text-dim)';
+                container.appendChild(msg);
                 return;
             }
             const isEditAllowed = activeRole.clearance >= 4;
-            container.innerHTML = dossier.testLogs.map(log => {
-                const controls = isEditAllowed ?
-                    `<button class="btn" onclick="editTestLog('${log.testId}')">EDIT</button> <button class="btn" onclick="deleteTestLog('${log.testId}')">DELETE</button>` : '';
-                return `<div style="border:1px solid rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:8px;">
-                    <strong>${log.testId}</strong> — <span>${log.personnel.join(', ')}</span>
-                    <div style="margin-top:6px;"><strong>Procedure:</strong> ${log.procedure}</div>
-                    <div style="margin-top:6px;"><strong>Result:</strong> ${log.result}</div>
-                    <div style="margin-top:8px; display:flex; gap:8px;">${controls}</div>
-                </div>`;
-            }).join('');
+            clearElement(container);
+            dossier.testLogs.forEach(log => {
+                const card = document.createElement('div');
+                card.style.border = '1px solid rgba(255,255,255,0.08)';
+                card.style.padding = '12px';
+                card.style.marginBottom = '10px';
+                card.style.borderRadius = '8px';
+
+                const head = document.createElement('div');
+                head.appendChild(createSafeElement('strong', log.testId || 'TEST'));
+                appendText(head, ' — ' + (Array.isArray(log.personnel) ? log.personnel.join(', ') : ''));
+                card.appendChild(head);
+
+                const proc = document.createElement('div');
+                proc.style.marginTop = '6px';
+                proc.appendChild(createSafeElement('strong', 'Procedure:'));
+                appendText(proc, ' ' + (log.procedure || ''));
+                card.appendChild(proc);
+
+                const res = document.createElement('div');
+                res.style.marginTop = '6px';
+                res.appendChild(createSafeElement('strong', 'Result:'));
+                appendText(res, ' ' + (log.result || ''));
+                card.appendChild(res);
+
+                const controls = document.createElement('div');
+                controls.style.marginTop = '8px';
+                controls.style.display = 'flex';
+                controls.style.gap = '8px';
+                if (isEditAllowed) {
+                    const edit = createSafeElement('button', 'EDIT', 'btn');
+                    edit.addEventListener('click', () => editTestLog(log.testId));
+                    const del = createSafeElement('button', 'DELETE', 'btn');
+                    del.addEventListener('click', () => deleteTestLog(log.testId));
+                    controls.appendChild(edit);
+                    controls.appendChild(del);
+                }
+                card.appendChild(controls);
+                container.appendChild(card);
+            });
         }
 
         function renderIncidentList(dossier) {
             const container = document.getElementById('incident-list');
             if (!dossier.incidentReports.length) {
-                container.innerHTML = '<div style="color:var(--text-dim);">No incident reports yet.</div>';
+                clearElement(container);
+                const msg = createSafeElement('div', 'No incident reports yet.');
+                msg.style.color = 'var(--text-dim)';
+                container.appendChild(msg);
                 return;
             }
             const isEditAllowed = activeRole.clearance >= 4;
-            container.innerHTML = dossier.incidentReports.map(report => {
-                const controls = isEditAllowed ?
-                    `<button class="btn" onclick="editIncidentReport('${report.reportId}')">EDIT</button> <button class="btn" onclick="deleteIncidentReport('${report.reportId}')">DELETE</button>` : '';
-                return `<div style="border:1px solid rgba(255,255,255,0.08); padding:12px; margin-bottom:10px; border-radius:8px;">
-                    <strong>${report.reportId}</strong> — <span>${report.date}</span>
-                    <div style="margin-top:6px;"><strong>Units:</strong> ${report.units.join(', ')}</div>
-                    <div style="margin-top:6px;"><strong>Cause:</strong> ${report.cause}</div>
-                    <div style="margin-top:6px;"><strong>Resolution:</strong> ${report.resolution}</div>
-                    <div style="margin-top:6px;"><strong>Prevention Notes:</strong> ${report.preventionNotes}</div>
-                    <div style="margin-top:8px; display:flex; gap:8px;">${controls}</div>
-                </div>`;
-            }).join('');
+            clearElement(container);
+            dossier.incidentReports.forEach(report => {
+                const card = document.createElement('div');
+                card.style.border = '1px solid rgba(255,255,255,0.08)';
+                card.style.padding = '12px';
+                card.style.marginBottom = '10px';
+                card.style.borderRadius = '8px';
+
+                const head = document.createElement('div');
+                head.appendChild(createSafeElement('strong', report.reportId || 'REPORT'));
+                appendText(head, ' — ' + (report.date || ''));
+                card.appendChild(head);
+
+                const units = document.createElement('div');
+                units.style.marginTop = '6px';
+                units.appendChild(createSafeElement('strong', 'Units:'));
+                appendText(units, ' ' + (Array.isArray(report.units) ? report.units.join(', ') : ''));
+                card.appendChild(units);
+
+                const cause = document.createElement('div');
+                cause.style.marginTop = '6px';
+                cause.appendChild(createSafeElement('strong', 'Cause:'));
+                appendText(cause, ' ' + (report.cause || ''));
+                card.appendChild(cause);
+
+                const res = document.createElement('div');
+                res.style.marginTop = '6px';
+                res.appendChild(createSafeElement('strong', 'Resolution:'));
+                appendText(res, ' ' + (report.resolution || ''));
+                card.appendChild(res);
+
+                const prev = document.createElement('div');
+                prev.style.marginTop = '6px';
+                prev.appendChild(createSafeElement('strong', 'Prevention Notes:'));
+                appendText(prev, ' ' + (report.preventionNotes || ''));
+                card.appendChild(prev);
+
+                const controls = document.createElement('div');
+                controls.style.marginTop = '8px';
+                controls.style.display = 'flex';
+                controls.style.gap = '8px';
+                if (isEditAllowed) {
+                    const edit = createSafeElement('button', 'EDIT', 'btn');
+                    edit.addEventListener('click', () => editIncidentReport(report.reportId));
+                    const del = createSafeElement('button', 'DELETE', 'btn');
+                    del.addEventListener('click', () => deleteIncidentReport(report.reportId));
+                    controls.appendChild(edit);
+                    controls.appendChild(del);
+                }
+                card.appendChild(controls);
+                container.appendChild(card);
+            });
         }
 
         async function initializeDossiersPage() {
@@ -650,7 +824,11 @@
                 return;
             }
 
-            document.getElementById('access-summary').innerHTML = `SIGNED IN AS <strong>${activeRole.name}</strong> — ${activeRole.department} — CL${activeRole.clearance}`;
+            const access = document.getElementById('access-summary');
+            clearElement(access);
+            appendText(access, 'SIGNED IN AS ');
+            access.appendChild(createSafeElement('strong', activeRole.name || 'UNKNOWN'));
+            appendText(access, ` — ${activeRole.department || 'N/A'} — CL${activeRole.clearance ?? 0}`);
             document.getElementById('dossier-author').value = activeRole.name;
             if (activeRole.clearance < 4) {
                 document.getElementById('dossier-cl4-warning').style.display = 'block';
