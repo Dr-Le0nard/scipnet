@@ -6,6 +6,7 @@
     <title>SCiPNET - Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="dom.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
@@ -322,21 +323,40 @@
             if (profile.is_terminal_admin) {
                 welcomeEl.innerText = 'TERMINAL_ADMINISTRATOR'; welcomeEl.classList.add('gold');
                 badge.className = 'clearance-badge gold';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> MASKUR // TECH_ADMIN`;
+                // SECURITY: avoid injecting department/user strings via HTML
+                clearElement(badge);
+                const dot = document.createElement('span');
+                dot.className = 'status-dot';
+                dot.style.background = 'var(--gold)';
+                dot.style.boxShadow = '0 0 6px var(--gold)';
+                badge.appendChild(dot);
+                badge.appendChild(document.createTextNode(' MASKUR // TECH_ADMIN'));
                 adminLink.style.display = 'inline-flex'; adminLink.innerText = 'SYSTEM';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, true);
             } else if (profile.is_overseer) {
                 welcomeEl.innerText = 'O5_COUNCIL_CHAIRMAN'; welcomeEl.classList.add('red');
                 badge.className = 'clearance-badge red';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span> APOLLYON // O5_CHAIRMAN`;
+                clearElement(badge);
+                const dot = document.createElement('span');
+                dot.className = 'status-dot';
+                dot.style.background = 'var(--red)';
+                dot.style.boxShadow = '0 0 6px var(--red)';
+                badge.appendChild(dot);
+                badge.appendChild(document.createTextNode(' APOLLYON // O5_CHAIRMAN'));
                 adminLink.style.display = 'inline-flex'; adminLink.innerText = 'CHAIRMAN';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
             } else if (profile.is_admin) {
                 welcomeEl.innerText = 'O5_COUNCIL_MEMBER'; welcomeEl.classList.add('gold');
                 badge.className = 'clearance-badge gold';
-                badge.innerHTML = `<span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span> OMNI // ${profile.department||'UNASSIGNED'}`;
+                clearElement(badge);
+                const dot = document.createElement('span');
+                dot.className = 'status-dot';
+                dot.style.background = 'var(--gold)';
+                dot.style.boxShadow = '0 0 6px var(--gold)';
+                badge.appendChild(dot);
+                badge.appendChild(document.createTextNode(` OMNI // ${profile.department || 'UNASSIGNED'}`));
                 adminLink.style.display = 'inline-flex'; adminLink.innerText = 'COUNCIL';
                 adminAction.style.display = 'flex';
                 renderDeptMenu(profile.department, false);
@@ -372,17 +392,51 @@
             const users = await getOnlineUsers();
             const container = document.getElementById('online-users');
             if (!users || users.length === 0) {
-                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO PERSONNEL ONLINE</div>`;
+                clearElement(container);
+                const empty = createSafeElement('div', 'NO PERSONNEL ONLINE');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontSize = '0.78rem';
+                container.appendChild(empty);
                 return;
             }
-            container.innerHTML = users.map(u => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,255,65,0.07);">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);display:inline-block;flex-shrink:0;"></span>
-                        <span style="font-size:0.78rem;color:var(--text-mid);">${u.full_name}</span>
-                    </div>
-                    <span style="font-size:0.68rem;color:var(--text-dim);">[${u.department||'N/A'}]</span>
-                </div>`).join('');
+            clearElement(container);
+            users.forEach(u => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+                row.style.padding = '5px 0';
+                row.style.borderBottom = '1px solid rgba(0,255,65,0.07)';
+
+                const left = document.createElement('div');
+                left.style.display = 'flex';
+                left.style.alignItems = 'center';
+                left.style.gap = '8px';
+
+                const dot = document.createElement('span');
+                dot.style.width = '7px';
+                dot.style.height = '7px';
+                dot.style.borderRadius = '50%';
+                dot.style.background = 'var(--green)';
+                dot.style.boxShadow = '0 0 6px var(--green)';
+                dot.style.display = 'inline-block';
+                dot.style.flexShrink = '0';
+
+                const name = createSafeElement('span', u.full_name || 'UNKNOWN');
+                name.style.fontSize = '0.78rem';
+                name.style.color = 'var(--text-mid)';
+
+                left.appendChild(dot);
+                left.appendChild(name);
+
+                const dept = createSafeElement('span', `[${u.department || 'N/A'}]`);
+                dept.style.fontSize = '0.68rem';
+                dept.style.color = 'var(--text-dim)';
+
+                row.appendChild(left);
+                row.appendChild(dept);
+                container.appendChild(row);
+            });
         }
 
         async function loadOpenIncidents() {
@@ -395,41 +449,93 @@
 
             const container = document.getElementById('incident-widget');
             if (error || !incidents || incidents.length === 0) {
-                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO OPEN INCIDENTS</div>`;
+                clearElement(container);
+                const empty = createSafeElement('div', 'NO OPEN INCIDENTS');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontSize = '0.78rem';
+                container.appendChild(empty);
                 return;
             }
 
             const priorityColor = { Standard:'var(--text-mid)', Urgent:'var(--gold)', Critical:'var(--red)' };
             const statusColor   = { Open:'var(--gold)', Investigating:'#60a5fa' };
 
-            container.innerHTML = incidents.map(i => {
+            clearElement(container);
+            incidents.forEach(i => {
                 const type  = i.incident_type === 'Custom' ? (i.custom_type || 'CUSTOM') : i.incident_type;
                 const color = priorityColor[i.priority] || 'var(--text-mid)';
                 const sc    = statusColor[i.status] || 'var(--text-dim)';
 
-                // Highlight if assigned to current user's department
                 const isAssignedToMyDept = i.assigned_department && i.assigned_department === _currentProfile?.department;
-                const deptBadge = i.assigned_department
-                    ? `<span style="font-size:0.65rem;color:#60a5fa;border:1px solid rgba(96,165,250,0.3);padding:1px 5px;">→ [${i.assigned_department}]</span>`
-                    : '';
+                const baseBorder = isAssignedToMyDept ? 'rgba(96,165,250,0.6)' : 'var(--green-border)';
 
-                return `<div onclick="window.location.href='incident.html'"
-                    style="border:1px solid ${isAssignedToMyDept ? 'rgba(96,165,250,0.6)' : 'var(--green-border)'};
-                           background:${isAssignedToMyDept ? 'rgba(96,165,250,0.07)' : 'var(--bg-card)'};
-                           padding:8px 12px;cursor:pointer;transition:border-color 0.15s;"
-                    onmouseover="this.style.borderColor='rgba(0,255,65,0.6)'"
-                    onmouseout="this.style.borderColor='${isAssignedToMyDept ? 'rgba(96,165,250,0.6)' : 'var(--green-border)'}'">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;color:${color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${i.title}</div>
-                        <div style="font-family:var(--font-display);font-size:0.8rem;color:${sc};white-space:nowrap;">● ${i.status.toUpperCase()}</div>
-                    </div>
-                    <div style="font-size:0.68rem;color:var(--text-dim);margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                        <span>${type.toUpperCase()} // ${i.filed_by}</span>
-                        ${deptBadge}
-                        ${isAssignedToMyDept ? '<span style="color:#60a5fa;font-size:0.65rem;">[ASSIGNED TO YOUR DEPT]</span>' : ''}
-                    </div>
-                </div>`;
-            }).join('');
+                const card = document.createElement('div');
+                card.style.border = `1px solid ${baseBorder}`;
+                card.style.background = isAssignedToMyDept ? 'rgba(96,165,250,0.07)' : 'var(--bg-card)';
+                card.style.padding = '8px 12px';
+                card.style.cursor = 'pointer';
+                card.style.transition = 'border-color 0.15s';
+                card.addEventListener('click', () => { window.location.href = 'incident.html'; });
+                card.addEventListener('mouseover', () => { card.style.borderColor = 'rgba(0,255,65,0.6)'; });
+                card.addEventListener('mouseout',  () => { card.style.borderColor = baseBorder; });
+
+                const row1 = document.createElement('div');
+                row1.style.display = 'flex';
+                row1.style.justifyContent = 'space-between';
+                row1.style.alignItems = 'center';
+                row1.style.gap = '8px';
+                row1.style.flexWrap = 'wrap';
+
+                const title = createSafeElement('div', i.title || 'UNTITLED');
+                title.style.fontFamily = 'var(--font-display)';
+                title.style.fontSize = '0.9rem';
+                title.style.letterSpacing = '1px';
+                title.style.color = color;
+                title.style.overflow = 'hidden';
+                title.style.textOverflow = 'ellipsis';
+                title.style.whiteSpace = 'nowrap';
+                title.style.flex = '1';
+
+                const status = createSafeElement('div', `● ${String(i.status || '').toUpperCase()}`);
+                status.style.fontFamily = 'var(--font-display)';
+                status.style.fontSize = '0.8rem';
+                status.style.color = sc;
+                status.style.whiteSpace = 'nowrap';
+
+                row1.appendChild(title);
+                row1.appendChild(status);
+
+                const row2 = document.createElement('div');
+                row2.style.fontSize = '0.68rem';
+                row2.style.color = 'var(--text-dim)';
+                row2.style.marginTop = '3px';
+                row2.style.display = 'flex';
+                row2.style.gap = '8px';
+                row2.style.alignItems = 'center';
+                row2.style.flexWrap = 'wrap';
+
+                row2.appendChild(createSafeElement('span', `${String(type || '').toUpperCase()} // ${i.filed_by || 'UNKNOWN'}`));
+
+                if (i.assigned_department) {
+                    const dept = createSafeElement('span', `→ [${i.assigned_department}]`);
+                    dept.style.fontSize = '0.65rem';
+                    dept.style.color = '#60a5fa';
+                    dept.style.border = '1px solid rgba(96,165,250,0.3)';
+                    dept.style.padding = '1px 5px';
+                    row2.appendChild(dept);
+                }
+
+                if (isAssignedToMyDept) {
+                    const badge = createSafeElement('span', '[ASSIGNED TO YOUR DEPT]');
+                    badge.style.color = '#60a5fa';
+                    badge.style.fontSize = '0.65rem';
+                    row2.appendChild(badge);
+                }
+
+                card.appendChild(row1);
+                card.appendChild(row2);
+                container.appendChild(card);
+            });
         }
 
         async function loadRoleSwitcher() {
@@ -437,43 +543,75 @@
             const activeRole = getActiveRole(_currentProfile, roles);
             const container = document.getElementById('role-switcher');
  
-            // Always show primary
-            let html = `
-                <div style="border:1px solid ${!activeRole.isSecondary ? 'var(--green)' : 'var(--green-border)'};
-                            background:${!activeRole.isSecondary ? 'rgba(0,255,65,0.04)' : 'var(--bg-card)'};
-                            padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;">${_currentProfile.full_name}</div>
-                        <div style="font-size:0.68rem;color:var(--text-dim);">[${_currentProfile.department||'N/A'}] — PRIMARY</div>
-                    </div>
-                    ${!activeRole.isSecondary
-                        ? `<span style="font-size:0.7rem;color:var(--green);">● ACTIVE</span>`
-                        : `<button onclick="dashSwitchRole(null)" style="font-size:0.75rem;padding:2px 8px;">SWITCH</button>`
-                    }
-                </div>`;
- 
+            clearElement(container);
+
+            function makeRoleRow(title, subtitle, isActive, onSwitch) {
+                const row = document.createElement('div');
+                row.style.border = `1px solid ${isActive ? 'var(--green)' : 'var(--green-border)'}`;
+                row.style.background = isActive ? 'rgba(0,255,65,0.04)' : 'var(--bg-card)';
+                row.style.padding = '8px 12px';
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+
+                const left = document.createElement('div');
+                const t = createSafeElement('div', title);
+                t.style.fontFamily = 'var(--font-display)';
+                t.style.fontSize = '0.9rem';
+                t.style.letterSpacing = '1px';
+                const s = createSafeElement('div', subtitle);
+                s.style.fontSize = '0.68rem';
+                s.style.color = 'var(--text-dim)';
+                left.appendChild(t);
+                left.appendChild(s);
+
+                const right = document.createElement('div');
+                if (isActive) {
+                    const badge = createSafeElement('span', '● ACTIVE');
+                    badge.style.fontSize = '0.7rem';
+                    badge.style.color = 'var(--green)';
+                    right.appendChild(badge);
+                } else {
+                    const btn = createSafeElement('button', 'SWITCH');
+                    btn.style.fontSize = '0.75rem';
+                    btn.style.padding = '2px 8px';
+                    btn.addEventListener('click', (ev) => { ev.stopPropagation(); onSwitch(); });
+                    right.appendChild(btn);
+                }
+
+                row.appendChild(left);
+                row.appendChild(right);
+                return row;
+            }
+
+            container.appendChild(
+                makeRoleRow(
+                    _currentProfile.full_name || 'UNKNOWN',
+                    `[${_currentProfile.department || 'N/A'}] — PRIMARY`,
+                    !activeRole.isSecondary,
+                    () => dashSwitchRole(null)
+                )
+            );
+
             roles.forEach(r => {
                 const isActive = activeRole.isSecondary && activeRole.roleId === r.id;
-                html += `
-                <div style="border:1px solid ${isActive ? 'var(--green)' : 'var(--green-border)'};
-                            background:${isActive ? 'rgba(0,255,65,0.04)' : 'var(--bg-card)'};
-                            padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <div style="font-family:var(--font-display);font-size:0.9rem;letter-spacing:1px;">${r.role_name}</div>
-                        <div style="font-size:0.68rem;color:var(--text-dim);">[${r.department}]</div>
-                    </div>
-                    ${isActive
-                        ? `<span style="font-size:0.7rem;color:var(--green);">● ACTIVE</span>`
-                        : `<button onclick="dashSwitchRole('${r.id}')" style="font-size:0.75rem;padding:2px 8px;">SWITCH</button>`
-                    }
-                </div>`;
+                container.appendChild(
+                    makeRoleRow(
+                        r.role_name || 'UNKNOWN',
+                        `[${r.department || 'N/A'}]`,
+                        isActive,
+                        () => dashSwitchRole(r.id)
+                    )
+                );
             });
- 
+
             if (roles.length === 0) {
-                html += `<div style="font-size:0.72rem;color:var(--text-dim);padding:4px 0;">NO SECONDARY ROLES — MANAGE IN PROFILE</div>`;
+                const note = createSafeElement('div', 'NO SECONDARY ROLES — MANAGE IN PROFILE');
+                note.style.fontSize = '0.72rem';
+                note.style.color = 'var(--text-dim)';
+                note.style.padding = '4px 0';
+                container.appendChild(note);
             }
- 
-            container.innerHTML = html;
         }
  
         async function dashSwitchRole(roleId) {
@@ -496,37 +634,79 @@
                 .select('*')
                 .order('scp_number', { ascending: true });
 
-            if (error) { container.innerHTML = `<div style="color:var(--red);padding:14px;">ERROR: ${error.message}</div>`; return; }
+            if (error) {
+                clearElement(container);
+                const msg = createSafeElement('div', `ERROR: ${error.message || 'UNKNOWN_ERROR'}`);
+                msg.style.color = 'var(--red)';
+                msg.style.padding = '14px';
+                container.appendChild(msg);
+                return;
+            }
             if (!entries || entries.length === 0) {
-                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;padding:14px;">NO ENTRIES ON RECORD — ADD AN SCP TO BEGIN TRACKING</div>`;
+                clearElement(container);
+                const empty = createSafeElement('div', 'NO ENTRIES ON RECORD — ADD AN SCP TO BEGIN TRACKING');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontSize = '0.78rem';
+                empty.style.padding = '14px';
+                container.appendChild(empty);
                 return;
             }
 
             const classMap = { 'Safe':'cc-safe', 'Euclid':'cc-euclid', 'Keter':'cc-keter', 'Thaumiel':'cc-thaumiel', 'Neutralized':'cc-neutralized' };
             const statusMap = { 'Contained':'status-contained', 'Breach':'status-breach', 'Monitoring':'status-monitoring', 'Uncontained':'status-uncontained' };
 
-            container.innerHTML = entries.map(e => {
+            clearElement(container);
+            entries.forEach(e => {
                 const ccClass     = classMap[e.containment_class] || '';
                 const statusClass = statusMap[e.status] || '';
                 const date        = new Date(e.updated_at).toLocaleDateString();
-                const editBtn     = _canEditContainment
-                    ? `<button onclick="openEditModal('${e.id}')" style="font-size:0.72rem;padding:2px 8px;">EDIT</button>`
-                    : '';
-                const reportBtn = e.article_id
-                    ? `<button onclick="window.location.href='view.html?id=${e.article_id}'" style="font-size:0.72rem;padding:2px 8px;color:var(--text-dim);border-color:rgba(0,255,65,0.15);">REPORT</button>`
-                    : '';
-                const deleteBtn = _canEditContainment
-                    ? `<button onclick="deleteContainmentEntry(event, '${e.id}', '${e.scp_number}')" class="btn-red" style="font-size:0.72rem;padding:2px 8px;">DEL</button>`
-                    : '';
-                return `<div class="containment-row">
-                    <div class="scp-number">${e.scp_number}</div>
-                    <div class="scp-name">${e.scp_name || '—'}</div>
-                    <div class="cc-badge ${ccClass}">${e.containment_class.toUpperCase()}</div>
-                    <div class="scp-status ${statusClass}">${e.status.toUpperCase()}</div>
-                    <div class="scp-date">${date}</div>
-                    <div class="scp-actions">${editBtn}${reportBtn}${deleteBtn}</div>
-                </div>`;
-            }).join('');
+
+                const row = document.createElement('div');
+                row.className = 'containment-row';
+
+                row.appendChild(createSafeElement('div', e.scp_number || '—', 'scp-number'));
+                row.appendChild(createSafeElement('div', e.scp_name || '—', 'scp-name'));
+
+                const cc = createSafeElement('div', String(e.containment_class || '').toUpperCase(), `cc-badge ${ccClass}`.trim());
+                row.appendChild(cc);
+
+                const st = createSafeElement('div', String(e.status || '').toUpperCase(), `scp-status ${statusClass}`.trim());
+                row.appendChild(st);
+
+                row.appendChild(createSafeElement('div', date, 'scp-date'));
+
+                const actions = document.createElement('div');
+                actions.className = 'scp-actions';
+
+                if (_canEditContainment) {
+                    const edit = createSafeElement('button', 'EDIT');
+                    edit.style.fontSize = '0.72rem';
+                    edit.style.padding = '2px 8px';
+                    edit.addEventListener('click', (ev) => { ev.stopPropagation(); openEditModal(e.id); });
+                    actions.appendChild(edit);
+                }
+
+                if (e.article_id) {
+                    const report = createSafeElement('button', 'REPORT');
+                    report.style.fontSize = '0.72rem';
+                    report.style.padding = '2px 8px';
+                    report.style.color = 'var(--text-dim)';
+                    report.style.borderColor = 'rgba(0,255,65,0.15)';
+                    report.addEventListener('click', (ev) => { ev.stopPropagation(); window.location.href = `view.html?id=${e.article_id}`; });
+                    actions.appendChild(report);
+                }
+
+                if (_canEditContainment) {
+                    const del = createSafeElement('button', 'DEL', 'btn-red');
+                    del.style.fontSize = '0.72rem';
+                    del.style.padding = '2px 8px';
+                    del.addEventListener('click', (ev) => deleteContainmentEntry(ev, e.id, e.scp_number || '—'));
+                    actions.appendChild(del);
+                }
+
+                row.appendChild(actions);
+                container.appendChild(row);
+            });
         }
 
         // ---- CONTAINMENT MODAL ----
@@ -666,26 +846,93 @@
             if (!isElevated) query = query.eq('department', profile.department).lte('required_clearance', profile.clearance_level);
             const { data: docs, error } = await query;
             const container = document.getElementById('recent-docs');
-            if (error || !docs || docs.length === 0) { container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO DOCUMENTS ON RECORD</div>`; return; }
-            container.innerHTML = docs.map(d => `
-                <div style="border:1px solid var(--green-border);background:var(--bg-card);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;" onclick="window.location.href='view.html?id=${d.id}'">
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-family:var(--font-display);font-size:0.95rem;letter-spacing:1px;color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.title || 'UNTITLED'}</div>
-                        <div style="font-size:0.68rem;color:var(--text-dim);margin-top:2px;">${d.author || 'UNKNOWN'} // [${d.department || 'N/A'}] // L${d.required_clearance}</div>
-                    </div>
-                    <div style="font-size:0.68rem;color:var(--text-dim);white-space:nowrap;">${new Date(d.created_at).toLocaleDateString()}</div>
-                </div>`).join('');
+            if (error || !docs || docs.length === 0) {
+                clearElement(container);
+                const empty = createSafeElement('div', 'NO DOCUMENTS ON RECORD');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontSize = '0.78rem';
+                container.appendChild(empty);
+                return;
+            }
+            clearElement(container);
+            docs.forEach(d => {
+                const card = document.createElement('div');
+                card.style.border = '1px solid var(--green-border)';
+                card.style.background = 'var(--bg-card)';
+                card.style.padding = '10px 14px';
+                card.style.display = 'flex';
+                card.style.justifyContent = 'space-between';
+                card.style.alignItems = 'center';
+                card.style.gap = '10px';
+                card.style.flexWrap = 'wrap';
+                card.style.cursor = 'pointer';
+                card.addEventListener('click', () => { window.location.href = `view.html?id=${d.id}`; });
+
+                const left = document.createElement('div');
+                left.style.flex = '1';
+                left.style.minWidth = '0';
+
+                const title = createSafeElement('div', d.title || 'UNTITLED');
+                title.style.fontFamily = 'var(--font-display)';
+                title.style.fontSize = '0.95rem';
+                title.style.letterSpacing = '1px';
+                title.style.color = 'var(--green)';
+                title.style.whiteSpace = 'nowrap';
+                title.style.overflow = 'hidden';
+                title.style.textOverflow = 'ellipsis';
+
+                const meta = createSafeElement('div', `${d.author || 'UNKNOWN'} // [${d.department || 'N/A'}] // L${d.required_clearance ?? 0}`);
+                meta.style.fontSize = '0.68rem';
+                meta.style.color = 'var(--text-dim)';
+                meta.style.marginTop = '2px';
+
+                left.appendChild(title);
+                left.appendChild(meta);
+
+                const right = createSafeElement('div', new Date(d.created_at).toLocaleDateString());
+                right.style.fontSize = '0.68rem';
+                right.style.color = 'var(--text-dim)';
+                right.style.whiteSpace = 'nowrap';
+
+                card.appendChild(left);
+                card.appendChild(right);
+                container.appendChild(card);
+            });
         }
 
         async function loadRecentPersonnel() {
             const { data: staff, error } = await _supabase.from('profiles').select('full_name, clearance_level, department').eq('is_approved', true).eq('is_banned', false).order('clearance_level', { ascending: false }).limit(5);
             const container = document.getElementById('recent-personnel');
-            if (error || !staff || staff.length === 0) { container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;">NO PERSONNEL ON RECORD</div>`; return; }
-            container.innerHTML = staff.map(p => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,255,65,0.07);">
-                    <div style="font-size:0.78rem;color:var(--text-mid);">${p.full_name}</div>
-                    <div style="font-size:0.68rem;color:var(--text-dim);white-space:nowrap;">[${p.department || 'N/A'}] CL:${p.clearance_level}</div>
-                </div>`).join('');
+            if (error || !staff || staff.length === 0) {
+                clearElement(container);
+                const empty = createSafeElement('div', 'NO PERSONNEL ON RECORD');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontSize = '0.78rem';
+                container.appendChild(empty);
+                return;
+            }
+            clearElement(container);
+            staff.forEach(p => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+                row.style.padding = '6px 0';
+                row.style.borderBottom = '1px solid rgba(0,255,65,0.07)';
+
+                const name = createSafeElement('div', p.full_name || 'UNKNOWN');
+                name.style.fontSize = '0.78rem';
+                name.style.color = 'var(--text-mid)';
+
+                const meta = createSafeElement('div', `[${p.department || 'N/A'}] CL:${p.clearance_level ?? 0}`);
+                meta.style.fontSize = '0.68rem';
+                meta.style.color = 'var(--text-dim)';
+                meta.style.whiteSpace = 'nowrap';
+
+                row.appendChild(name);
+                row.appendChild(meta);
+                container.appendChild(row);
+            });
         }
 
         function showPendingScreen() {

@@ -70,7 +70,15 @@
 
         const el = document.createElement('div');
         el.className = `toast ${type}`;
-        el.innerHTML = `<span class="toast-prefix">${PREFIXES[type]}</span>${message}`;
+        // SECURITY: Never inject untrusted strings into HTML.
+        // Prefix and message are separate nodes, both using textContent.
+        const prefixEl = document.createElement('span');
+        prefixEl.className = 'toast-prefix';
+        prefixEl.textContent = PREFIXES[type] ?? PREFIXES.info;
+        const msgEl = document.createElement('span');
+        msgEl.textContent = message === undefined || message === null ? '' : String(message);
+        el.appendChild(prefixEl);
+        el.appendChild(msgEl);
 
         const uid = 't' + Date.now() + Math.random().toString(36).slice(2);
         el.classList.add(uid);

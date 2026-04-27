@@ -79,6 +79,7 @@ function playTone(ctx, frequency, startTime, duration, gain) {
 // ============================================================
 let _presenceInterval = null;
 let _presenceProfile  = null;
+let _presenceWarned   = false;
 
 /**
  * Start tracking this user as online.
@@ -102,13 +103,24 @@ async function _upsertPresence() {
             department: _presenceProfile.department,
             last_seen:  new Date().toISOString()
         }, { onConflict: 'user_id' });
-    } catch (e) {}
+        _presenceWarned = false;
+    } catch (e) {
+        // Avoid spamming logs on transient network issues (heartbeat runs every 30s)
+        if (!_presenceWarned) {
+            _presenceWarned = true;
+            console.warn('Presence heartbeat upsert failed:', e);
+        }
+    }
 }
 
 async function stopPresence() {
     if (_presenceInterval) { clearInterval(_presenceInterval); _presenceInterval = null; }
     if (_presenceProfile) {
-        try { await _supabase.from('presence').delete().eq('user_id', _presenceProfile.id); } catch (e) {}
+        try {
+            await _supabase.from('presence').delete().eq('user_id', _presenceProfile.id);
+        } catch (e) {
+            console.warn('Presence cleanup failed (will expire by last_seen):', e);
+        }
     }
 }
 

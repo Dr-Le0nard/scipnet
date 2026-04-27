@@ -22,7 +22,9 @@ async function initNav() {
                 isElevated = profile.is_overseer || profile.is_terminal_admin;
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn('Nav init failed to resolve profile roles:', e);
+    }
 
     const links = [
         { href: 'dashboard.html', label: 'DASHBOARD' },

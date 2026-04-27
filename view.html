@@ -15,24 +15,26 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
-    <div class="identity-block">
-        <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
-    </div>
-    <nav class="main-nav" id="main-nav"></nav>
-    <div class="page-content page-wrapper fade-in">
-        <div class="page-title" id="doc-title">ACCESSING_SECURE_FILE...</div>
-        <div class="page-subtitle">DOCUMENT VIEWER // CLASSIFIED MATERIAL</div>
-        <div class="document-meta" id="doc-meta" style="display:none;">
-            <div class="meta-item"><span class="meta-label">AUTHOR</span><span class="meta-value" id="doc-author">---</span></div>
-            <div class="meta-item"><span class="meta-label">DEPARTMENT</span><span class="meta-value" id="doc-dept">---</span></div>
-            <div class="meta-item"><span class="meta-label">CLEARANCE</span><span class="meta-value" id="doc-cl">---</span></div>
-            <div class="meta-item"><span class="meta-label">FILED</span><span class="meta-value" id="doc-date">---</span></div>
+    <main id="app">
+        <div class="identity-block">
+            <a href="dashboard.html" style="text-decoration:none;"><div class="logo">SCIPNET<span>SECURE INTRANET // SITE-19</span></div></a>
         </div>
-        <div class="document-body" id="doc-content">LOADING...</div>
-        <div class="btn-row" style="margin-top:16px;" id="doc-actions">
-            <button onclick="window.location.href='archive.html'">RETURN_TO_ARCHIVE</button>
+        <nav class="main-nav" id="main-nav"></nav>
+        <div class="page-content page-wrapper fade-in">
+            <div class="page-title" id="doc-title">ACCESSING_SECURE_FILE...</div>
+            <div class="page-subtitle">DOCUMENT VIEWER // CLASSIFIED MATERIAL</div>
+            <div class="document-meta" id="doc-meta" style="display:none;">
+                <div class="meta-item"><span class="meta-label">AUTHOR</span><span class="meta-value" id="doc-author">---</span></div>
+                <div class="meta-item"><span class="meta-label">DEPARTMENT</span><span class="meta-value" id="doc-dept">---</span></div>
+                <div class="meta-item"><span class="meta-label">CLEARANCE</span><span class="meta-value" id="doc-cl">---</span></div>
+                <div class="meta-item"><span class="meta-label">FILED</span><span class="meta-value" id="doc-date">---</span></div>
+            </div>
+            <div class="document-body" id="doc-content">LOADING...</div>
+            <div class="btn-row" style="margin-top:16px;" id="doc-actions">
+                <button onclick="window.location.href='archive.html'">RETURN_TO_ARCHIVE</button>
+            </div>
         </div>
-    </div>
+    </main>
     <script>
         async function displayArticle(){
             const auth=await requireAuth();if(!auth)return;
@@ -55,10 +57,19 @@
             document.getElementById('doc-content').innerText=art.content||'[DATA EXPUNGED]';
             document.getElementById('doc-meta').style.display='grid';
             const canEdit=isElevated||art.author===profile.full_name;
-            if(canEdit){document.getElementById('doc-actions').innerHTML+=`<button class="btn-gold" onclick="window.location.href='edit.html?id=${art.id}'">EDIT_DOCUMENT</button>`;}
+            if (canEdit) {
+                const actions = document.getElementById('doc-actions');
+                const btn = document.createElement('button');
+                btn.className = 'btn-gold';
+                btn.textContent = 'EDIT_DOCUMENT';
+                btn.addEventListener('click', () => { window.location.href = `edit.html?id=${art.id}`; });
+                actions.appendChild(btn);
+            }
         }
         function showAccessDenied(){
-            document.body.innerHTML=`
+            const app = document.getElementById('app');
+            if (!app) return;
+            app.innerHTML = `
                 <div style="background:#020000;color:var(--red);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'VT323',monospace;border:2px solid var(--red);padding:20px;">
                     <div style="font-size:2.5rem;animation:flicker 0.5s infinite;letter-spacing:6px;">[ ACCESS_DENIED ]</div>
                     <div style="border:1px solid var(--red);padding:16px;margin:16px;max-width:480px;background:rgba(255,0,0,0.03);">

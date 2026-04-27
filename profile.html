@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="dom.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
@@ -180,14 +181,40 @@
             clEl.innerText = clInfo.label; clEl.style.color = clInfo.color;
 
             const badge = document.getElementById('profile-badge');
-            if (profile.is_terminal_admin)
-                badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>MASKUR // TECH_ADMIN</span>`;
-            else if (profile.is_overseer)
-                badge.innerHTML = `<span class="clearance-badge red"><span class="status-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></span>APOLLYON // O5_CHAIRMAN</span>`;
-            else if (profile.is_admin)
-                badge.innerHTML = `<span class="clearance-badge gold"><span class="status-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></span>OMNI // O5_COUNCIL</span>`;
-            else
-                badge.innerHTML = `<span class="clearance-badge" style="color:${clInfo.color};border-color:${clInfo.color}40;"><span class="status-dot" style="background:${clInfo.color};"></span>${clInfo.short} // FOUNDATION_PERSONNEL</span>`;
+            // SECURITY: build badge using DOM APIs (no HTML injection)
+            clearElement(badge);
+            const badgeSpan = document.createElement('span');
+            badgeSpan.className = 'clearance-badge';
+
+            const dot = document.createElement('span');
+            dot.className = 'status-dot';
+
+            let label = '';
+            if (profile.is_terminal_admin) {
+                badgeSpan.classList.add('gold');
+                dot.style.background = 'var(--gold)';
+                dot.style.boxShadow = '0 0 6px var(--gold)';
+                label = 'MASKUR // TECH_ADMIN';
+            } else if (profile.is_overseer) {
+                badgeSpan.classList.add('red');
+                dot.style.background = 'var(--red)';
+                dot.style.boxShadow = '0 0 6px var(--red)';
+                label = 'APOLLYON // O5_CHAIRMAN';
+            } else if (profile.is_admin) {
+                badgeSpan.classList.add('gold');
+                dot.style.background = 'var(--gold)';
+                dot.style.boxShadow = '0 0 6px var(--gold)';
+                label = 'OMNI // O5_COUNCIL';
+            } else {
+                dot.style.background = clInfo.color;
+                badgeSpan.style.color = clInfo.color;
+                badgeSpan.style.borderColor = `${clInfo.color}40`;
+                label = `${clInfo.short} // FOUNDATION_PERSONNEL`;
+            }
+
+            badgeSpan.appendChild(dot);
+            badgeSpan.appendChild(document.createTextNode(label));
+            badge.appendChild(badgeSpan);
 
             const statusParts = [];
             if (profile.is_terminal_admin) statusParts.push('TERMINAL_ADMIN');
@@ -210,99 +237,268 @@
 
             // Primary role card
             const primaryIsActive = !activeRole.isSecondary;
-            let html = `
-                <div class="role-card ${primaryIsActive ? 'active' : ''}">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
-                        <div>
-                            <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:1px;">${myProfile.full_name}</div>
-                            <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px;">[${myProfile.department||'UNASSIGNED'}] — PRIMARY ROLE</div>
-                        </div>
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <span class="status-pill approved">APPROVED</span>
-                            ${primaryIsActive
-                                ? `<span style="font-size:0.72rem;color:var(--green);">● ACTIVE</span>`
-                                : `<button onclick="setActiveRole(null)" style="font-size:0.78rem;padding:2px 10px;">SWITCH</button>`}
-                        </div>
-                    </div>
-                </div>`;
+            clearElement(container);
+            const primaryCard = document.createElement('div');
+            primaryCard.className = `role-card ${primaryIsActive ? 'active' : ''}`.trim();
+
+            const primaryRow = document.createElement('div');
+            primaryRow.style.display = 'flex';
+            primaryRow.style.justifyContent = 'space-between';
+            primaryRow.style.alignItems = 'flex-start';
+            primaryRow.style.flexWrap = 'wrap';
+            primaryRow.style.gap = '8px';
+
+            const primaryLeft = document.createElement('div');
+            const primaryName = createSafeElement('div', myProfile.full_name || 'UNKNOWN');
+            primaryName.style.fontFamily = 'var(--font-display)';
+            primaryName.style.fontSize = '1rem';
+            primaryName.style.letterSpacing = '1px';
+            const primarySub = createSafeElement('div', `[${myProfile.department || 'UNASSIGNED'}] — PRIMARY ROLE`);
+            primarySub.style.fontSize = '0.7rem';
+            primarySub.style.color = 'var(--text-dim)';
+            primarySub.style.marginTop = '2px';
+            primaryLeft.appendChild(primaryName);
+            primaryLeft.appendChild(primarySub);
+
+            const primaryRight = document.createElement('div');
+            primaryRight.style.display = 'flex';
+            primaryRight.style.gap = '6px';
+            primaryRight.style.alignItems = 'center';
+
+            primaryRight.appendChild(createSafeElement('span', 'APPROVED', 'status-pill approved'));
+            if (primaryIsActive) {
+                const active = createSafeElement('span', '● ACTIVE');
+                active.style.fontSize = '0.72rem';
+                active.style.color = 'var(--green)';
+                primaryRight.appendChild(active);
+            } else {
+                const btn = createSafeElement('button', 'SWITCH');
+                btn.style.fontSize = '0.78rem';
+                btn.style.padding = '2px 10px';
+                btn.addEventListener('click', () => setActiveRole(null));
+                primaryRight.appendChild(btn);
+            }
+
+            primaryRow.appendChild(primaryLeft);
+            primaryRow.appendChild(primaryRight);
+            primaryCard.appendChild(primaryRow);
+            container.appendChild(primaryCard);
 
             // Secondary role cards
             myRoles.forEach(r => {
-                const isActive   = r.status === 'Approved' && activeRole.isSecondary && activeRole.roleId === r.id;
-                const statusClass = r.status.toLowerCase();
-                const clInfo     = getClearanceByLevel(r.clearance_level || 0);
+                const isActive    = r.status === 'Approved' && activeRole.isSecondary && activeRole.roleId === r.id;
+                const statusClass = String(r.status || '').toLowerCase();
+                const rClInfo     = getClearanceByLevel(r.clearance_level || 0);
 
-                html += `
-                <div class="role-card ${isActive ? 'active' : statusClass}">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                        <div>
-                            <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:1px;">${r.role_name}</div>
-                            <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px;">
-                                [${r.department}]
-                                ${r.status === 'Approved' ? `&nbsp;|&nbsp; CL: <span style="color:${clInfo.color}">${clInfo.short}</span>` : ''}
-                            </div>
-                        </div>
-                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                            <span class="status-pill ${statusClass}">${r.status.toUpperCase()}</span>
-                            ${r.status === 'Approved' && !isActive
-                                ? `<button onclick="setActiveRole('${r.id}')" style="font-size:0.78rem;padding:2px 10px;">SWITCH</button>`
-                                : r.status === 'Approved' && isActive
-                                ? `<span style="font-size:0.72rem;color:var(--green);">● ACTIVE</span>`
-                                : ''}
-                            ${r.status !== 'Pending'
-                                ? `<button onclick="deleteRole('${r.id}', '${r.role_name}')" class="btn-red" style="font-size:0.78rem;padding:2px 8px;">✕</button>`
-                                : ''}
-                        </div>
-                    </div>
-                    ${r.status === 'Rejected'
-                        ? `<div style="font-size:0.72rem;color:var(--red);margin-bottom:8px;">REQUEST REJECTED — CONTACT YOUR DEPARTMENT O5 FOR DETAILS</div>`
-                        : r.status === 'Pending'
-                        ? `<div style="font-size:0.72rem;color:var(--gold);margin-bottom:8px;">AWAITING REVIEW BY DEPARTMENT O5</div>`
-                        : ''}
-                    ${r.status === 'Approved' ? `
-                    <div style="margin-top:4px;">
-                        <label style="font-size:0.68rem;">ROLE BIO</label>
-                        <textarea id="role-bio-${r.id}" rows="2" placeholder="BIO FOR THIS ROLE..."
-                            style="font-size:0.78rem;margin-bottom:6px;">${r.bio||''}</textarea>
-                        <button onclick="saveRoleBio('${r.id}')" style="font-size:0.75rem;padding:2px 10px;">SAVE_BIO</button>
-                    </div>` : ''}
-                </div>`;
+                const card = document.createElement('div');
+                card.className = `role-card ${isActive ? 'active' : statusClass}`.trim();
+
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'flex-start';
+                row.style.flexWrap = 'wrap';
+                row.style.gap = '8px';
+                row.style.marginBottom = '10px';
+
+                const left = document.createElement('div');
+                const name = createSafeElement('div', r.role_name || 'UNKNOWN');
+                name.style.fontFamily = 'var(--font-display)';
+                name.style.fontSize = '1rem';
+                name.style.letterSpacing = '1px';
+
+                const meta = document.createElement('div');
+                meta.style.fontSize = '0.7rem';
+                meta.style.color = 'var(--text-dim)';
+                meta.style.marginTop = '2px';
+                appendText(meta, `[${r.department || 'N/A'}]`);
+                if (r.status === 'Approved') {
+                    appendText(meta, ' | CL: ');
+                    const clSpan = createSafeElement('span', rClInfo.short);
+                    clSpan.style.color = rClInfo.color;
+                    meta.appendChild(clSpan);
+                }
+
+                left.appendChild(name);
+                left.appendChild(meta);
+
+                const right = document.createElement('div');
+                right.style.display = 'flex';
+                right.style.gap = '6px';
+                right.style.alignItems = 'center';
+                right.style.flexWrap = 'wrap';
+
+                right.appendChild(createSafeElement('span', String(r.status || '').toUpperCase(), `status-pill ${statusClass}`.trim()));
+
+                if (r.status === 'Approved' && !isActive) {
+                    const btn = createSafeElement('button', 'SWITCH');
+                    btn.style.fontSize = '0.78rem';
+                    btn.style.padding = '2px 10px';
+                    btn.addEventListener('click', () => setActiveRole(r.id));
+                    right.appendChild(btn);
+                } else if (r.status === 'Approved' && isActive) {
+                    const active = createSafeElement('span', '● ACTIVE');
+                    active.style.fontSize = '0.72rem';
+                    active.style.color = 'var(--green)';
+                    right.appendChild(active);
+                }
+
+                if (r.status !== 'Pending') {
+                    const del = createSafeElement('button', '✕', 'btn-red');
+                    del.style.fontSize = '0.78rem';
+                    del.style.padding = '2px 8px';
+                    del.addEventListener('click', () => deleteRole(r.id, r.role_name || 'ROLE'));
+                    right.appendChild(del);
+                }
+
+                row.appendChild(left);
+                row.appendChild(right);
+                card.appendChild(row);
+
+                if (r.status === 'Rejected') {
+                    const msg = createSafeElement('div', 'REQUEST REJECTED — CONTACT YOUR DEPARTMENT O5 FOR DETAILS');
+                    msg.style.fontSize = '0.72rem';
+                    msg.style.color = 'var(--red)';
+                    msg.style.marginBottom = '8px';
+                    card.appendChild(msg);
+                } else if (r.status === 'Pending') {
+                    const msg = createSafeElement('div', 'AWAITING REVIEW BY DEPARTMENT O5');
+                    msg.style.fontSize = '0.72rem';
+                    msg.style.color = 'var(--gold)';
+                    msg.style.marginBottom = '8px';
+                    card.appendChild(msg);
+                }
+
+                if (r.status === 'Approved') {
+                    const bioWrap = document.createElement('div');
+                    bioWrap.style.marginTop = '4px';
+
+                    const lab = createSafeElement('label', 'ROLE BIO');
+                    lab.style.fontSize = '0.68rem';
+                    bioWrap.appendChild(lab);
+
+                    const ta = document.createElement('textarea');
+                    ta.id = `role-bio-${r.id}`;
+                    ta.rows = 2;
+                    ta.placeholder = 'BIO FOR THIS ROLE...';
+                    ta.style.fontSize = '0.78rem';
+                    ta.style.marginBottom = '6px';
+                    ta.value = r.bio || '';
+                    bioWrap.appendChild(ta);
+
+                    const save = createSafeElement('button', 'SAVE_BIO');
+                    save.style.fontSize = '0.75rem';
+                    save.style.padding = '2px 10px';
+                    save.addEventListener('click', () => saveRoleBio(r.id));
+                    bioWrap.appendChild(save);
+
+                    card.appendChild(bioWrap);
+                }
+
+                container.appendChild(card);
             });
 
             if (myRoles.length === 0) {
-                html += `<div style="color:var(--text-dim);font-size:0.75rem;padding:8px 0;">NO SECONDARY ROLES — REQUEST ONE BELOW</div>`;
+                const note = createSafeElement('div', 'NO SECONDARY ROLES — REQUEST ONE BELOW');
+                note.style.color = 'var(--text-dim)';
+                note.style.fontSize = '0.75rem';
+                note.style.padding = '8px 0';
+                container.appendChild(note);
             }
-
-            container.innerHTML = html;
         }
 
         async function renderDiscordSection(profile) {
             const container = document.getElementById('discord-section');
  
             if (profile.discord_user_id && profile.discord_username) {
-                // Already linked — show Discord profile card
-                container.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:14px;border:1px solid rgba(88,101,242,0.4);background:rgba(88,101,242,0.06);padding:14px 18px;">
-                        ${profile.discord_avatar
-                            ? `<img src="${profile.discord_avatar}" style="width:48px;height:48px;border-radius:50%;flex-shrink:0;">`
-                            : `<div style="width:48px;height:48px;border-radius:50%;background:rgba(88,101,242,0.3);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">🎮</div>`
-                        }
-                        <div>
-                            <div style="font-size:0.65rem;color:rgba(88,101,242,0.7);letter-spacing:2px;margin-bottom:2px;">DISCORD LINKED</div>
-                            <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:1px;color:#7289da;">${profile.discord_username}</div>
-                            <div style="font-size:0.68rem;color:var(--text-dim);margin-top:2px;">ID: ${profile.discord_user_id}</div>
-                        </div>
-                    </div>`;
+                // Already linked — show Discord profile card (safe DOM)
+                clearElement(container);
+                const card = document.createElement('div');
+                card.style.display = 'flex';
+                card.style.alignItems = 'center';
+                card.style.gap = '14px';
+                card.style.border = '1px solid rgba(88,101,242,0.4)';
+                card.style.background = 'rgba(88,101,242,0.06)';
+                card.style.padding = '14px 18px';
+
+                if (profile.discord_avatar && /^https?:\/\//i.test(profile.discord_avatar)) {
+                    const img = document.createElement('img');
+                    img.src = profile.discord_avatar;
+                    img.alt = 'Discord avatar';
+                    img.style.width = '48px';
+                    img.style.height = '48px';
+                    img.style.borderRadius = '50%';
+                    img.style.flexShrink = '0';
+                    card.appendChild(img);
+                } else {
+                    const ph = createSafeElement('div', '🎮');
+                    ph.style.width = '48px';
+                    ph.style.height = '48px';
+                    ph.style.borderRadius = '50%';
+                    ph.style.background = 'rgba(88,101,242,0.3)';
+                    ph.style.display = 'flex';
+                    ph.style.alignItems = 'center';
+                    ph.style.justifyContent = 'center';
+                    ph.style.fontSize = '1.4rem';
+                    ph.style.flexShrink = '0';
+                    card.appendChild(ph);
+                }
+
+                const info = document.createElement('div');
+                const tag = createSafeElement('div', 'DISCORD LINKED');
+                tag.style.fontSize = '0.65rem';
+                tag.style.color = 'rgba(88,101,242,0.7)';
+                tag.style.letterSpacing = '2px';
+                tag.style.marginBottom = '2px';
+                const user = createSafeElement('div', profile.discord_username);
+                user.style.fontFamily = 'var(--font-display)';
+                user.style.fontSize = '1.1rem';
+                user.style.letterSpacing = '1px';
+                user.style.color = '#7289da';
+                const id = createSafeElement('div', `ID: ${profile.discord_user_id}`);
+                id.style.fontSize = '0.68rem';
+                id.style.color = 'var(--text-dim)';
+                id.style.marginTop = '2px';
+                info.appendChild(tag);
+                info.appendChild(user);
+                info.appendChild(id);
+
+                card.appendChild(info);
+                container.appendChild(card);
             } else {
-                // Not linked — show link button
-                container.innerHTML = `
-                    <div style="color:var(--text-dim);font-size:0.72rem;letter-spacing:1px;margin-bottom:10px;">
-                        YOUR DISCORD ACCOUNT IS NOT LINKED. LINKING IT ALLOWS THE BOT TO MENTION YOU DIRECTLY AND VERIFIES YOUR IDENTITY.
-                    </div>
-                    <button class="discord-btn" onclick="linkDiscord()" style="display:flex;align-items:center;gap:10px;justify-content:center;background:#5865F2;border:none;color:#fff;font-family:var(--font-display);font-size:0.95rem;padding:8px 20px;cursor:pointer;letter-spacing:2px;width:100%;max-width:320px;">
-                        <svg viewBox="0 0 127.14 96.36" fill="#fff" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
-                        LINK DISCORD ACCOUNT
-                    </button>`;
+                // Not linked — show link button (static SVG is hardcoded)
+                clearElement(container);
+                const desc = createSafeElement('div', 'YOUR DISCORD ACCOUNT IS NOT LINKED. LINKING IT ALLOWS THE BOT TO MENTION YOU DIRECTLY AND VERIFIES YOUR IDENTITY.');
+                desc.style.color = 'var(--text-dim)';
+                desc.style.fontSize = '0.72rem';
+                desc.style.letterSpacing = '1px';
+                desc.style.marginBottom = '10px';
+                container.appendChild(desc);
+
+                const btn = document.createElement('button');
+                btn.className = 'discord-btn';
+                btn.style.display = 'flex';
+                btn.style.alignItems = 'center';
+                btn.style.gap = '10px';
+                btn.style.justifyContent = 'center';
+                btn.style.background = '#5865F2';
+                btn.style.border = 'none';
+                btn.style.color = '#fff';
+                btn.style.fontFamily = 'var(--font-display)';
+                btn.style.fontSize = '0.95rem';
+                btn.style.padding = '8px 20px';
+                btn.style.cursor = 'pointer';
+                btn.style.letterSpacing = '2px';
+                btn.style.width = '100%';
+                btn.style.maxWidth = '320px';
+                btn.addEventListener('click', linkDiscord);
+
+                // Static hardcoded SVG icon (safe)
+                const svgWrap = document.createElement('span');
+                svgWrap.innerHTML = '<svg viewBox="0 0 127.14 96.36" fill="#fff" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>';
+                btn.appendChild(svgWrap);
+                btn.appendChild(createSafeElement('span', 'LINK DISCORD ACCOUNT'));
+                container.appendChild(btn);
             }
         }
  
@@ -397,23 +593,52 @@
             const { data: docs, error } = await _supabase
                 .from('articles').select('*').eq('author', fullName).order('created_at', { ascending: false });
             if (error || !docs || docs.length === 0) {
-                list.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim);padding:20px;">NO DOCUMENTS ON RECORD</td></tr>`;
+                clearElement(list);
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 5;
+                td.style.color = 'var(--text-dim)';
+                td.style.padding = '20px';
+                td.textContent = 'NO DOCUMENTS ON RECORD';
+                tr.appendChild(td);
+                list.appendChild(tr);
                 return;
             }
             const CL_COLORS = ['var(--text-dim)','#4ade80','#facc15','#fb923c','var(--red)','#a78bfa','var(--gold)','var(--red)','var(--gold)'];
-            list.innerHTML = docs.map(d => {
+            clearElement(list);
+            docs.forEach(d => {
                 const cl = d.required_clearance ?? 0;
-                return `<tr>
-                    <td>${new Date(d.created_at).toLocaleDateString()}</td>
-                    <td style="color:var(--text-dim)">[${d.department||'N/A'}]</td>
-                    <td style="color:${CL_COLORS[Math.min(cl,8)]};font-family:var(--font-display);">${cl >= 6 ? ['OMNI','APOLLYON','MASKUR'][cl-6] : 'L'+cl}</td>
-                    <td style="color:var(--green)">${d.title||'UNTITLED'}</td>
-                    <td><div class="btn-row">
-                        <button onclick="window.location.href='view.html?id=${d.id}'">OPEN</button>
-                        <button class="btn-gold" onclick="window.location.href='edit.html?id=${d.id}'">EDIT</button>
-                    </div></td>
-                </tr>`;
-            }).join('');
+                const tr = document.createElement('tr');
+
+                const tdDate = createSafeElement('td', new Date(d.created_at).toLocaleDateString());
+                const tdDept = createSafeElement('td', `[${d.department || 'N/A'}]`);
+                tdDept.style.color = 'var(--text-dim)';
+
+                const tdCl = createSafeElement('td', cl >= 6 ? ['OMNI','APOLLYON','MASKUR'][cl - 6] : `L${cl}`);
+                tdCl.style.color = CL_COLORS[Math.min(cl, 8)];
+                tdCl.style.fontFamily = 'var(--font-display)';
+
+                const tdTitle = createSafeElement('td', d.title || 'UNTITLED');
+                tdTitle.style.color = 'var(--green)';
+
+                const tdAct = document.createElement('td');
+                const btnRow = document.createElement('div');
+                btnRow.className = 'btn-row';
+                const open = createSafeElement('button', 'OPEN');
+                open.addEventListener('click', () => { window.location.href = `view.html?id=${d.id}`; });
+                const edit = createSafeElement('button', 'EDIT', 'btn-gold');
+                edit.addEventListener('click', () => { window.location.href = `edit.html?id=${d.id}`; });
+                btnRow.appendChild(open);
+                btnRow.appendChild(edit);
+                tdAct.appendChild(btnRow);
+
+                tr.appendChild(tdDate);
+                tr.appendChild(tdDept);
+                tr.appendChild(tdCl);
+                tr.appendChild(tdTitle);
+                tr.appendChild(tdAct);
+                list.appendChild(tr);
+            });
         }
 
         async function saveBio() {

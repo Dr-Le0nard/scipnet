@@ -6,6 +6,7 @@
     <title>SCiPNET - Incident Reports</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="dom.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
@@ -270,7 +271,14 @@
                 .from('incident_reports')
                 .select('*')
                 .order('created_at', { ascending: false });
-            if (error) { document.getElementById('incident-list').innerHTML = `<div style="color:var(--red)">ERROR: ${error.message}</div>`; return; }
+            if (error) {
+                const host = document.getElementById('incident-list');
+                clearElement(host);
+                const msg = createSafeElement('div', `ERROR: ${error.message || 'UNKNOWN_ERROR'}`);
+                msg.style.color = 'var(--red)';
+                host.appendChild(msg);
+                return;
+            }
             allIncidents = data;
             applyFilters();
             if (selectedIncidentId) {
@@ -323,40 +331,82 @@
         function renderList() {
             const container = document.getElementById('incident-list');
             if (filteredIncidents.length === 0) {
-                container.innerHTML = `<div style="color:var(--text-dim);font-size:0.78rem;padding:12px 0;">NO INCIDENTS FOUND</div>`;
+                clearElement(container);
+                const empty = createSafeElement('div', 'NO INCIDENTS FOUND');
+                empty.style.color = 'var(--text-dim)';
+                empty.style.fontSize = '0.78rem';
+                empty.style.padding = '12px 0';
+                container.appendChild(empty);
                 return;
             }
 
             const priorityClass = { Standard:'', Urgent:'urgent', Critical:'critical' };
             const statusClass   = { Open:'status-open', Investigating:'status-investigating', Resolved:'status-resolved' };
 
-            container.innerHTML = filteredIncidents.map(i => {
+            clearElement(container);
+            filteredIncidents.forEach(i => {
                 const pc   = priorityClass[i.priority] || '';
                 const sc   = statusClass[i.status] || '';
                 const type = i.incident_type === 'Custom' ? (i.custom_type || 'CUSTOM') : i.incident_type;
                 const date = new Date(i.created_at).toLocaleDateString();
                 const isSelected = i.id === selectedIncidentId;
-                // Only flicker if critical AND not resolved
                 const flickerClass = (i.priority === 'Critical' && i.status !== 'Resolved') ? 'not-resolved' : '';
-                const deptBadge = i.assigned_department
-                    ? `<span class="dept-badge">→ [${i.assigned_department}]</span>`
-                    : '';
-                return `
-                    <div class="incident-card ${pc} ${flickerClass}${isSelected?' selected':''}"
-                         onclick="selectIncident('${i.id}')"
-                         style="${isSelected?'border-color:var(--green);':''}">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-                            <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:var(--green);flex:1;">${i.title}</div>
-                            <span class="priority-badge priority-${i.priority.toLowerCase()}">${i.priority.toUpperCase()}</span>
-                        </div>
-                        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                            <span style="font-size:0.72rem;color:var(--text-dim);">${type.toUpperCase()}</span>
-                            <span class="${sc}" style="font-family:var(--font-display);font-size:0.85rem;letter-spacing:1px;">● ${i.status.toUpperCase()}</span>
-                            ${deptBadge}
-                        </div>
-                        <div style="font-size:0.68rem;color:var(--text-dim);">FILED BY: ${i.filed_by} // ${date}</div>
-                    </div>`;
-            }).join('');
+
+                const card = document.createElement('div');
+                card.className = `incident-card ${pc} ${flickerClass}${isSelected ? ' selected' : ''}`.trim();
+                if (isSelected) card.style.borderColor = 'var(--green)';
+                card.addEventListener('click', () => selectIncident(i.id));
+
+                const header = document.createElement('div');
+                header.style.display = 'flex';
+                header.style.justifyContent = 'space-between';
+                header.style.alignItems = 'flex-start';
+                header.style.gap = '8px';
+
+                const titleEl = createSafeElement('div', i.title || 'UNTITLED');
+                titleEl.style.fontFamily = 'var(--font-display)';
+                titleEl.style.fontSize = '1rem';
+                titleEl.style.letterSpacing = '2px';
+                titleEl.style.color = 'var(--green)';
+                titleEl.style.flex = '1';
+
+                const prio = createSafeElement('span', (i.priority || 'STANDARD').toUpperCase(), `priority-badge priority-${String(i.priority || 'standard').toLowerCase()}`);
+
+                header.appendChild(titleEl);
+                header.appendChild(prio);
+
+                const row2 = document.createElement('div');
+                row2.style.display = 'flex';
+                row2.style.gap = '10px';
+                row2.style.alignItems = 'center';
+                row2.style.flexWrap = 'wrap';
+
+                const typeEl = createSafeElement('span', String(type || '').toUpperCase());
+                typeEl.style.fontSize = '0.72rem';
+                typeEl.style.color = 'var(--text-dim)';
+
+                const statusEl = createSafeElement('span', `● ${String(i.status || 'OPEN').toUpperCase()}`, sc);
+                statusEl.style.fontFamily = 'var(--font-display)';
+                statusEl.style.fontSize = '0.85rem';
+                statusEl.style.letterSpacing = '1px';
+
+                row2.appendChild(typeEl);
+                row2.appendChild(statusEl);
+
+                if (i.assigned_department) {
+                    const dept = createSafeElement('span', `→ [${i.assigned_department}]`, 'dept-badge');
+                    row2.appendChild(dept);
+                }
+
+                const footer = createSafeElement('div', `FILED BY: ${i.filed_by || 'UNKNOWN'} // ${date}`);
+                footer.style.fontSize = '0.68rem';
+                footer.style.color = 'var(--text-dim)';
+
+                card.appendChild(header);
+                card.appendChild(row2);
+                card.appendChild(footer);
+                container.appendChild(card);
+            });
         }
 
         function selectIncident(id) {
@@ -378,12 +428,13 @@
             panel.className     = pc[incident.priority] || '';
 
             document.getElementById('detail-title').innerText = incident.title;
-            document.getElementById('detail-meta').innerHTML  = `
-                <span class="${sc[incident.status]}" style="font-family:var(--font-display);letter-spacing:1px;">${incident.status.toUpperCase()}</span>
-                &nbsp;|&nbsp; ${type.toUpperCase()}
-                &nbsp;|&nbsp; FILED BY: ${incident.filed_by}
-                &nbsp;|&nbsp; ${date}
-                &nbsp;|&nbsp; UPDATED: ${updated}`;
+            const meta = document.getElementById('detail-meta');
+            clearElement(meta);
+            const statusSpan = createSafeElement('span', String(incident.status || '').toUpperCase(), sc[incident.status] || '');
+            statusSpan.style.fontFamily = 'var(--font-display)';
+            statusSpan.style.letterSpacing = '1px';
+            meta.appendChild(statusSpan);
+            appendText(meta, ` | ${String(type || '').toUpperCase()} | FILED BY: ${incident.filed_by || 'UNKNOWN'} | ${date} | UPDATED: ${updated}`);
             document.getElementById('detail-description').innerText = incident.description;
 
             // Department assignment display

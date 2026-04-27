@@ -62,7 +62,8 @@
     </style>
 </head>
 <body>
-    <div class="terminal-wrapper">
+    <main id="app">
+        <div class="terminal-wrapper">
         <div id="boot-sequence"></div>
         <div class="terminal-box" id="terminal-box">
             <div class="terminal-titlebar">
@@ -183,7 +184,8 @@
             </div>
         </div>
         <div class="terminal-footer">SITE-19 // O5 COUNCIL CLEARANCE REQUIRED // UNAUTHORIZED ACCESS PROSECUTED</div>
-    </div>
+        </div>
+    </main>
 
     <script>
         let isScanning = false, scanInterval = null, scanProgress = 0;
@@ -418,7 +420,9 @@
         }
 
         function showRedScreen(userId) {
-            document.body.innerHTML = `
+            const app = document.getElementById('app');
+            if (!app) return;
+            app.innerHTML = `
                 <div style="background:#020000;color:var(--red);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:'VT323',monospace;border:2px solid var(--red);">
                     <div style="font-size:3rem;font-weight:bold;animation:flicker 0.5s infinite;letter-spacing:6px;">TERMINAL_LOCKED</div>
                     <div style="border:1px solid var(--red);padding:20px;margin:20px;background:rgba(255,0,0,0.05);max-width:500px;">
@@ -428,9 +432,9 @@
                     <button id="ack-btn" style="display:none;background:var(--red);color:#000;border:none;padding:12px 30px;cursor:pointer;font-family:'VT323';font-size:1.1rem;letter-spacing:2px;">ACKNOWLEDGE_TERMINATION</button>
                 </div>`;
             let i = 0; const t1 = `USER_ID: ${userId} | STATUS: PERMANENT_REVOCATION`;
-            function type1() { if(i<t1.length){document.getElementById('tw1').innerHTML+=t1[i];i++;setTimeout(type1,40);} else setTimeout(()=>{
+            function type1() { if(i<t1.length){document.getElementById('tw1').textContent+=t1[i];i++;setTimeout(type1,40);} else setTimeout(()=>{
                 let j=0; const t2='MEMETIC_KILL_AGENT_ACTIVATED... DISPATCHING INTERNAL SECURITY DEPT.';
-                function type2(){if(j<t2.length){document.getElementById('tw2').innerHTML+=t2[j];j++;setTimeout(type2,30);}
+                function type2(){if(j<t2.length){document.getElementById('tw2').textContent+=t2[j];j++;setTimeout(type2,30);}
                 else document.getElementById('ack-btn').style.display='block';} type2();
             },500);}type1();
             document.getElementById('ack-btn').onclick = async () => { await _supabase.auth.signOut(); location.reload(); };

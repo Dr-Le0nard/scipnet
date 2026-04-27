@@ -13,12 +13,14 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
-    <div id="document-container">
-        <h1 id="title">ACCESSING FILE...</h1>
-        <p><strong>AUTHOR:</strong> <span id="author">---</span></p>
-        <hr>
-        <div id="content"></div>
-    </div>
+    <main id="app">
+        <div id="document-container">
+            <h1 id="title">ACCESSING FILE...</h1>
+            <p><strong>AUTHOR:</strong> <span id="author">---</span></p>
+            <hr>
+            <div id="content"></div>
+        </div>
+    </main>
 
     <script>
         async function displayArticle() {
@@ -35,7 +37,9 @@
             if (art) {
                 // 3. The Security Check
                 if (profile.clearance_level < art.required_clearance) {
-                    document.body.innerHTML = `
+                    const app = document.getElementById('app');
+                    if (!app) return;
+                    app.innerHTML = `
                         <div style="color: red; text-align: center; padding-top: 50px;">
                             <h1>[ACCESS DENIED]</h1>
                             <p>MEMETIC KILL AGENT ACTIVATED. REMAIN CALM AND WAIT FOR SECURITY TEAMS.</p>

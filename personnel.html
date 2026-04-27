@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
+    <script src="dom.js"></script>
     <script src="departments.js"></script>
     <script src="alert.js"></script>
     <script src="toast.js"></script>
@@ -90,7 +91,11 @@
             ]);
 
             if (staffRes.error) {
-                document.getElementById('personnel-list').innerHTML = `<div style="color:var(--red)">ERROR: DATABASE_ACCESS_DENIED</div>`;
+                const host = document.getElementById('personnel-list');
+                clearElement(host);
+                const msg = createSafeElement('div', 'ERROR: DATABASE_ACCESS_DENIED');
+                msg.style.color = 'var(--red)';
+                host.appendChild(msg);
                 return;
             }
 
@@ -153,36 +158,94 @@
         function renderList(list) {
             const div = document.getElementById('personnel-list');
             if (list.length === 0) {
-                div.innerHTML = `<div style="color:var(--text-dim)">NO MATCHING PERSONNEL FOUND</div>`;
+                clearElement(div);
+                const empty = createSafeElement('div', 'NO MATCHING PERSONNEL FOUND');
+                empty.style.color = 'var(--text-dim)';
+                div.appendChild(empty);
                 return;
             }
-            div.innerHTML = list.map(p => {
+            clearElement(div);
+            list.forEach(p => {
                 const cl = getClearanceDisplay(p);
                 const secondaryRoles = allRoles[p.id] || [];
-                const rolePills = secondaryRoles.map(r => `
-                    <div style="border-left:2px solid var(--green-border);padding:4px 0 4px 10px;margin-top:6px;">
-                        <div style="font-size:0.75rem;color:var(--text-mid);">
-                            ${r.role_name}
-                            <span style="color:var(--text-dim);font-size:0.68rem;margin-left:6px;">[${r.department}]</span>
-                        </div>
-                        ${r.bio ? `<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">${r.bio}</div>` : ''}
-                    </div>`).join('');
 
-                return `
-                <div class="card">
-                    <h3>${p.full_name}</h3>
-                    <p style="margin-bottom:6px;">
-                        <span class="clearance-badge" style="font-size:0.72rem;padding:2px 8px;color:${cl.color};border-color:${cl.color}40;">${cl.label}</span>
-                        &nbsp;<span style="color:var(--text-dim);font-size:0.75rem;">[${p.department||'UNASSIGNED'}]</span>
-                    </p>
-                    ${secondaryRoles.length > 0 ? `
-                        <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,255,65,0.07);">
-                            <div style="font-size:0.65rem;color:var(--text-dim);letter-spacing:1px;margin-bottom:4px;">ADDITIONAL ROLES</div>
-                            ${rolePills}
-                        </div>` : ''}
-                    <p style="margin-top:4px;color:var(--text-dim);font-size:0.75rem;">${p.bio||'NO BIO ON RECORD'}</p>
-                </div>`;
-            }).join('');
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                card.appendChild(createSafeElement('h3', p.full_name || 'UNKNOWN'));
+
+                const line = document.createElement('p');
+                line.style.marginBottom = '6px';
+
+                const badge = createSafeElement('span', cl.label, 'clearance-badge');
+                badge.style.fontSize = '0.72rem';
+                badge.style.padding = '2px 8px';
+                badge.style.color = cl.color;
+                badge.style.borderColor = `${cl.color}40`;
+                line.appendChild(badge);
+                appendText(line, ' ');
+
+                const dept = createSafeElement('span', `[${p.department || 'UNASSIGNED'}]`);
+                dept.style.color = 'var(--text-dim)';
+                dept.style.fontSize = '0.75rem';
+                line.appendChild(dept);
+
+                card.appendChild(line);
+
+                if (secondaryRoles.length > 0) {
+                    const wrap = document.createElement('div');
+                    wrap.style.marginTop = '6px';
+                    wrap.style.paddingTop = '6px';
+                    wrap.style.borderTop = '1px solid rgba(0,255,65,0.07)';
+
+                    const hdr = createSafeElement('div', 'ADDITIONAL ROLES');
+                    hdr.style.fontSize = '0.65rem';
+                    hdr.style.color = 'var(--text-dim)';
+                    hdr.style.letterSpacing = '1px';
+                    hdr.style.marginBottom = '4px';
+                    wrap.appendChild(hdr);
+
+                    secondaryRoles.forEach(r => {
+                        const role = document.createElement('div');
+                        role.style.borderLeft = '2px solid var(--green-border)';
+                        role.style.padding = '4px 0 4px 10px';
+                        role.style.marginTop = '6px';
+
+                        const top = document.createElement('div');
+                        top.style.fontSize = '0.75rem';
+                        top.style.color = 'var(--text-mid)';
+
+                        top.appendChild(createSafeElement('span', r.role_name || 'UNKNOWN'));
+                        const deptSpan = createSafeElement('span', `[${r.department || 'N/A'}]`);
+                        deptSpan.style.color = 'var(--text-dim)';
+                        deptSpan.style.fontSize = '0.68rem';
+                        deptSpan.style.marginLeft = '6px';
+                        top.appendChild(deptSpan);
+
+                        role.appendChild(top);
+
+                        if (r.bio) {
+                            const bio = createSafeElement('div', r.bio);
+                            bio.style.fontSize = '0.72rem';
+                            bio.style.color = 'var(--text-dim)';
+                            bio.style.marginTop = '2px';
+                            role.appendChild(bio);
+                        }
+
+                        wrap.appendChild(role);
+                    });
+
+                    card.appendChild(wrap);
+                }
+
+                const bio = createSafeElement('p', p.bio || 'NO BIO ON RECORD');
+                bio.style.marginTop = '4px';
+                bio.style.color = 'var(--text-dim)';
+                bio.style.fontSize = '0.75rem';
+                card.appendChild(bio);
+
+                div.appendChild(card);
+            });
         }
 
         window.onload = loadPersonnel;
