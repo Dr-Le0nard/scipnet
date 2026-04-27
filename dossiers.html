@@ -401,12 +401,13 @@
             grid.appendChild(row('Status:', `${summary.status || '—'} ${summary.official ? '(OFFICIAL)' : '(UNOFFICIAL)'}`));
             grid.appendChild(row('Author:', summary.author || '—'));
 
-            grid.appendChild(createSafeElement('div', 'Description:').appendChild(createSafeElement('strong','Description:'))?.parentNode || document.createElement('div'));
+            const descLabel = document.createElement('div');
+            descLabel.appendChild(createSafeElement('strong', 'Description:'));
+            grid.appendChild(descLabel);
             const desc = document.createElement('div');
             desc.className = 'formatted-text';
             // renderFormattedText escapes HTML (or markdown-it runs with html:false), safe to set as HTML
             desc.innerHTML = summary.description ? renderFormattedText(summary.description) : 'N/A';
-            grid.appendChild(createSafeElement('div', '').appendChild(createSafeElement('strong','Description:'))?.parentNode || document.createElement('div'));
             grid.appendChild(desc);
 
             const cpLabel = document.createElement('div');
