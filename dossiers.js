@@ -51,15 +51,33 @@ function makeUniqueId(prefix = "id") {
 }
 
 class TestLogEntry {
-  constructor({ personnel, procedure, result, testId = makeUniqueId("test") }) {
+  constructor({ author = null, content = null, personnel, procedure, result, testId = makeUniqueId("test"), timestamp = null }) {
     this.testId = testId;
-    this.personnel = personnel;
-    this.procedure = procedure;
-    this.result = result;
-    this.createdAt = new Date().toISOString();
+    // New SCiPNET structure (preferred)
+    this.author = author || null;
+    this.content = content || null;
+    this.timestamp = timestamp || new Date().toISOString();
+
+    // Legacy fields (kept for backward compatibility)
+    this.personnel = personnel || [];
+    this.procedure = procedure || "";
+    this.result = result || "";
+    this.createdAt = this.timestamp;
+
+    // If content not provided, synthesize a readable markdown block
+    if (!this.content) {
+      const parts = [];
+      if (this.procedure) parts.push(`**Procedure:** ${this.procedure}`);
+      if (this.result) parts.push(`**Result:** ${this.result}`);
+      if (Array.isArray(this.personnel) && this.personnel.length) parts.push(`**Personnel:** ${this.personnel.join(", ")}`);
+      this.content = parts.join("\n\n");
+    }
   }
 
   update(updates) {
+    if (updates.author !== undefined) this.author = updates.author;
+    if (updates.content !== undefined) this.content = updates.content;
+    if (updates.timestamp !== undefined) this.timestamp = updates.timestamp;
     if (updates.personnel !== undefined) this.personnel = updates.personnel;
     if (updates.procedure !== undefined) this.procedure = updates.procedure;
     if (updates.result !== undefined) this.result = updates.result;
@@ -67,17 +85,40 @@ class TestLogEntry {
 }
 
 class IncidentReport {
-  constructor({ date, units, cause, resolution, preventionNotes, reportId = makeUniqueId("incident") }) {
+  constructor({
+    involvedUnits,
+    summary,
+    cause,
+    resolution,
+    preventionMeasures,
+    // legacy fields
+    date,
+    units,
+    preventionNotes,
+    reportId = makeUniqueId("incident"),
+    timestamp = null
+  }) {
     this.reportId = reportId;
-    this.date = date;
-    this.units = units;
-    this.cause = cause;
-    this.resolution = resolution;
-    this.preventionNotes = preventionNotes;
-    this.createdAt = new Date().toISOString();
+    // New SCiPNET structure (preferred)
+    this.involvedUnits = involvedUnits || units || [];
+    this.summary = summary || "";
+    this.cause = cause || "";
+    this.resolution = resolution || "";
+    this.preventionMeasures = preventionMeasures || preventionNotes || "";
+    this.timestamp = timestamp || new Date().toISOString();
+
+    // Legacy fields (kept for backward compatibility)
+    this.date = date || (this.timestamp ? this.timestamp.slice(0, 10) : "");
+    this.units = this.involvedUnits;
+    this.preventionNotes = this.preventionMeasures;
+    this.createdAt = this.timestamp;
   }
 
   update(updates) {
+    if (updates.involvedUnits !== undefined) this.involvedUnits = updates.involvedUnits;
+    if (updates.summary !== undefined) this.summary = updates.summary;
+    if (updates.preventionMeasures !== undefined) this.preventionMeasures = updates.preventionMeasures;
+    if (updates.timestamp !== undefined) this.timestamp = updates.timestamp;
     if (updates.date !== undefined) this.date = updates.date;
     if (updates.units !== undefined) this.units = updates.units;
     if (updates.cause !== undefined) this.cause = updates.cause;
@@ -87,7 +128,7 @@ class IncidentReport {
 }
 
 class DossierDocument {
-  constructor({ designation, objectClass, clearanceLevel, author, ownerId = null, createdBy = null, updatedBy = null, description, containmentProcedures, recontainmentProcedures, status = DOSSIER_STATUSES.PENDING, testLogs = [], incidentReports = [] }) {
+  constructor({ designation, objectClass, clearanceLevel, author, ownerId = null, createdBy = null, updatedBy = null, description, containmentProcedures, recontainmentProcedures, testingGuidelines, status = DOSSIER_STATUSES.PENDING, testLogs = [], incidentReports = [] }) {
     if (!designation || !objectClass || clearanceLevel === undefined || !author) {
       throw new Error("Missing required DOSSIER fields: designation, objectClass, clearanceLevel, author.");
     }
@@ -106,6 +147,7 @@ class DossierDocument {
     this.description = description || "";
     this.containmentProcedures = containmentProcedures || "";
     this.recontainmentProcedures = recontainmentProcedures || "";
+    this.testingGuidelines = testingGuidelines || "";
     this.testLogs = testLogs.map((log) => (log instanceof TestLogEntry ? log : new TestLogEntry(log)));
     this.incidentReports = incidentReports.map((report) => (report instanceof IncidentReport ? report : new IncidentReport(report)));
     this.createdAt = new Date().toISOString();
@@ -127,6 +169,7 @@ class DossierDocument {
       "description",
       "containmentProcedures",
       "recontainmentProcedures",
+      "testingGuidelines",
       "author"
     ];
 
@@ -228,6 +271,7 @@ class DossierDocument {
       description: this.description,
       containmentProcedures: this.containmentProcedures,
       recontainmentProcedures: this.recontainmentProcedures,
+      testingGuidelines: this.testingGuidelines,
       testLogCount: this.testLogs.length,
       incidentReportCount: this.incidentReports.length,
       lastUpdated: this.updatedAt
@@ -247,8 +291,12 @@ class DossierDocument {
       description: this.description,
       containmentProcedures: this.containmentProcedures,
       recontainmentProcedures: this.recontainmentProcedures,
+      testingGuidelines: this.testingGuidelines,
       testLogs: this.testLogs.map((log) => ({
         testId: log.testId,
+        author: log.author,
+        content: log.content,
+        timestamp: log.timestamp,
         personnel: log.personnel,
         procedure: log.procedure,
         result: log.result,
@@ -256,6 +304,10 @@ class DossierDocument {
       })),
       incidentReports: this.incidentReports.map((report) => ({
         reportId: report.reportId,
+        involvedUnits: report.involvedUnits,
+        summary: report.summary,
+        preventionMeasures: report.preventionMeasures,
+        timestamp: report.timestamp,
         date: report.date,
         units: report.units,
         cause: report.cause,
@@ -404,9 +456,13 @@ class DossierRepository {
       description: document.description,
       containment_procedures: document.containmentProcedures,
       recontainment_procedures: document.recontainmentProcedures,
+      testing_guidelines: document.testingGuidelines,
       status: document.status,
       test_logs: document.testLogs.map((log) => ({
         testId: log.testId,
+        author: log.author,
+        content: log.content,
+        timestamp: log.timestamp,
         personnel: log.personnel,
         procedure: log.procedure,
         result: log.result,
@@ -414,6 +470,10 @@ class DossierRepository {
       })),
       incident_reports: document.incidentReports.map((report) => ({
         reportId: report.reportId,
+        involvedUnits: report.involvedUnits,
+        summary: report.summary,
+        preventionMeasures: report.preventionMeasures,
+        timestamp: report.timestamp,
         date: report.date,
         units: report.units,
         cause: report.cause,
@@ -455,6 +515,7 @@ class DossierRepository {
       description: row.description,
       containmentProcedures: row.containment_procedures || row.containmentProcedures,
       recontainmentProcedures: row.recontainment_procedures || row.recontainmentProcedures,
+      testingGuidelines: row.testing_guidelines || row.testingGuidelines,
       status: row.status,
       testLogs: row.test_logs || row.testLogs || [],
       incidentReports: row.incident_reports || row.incidentReports || [],
