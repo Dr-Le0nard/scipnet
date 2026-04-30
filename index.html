@@ -331,14 +331,11 @@
             const { error: pwError } = await _supabase.auth.updateUser(updatePayload);
             if (pwError) { statusEl.innerText = '> ERROR: ' + pwError.message; statusEl.className = 'status-line error'; return; }
 
-            // Update profile
+            // Complete the app-owned profile fields. Discord identity fields are populated server-side.
             const { error: profileError } = await _supabase.from('profiles')
                 .update({
                     full_name:        fullname,
                     department:       dept,
-                    discord_user_id:  _discordId,
-                    discord_username: _discordUsername,
-                    discord_avatar:   _discordAvatar,
                 })
                 .eq('id', user.id);
 
