@@ -38,14 +38,14 @@ async function securityPulse() {
     if (user) {
         const { data: profile, error } = await _supabase
             .from('profiles')
-            .select('is_approved, is_banned')
+            .select('is_banned, is_resigned')
             .eq('id', user.id)
             .maybeSingle(); // Avoid crash if profile row is missing
 
         if (error) return; // Network hiccup — don't falsely terminate the session
 
-        // If they are banned OR unapproved, terminate immediately
-        if (profile && (profile.is_approved === false || profile.is_banned === true)) {
+        // Pending approval is allowed; only revoked users are terminated immediately.
+        if (profile && (profile.is_banned === true || profile.is_resigned === true)) {
             await _supabase.auth.signOut();
             window.location.href = "index.html?error=session_terminated";
         }
