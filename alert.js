@@ -33,6 +33,12 @@ async function initRealtimeAlert() {
 }
 
 async function securityPulse() {
+    const path = window.location.pathname;
+    const isIndexPage = path.endsWith('/index.html') || path.endsWith('/');
+    const params = new URLSearchParams(window.location.search);
+    const hasSignupFlow = params.has('oauth_mode') || !!document.getElementById('step2-view');
+    if (isIndexPage && hasSignupFlow) return;
+
     const { data: { user } } = await _supabase.auth.getUser();
 
     if (user) {
