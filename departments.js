@@ -175,7 +175,7 @@ function slugRoleTitle(title) {
 function titlePrefix(title, fallback) {
     var manual = {
         'O5': 'O5',
-        'The Administrator': 'ADMIN',
+        'The Administrator': 'TA',
         'Administrator': 'ADMIN',
         'Assistant Director': 'ADIR',
         'Director': 'DIR',
