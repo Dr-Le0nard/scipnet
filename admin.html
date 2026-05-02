@@ -87,12 +87,42 @@
         let isFoundationAdmin = false;
 
         const ACTION_COLORS = {
-            'APPROVED':'var(--green)', 'CREATED':'var(--green)', 'UNBANNED':'var(--green)',
+            'APPROVED':'var(--green)', 'CREATED':'var(--green)', 'UNBANNED':'var(--green)', 'ROLE_APPROVED':'var(--green)', 'ROLE_REASSIGNED':'var(--gold)',
             'BANNED':'var(--red)', 'REVOKED':'var(--red)', 'DELETED':'var(--red)',
             'RESIGNED':'var(--text-dim)',
             'FLAGGED':'var(--gold)', 'UNFLAGGED':'var(--text-mid)',
             'BROADCAST':'var(--gold)', 'ALERT_CLEARED':'var(--text-mid)',
         };
+
+        function getAssignableRoles(targetDept) {
+            let roles = ROLE_CATALOG.slice();
+            const normalizedTargetDept = normalizeDepartment(targetDept);
+            if (!myProfile.is_terminal_admin && !myProfile.is_overseer) {
+                const myDept = normalizeDepartment(myProfile.department);
+                const overseerDepts = Object.entries(DEPT_OVERSEER_MAP)
+                    .filter(([dept, overseer]) => overseer === myDept)
+                    .map(([dept]) => dept);
+                roles = roles.filter(r => overseerDepts.includes(r.department) && r.clearanceLevel <= myProfile.clearance_level);
+            }
+            if (normalizedTargetDept) {
+                const scoped = roles.filter(r => r.department === normalizedTargetDept);
+                if (scoped.length > 0) return scoped;
+            }
+            return roles;
+        }
+
+        function renderRolePreview(targetId, baseName, roleKey) {
+            const preview = document.getElementById(targetId);
+            if (!preview) return;
+            const roleDef = getRoleByKey(roleKey);
+            if (!roleDef) {
+                preview.innerText = 'SELECT ROLE TO PREVIEW CLEARANCE AND NICKNAME';
+                preview.style.color = 'var(--text-dim)';
+                return;
+            }
+            preview.innerText = `${getRoleLabel(roleDef)} -> ${formatRoleDisplayName(baseName, roleDef)}`;
+            preview.style.color = roleDef.clearanceLevel >= 5 ? 'var(--gold)' : 'var(--green)';
+        }
 
         async function initAdmin() {
             const auth = await requireAuth();
@@ -410,15 +440,18 @@
                 appendText(req, ' ' + (getDeptShort(u.department) || 'NONE'));
                 card.appendChild(req);
 
-                card.appendChild(createSafeElement('label', 'VALIDATE DEPARTMENT:'));
-                const deptSel = document.createElement('select');
-                deptSel.id = `dept-${u.id}`;
-                card.appendChild(deptSel);
+                card.appendChild(createSafeElement('label', 'ASSIGN CANONICAL ROLE:'));
+                const roleSel = document.createElement('select');
+                roleSel.id = `role-${u.id}`;
+                card.appendChild(roleSel);
 
-                card.appendChild(createSafeElement('label', 'ASSIGN CLEARANCE:'));
-                const lvlSel = document.createElement('select');
-                lvlSel.id = `lvl-${u.id}`;
-                card.appendChild(lvlSel);
+                const preview = createSafeElement('div', 'SELECT ROLE TO PREVIEW CLEARANCE AND NICKNAME');
+                preview.id = `role-preview-${u.id}`;
+                preview.style.fontSize = '0.72rem';
+                preview.style.color = 'var(--text-dim)';
+                preview.style.letterSpacing = '1px';
+                preview.style.marginTop = '4px';
+                card.appendChild(preview);
 
                 const btnRow = document.createElement('div');
                 btnRow.className = 'btn-row';
@@ -439,9 +472,15 @@
             });
 
             pending.forEach(u => {
-                populateDeptSelect(`dept-${u.id}`, u.department, false, false);
-                // Cap clearance to approver's own level
-                populateClearanceSelect(`lvl-${u.id}`, 1, myProfile.clearance_level);
+                const roles = getAssignableRoles(u.department);
+                populateRoleSelect(`role-${u.id}`, u.role_key || (roles[0] && roles[0].key), {
+                    includeBlank: false,
+                    roles
+                });
+                renderRolePreview(`role-preview-${u.id}`, getProfileBaseName(u), document.getElementById(`role-${u.id}`).value);
+                document.getElementById(`role-${u.id}`).addEventListener('change', ev => {
+                    renderRolePreview(`role-preview-${u.id}`, getProfileBaseName(u), ev.target.value);
+                });
             });
         }
 
@@ -510,7 +549,9 @@
                     h3.appendChild(r);
                 }
 
+                const currentRole = getRoleByKey(u.role_key);
                 const p = createSafeElement('p', `DEPT: [${getDeptShort(u.department) || 'NONE'}] | CL: ${clLabel}`);
+                if (currentRole) appendText(p, ` | ROLE: ${currentRole.title}`);
 
                 const btnRow = document.createElement('div');
                 btnRow.className = 'btn-row';
@@ -547,8 +588,42 @@
 
                 card.appendChild(h3);
                 card.appendChild(p);
+                if (!isMe && !u.is_banned) {
+                    card.appendChild(createSafeElement('label', 'REASSIGN ROLE:'));
+                    const roleSel = document.createElement('select');
+                    roleSel.id = `active-role-${u.id}`;
+                    roleSel.disabled = !canAct;
+                    card.appendChild(roleSel);
+
+                    const preview = createSafeElement('div', 'SELECT ROLE TO PREVIEW CLEARANCE AND NICKNAME');
+                    preview.id = `active-role-preview-${u.id}`;
+                    preview.style.fontSize = '0.72rem';
+                    preview.style.color = 'var(--text-dim)';
+                    preview.style.letterSpacing = '1px';
+                    preview.style.marginTop = '4px';
+                    card.appendChild(preview);
+
+                    const apply = createSafeElement('button', 'APPLY_ROLE', 'btn-gold');
+                    apply.disabled = !canAct;
+                    apply.style.marginTop = '8px';
+                    apply.addEventListener('click', () => reassignUserRole(u));
+                    btnRow.appendChild(apply);
+                }
                 card.appendChild(btnRow);
                 container.appendChild(card);
+            });
+
+            active.forEach(u => {
+                if (currentUserId === u.id || u.is_banned) return;
+                const roles = getAssignableRoles(u.department);
+                populateRoleSelect(`active-role-${u.id}`, u.role_key || (roles[0] && roles[0].key), {
+                    includeBlank: false,
+                    roles
+                });
+                renderRolePreview(`active-role-preview-${u.id}`, getProfileBaseName(u), document.getElementById(`active-role-${u.id}`).value);
+                document.getElementById(`active-role-${u.id}`).addEventListener('change', ev => {
+                    renderRolePreview(`active-role-preview-${u.id}`, getProfileBaseName(u), ev.target.value);
+                });
             });
         }
 
@@ -595,12 +670,22 @@
                 p3.appendChild(createSafeElement('strong', 'REASON:'));
                 appendText(p3, ' ' + (r.bio || 'NO REASON PROVIDED'));
 
+                const roleLabel = createSafeElement('label', 'APPROVED ROLE:');
+                const roleSel = document.createElement('select');
+                roleSel.id = `request-role-${r.id}`;
+                const preview = createSafeElement('div', 'SELECT ROLE TO PREVIEW CLEARANCE AND NICKNAME');
+                preview.id = `request-role-preview-${r.id}`;
+                preview.style.fontSize = '0.72rem';
+                preview.style.color = 'var(--text-dim)';
+                preview.style.letterSpacing = '1px';
+                preview.style.marginTop = '4px';
+
                 const btnRow = document.createElement('div');
                 btnRow.className = 'btn-row';
                 btnRow.style.marginTop = '8px';
 
                 const approve = createSafeElement('button', 'APPROVE');
-                approve.addEventListener('click', () => approveRole(r.id, r.role_name || 'ROLE', r.profiles?.full_name || 'UNKNOWN'));
+                approve.addEventListener('click', () => approveRole(r, r.profiles?.full_name || 'UNKNOWN'));
                 const reject = createSafeElement('button', 'REJECT', 'btn-red');
                 reject.addEventListener('click', () => rejectRole(r.id, r.role_name || 'ROLE', r.profiles?.full_name || 'UNKNOWN'));
 
@@ -610,19 +695,44 @@
                 card.appendChild(p1);
                 card.appendChild(p2);
                 card.appendChild(p3);
+                card.appendChild(roleLabel);
+                card.appendChild(roleSel);
+                card.appendChild(preview);
                 card.appendChild(btnRow);
                 host.appendChild(card);
             });
+
+            requests.forEach(r => {
+                const roles = getAssignableRoles(r.department);
+                populateRoleSelect(`request-role-${r.id}`, r.role_key || (roles[0] && roles[0].key), {
+                    includeBlank: false,
+                    roles
+                });
+                renderRolePreview(`request-role-preview-${r.id}`, getRoleBaseName(r), document.getElementById(`request-role-${r.id}`).value);
+                document.getElementById(`request-role-${r.id}`).addEventListener('change', ev => {
+                    renderRolePreview(`request-role-preview-${r.id}`, getRoleBaseName(r), ev.target.value);
+                });
+            });
         }
 
-        async function approveRole(roleId, roleName, requester) {
+        async function approveRole(roleRequest, requester) {
+            const roleKey = document.getElementById(`request-role-${roleRequest.id}`).value;
+            const roleDef = getRoleByKey(roleKey);
+            if (!roleDef) { toast('ROLE SELECTION REQUIRED', 'error'); return; }
+            const baseName = getRoleBaseName(roleRequest);
+            const displayName = formatRoleDisplayName(baseName, roleDef);
             const { error } = await _supabase.from('profile_roles').update({
                 status: 'Approved', bio: '',
+                base_name: baseName,
+                role_name: displayName,
+                role_key: roleDef.key,
+                department: roleDef.department,
+                clearance_level: roleDef.clearanceLevel,
                 reviewed_by: myProfile.full_name, reviewed_at: new Date().toISOString()
-            }).eq('id', roleId);
+            }).eq('id', roleRequest.id);
             if (error) { toast('APPROVAL FAILED: ' + error.message, 'error'); return; }
-            await logAction(myProfile, 'ROLE_APPROVED', requester, roleName);
-            toast('ROLE APPROVED: ' + roleName, 'success');
+            await logAction(myProfile, 'ROLE_APPROVED', requester, `${displayName} | ${getRoleLabel(roleDef)}`);
+            toast('ROLE APPROVED: ' + displayName, 'success');
             loadRoleRequests();
         }
 
@@ -657,13 +767,51 @@
         }
 
         async function approveUser(userId, userName) {
-            const level = document.getElementById(`lvl-${userId}`).value;
-            const dept  = document.getElementById(`dept-${userId}`).value;
+            const roleKey = document.getElementById(`role-${userId}`).value;
+            const roleDef = getRoleByKey(roleKey);
+            if (!roleDef) { toast('ROLE SELECTION REQUIRED', 'error'); return; }
+            const baseName = stripKnownRolePrefix(userName);
+            const displayName = formatRoleDisplayName(baseName, roleDef);
             const { error } = await _supabase.from('profiles')
-                .update({ is_approved: true, clearance_level: parseInt(level), department: dept, admin_notice: null })
+                .update({
+                    is_approved: true,
+                    base_name: baseName,
+                    full_name: displayName,
+                    role_key: roleDef.key,
+                    clearance_level: roleDef.clearanceLevel,
+                    department: roleDef.department,
+                    admin_notice: null
+                })
                 .eq('id', userId);
             if (error) toast('UPDATE_FAILED: ' + error.message, 'error');
-            else { await logAction(myProfile, 'APPROVED', userName, `Dept: ${dept} | CL: ${level}`); toast('ACCESS GRANTED', 'success'); location.reload(); }
+            else { await logAction(myProfile, 'APPROVED', displayName, getRoleLabel(roleDef)); toast('ACCESS GRANTED', 'success'); location.reload(); }
+        }
+
+        async function reassignUserRole(user) {
+            const roleKey = document.getElementById(`active-role-${user.id}`).value;
+            const roleDef = getRoleByKey(roleKey);
+            if (!roleDef) { toast('ROLE SELECTION REQUIRED', 'error'); return; }
+            const baseName = getProfileBaseName(user);
+            const displayName = formatRoleDisplayName(baseName, roleDef);
+            const confirmed = await showModal(
+                `REASSIGN ${user.full_name || 'UNKNOWN'}?\n\nNEW ROLE: ${getRoleLabel(roleDef)}\nDISPLAY NAME: ${displayName}`,
+                { title:'CONFIRM_REASSIGNMENT', confirmText:'APPLY', cancelText:'CANCEL' }
+            );
+            if (!confirmed) return;
+            const { error } = await _supabase.from('profiles')
+                .update({
+                    base_name: baseName,
+                    full_name: displayName,
+                    role_key: roleDef.key,
+                    clearance_level: roleDef.clearanceLevel,
+                    department: roleDef.department,
+                    admin_notice: null
+                })
+                .eq('id', user.id);
+            if (error) { toast('REASSIGNMENT_FAILED: ' + error.message, 'error'); return; }
+            await logAction(myProfile, 'ROLE_REASSIGNED', displayName, getRoleLabel(roleDef));
+            toast('ROLE UPDATED: ' + displayName, 'success');
+            location.reload();
         }
 
         async function resignUser(userId, userName) {

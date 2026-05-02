@@ -302,6 +302,9 @@
                 .on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter:`id=eq.${user.id}` }, (payload) => {
                     if (payload.new.is_banned) window.location.href = 'index.html';
                     if (payload.new.clearance_level !== profile.clearance_level) window.location.reload();
+                    if (payload.new.department !== profile.department) window.location.reload();
+                    if (payload.new.full_name !== profile.full_name) window.location.reload();
+                    if (payload.new.role_key !== profile.role_key) window.location.reload();
                 }).subscribe();
 
             const welcomeEl   = document.getElementById('welcome');
@@ -587,7 +590,9 @@
             container.appendChild(
                 makeRoleRow(
                     _currentProfile.full_name || 'UNKNOWN',
-                    `[${_currentProfile.department || 'N/A'}] — PRIMARY`,
+                    getRoleByKey(_currentProfile.role_key)
+                        ? `[${_currentProfile.department || 'N/A'}] - ${getRoleByKey(_currentProfile.role_key).title} - PRIMARY`
+                        : `[${_currentProfile.department || 'N/A'}] - PRIMARY`,
                     !activeRole.isSecondary,
                     () => dashSwitchRole(null)
                 )
@@ -598,7 +603,9 @@
                 container.appendChild(
                     makeRoleRow(
                         r.role_name || 'UNKNOWN',
-                        `[${r.department || 'N/A'}]`,
+                        getRoleByKey(r.role_key)
+                            ? `[${r.department || 'N/A'}] - ${getRoleByKey(r.role_key).title}`
+                            : `[${r.department || 'N/A'}]`,
                         isActive,
                         () => dashSwitchRole(r.id)
                     )
@@ -949,6 +956,7 @@
                 'RAISA':   { label: 'INFOSEC',           type: 'infosec' },
                 'ScD':     { label: 'RESEARCH_LOG',      type: 'research' },
                 'MD':      { label: 'MEDICAL_RECORD',    type: 'medical' },
+                'SLMD':    { label: 'MAINTENANCE',       type: 'maintenance' },
                 'EcD':     { label: 'MAINTENANCE',       type: 'maintenance' },
                 'DEA':     { label: 'EXTERNAL_AFFAIRS',  type: 'external' },
                 'DoA':     { label: 'ADMISSIONS',        type: 'admissions' },

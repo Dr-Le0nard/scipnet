@@ -83,19 +83,27 @@ function getActiveRole(profile, roles) {
     if (profile.active_role_id && approvedRoles.length > 0) {
         var active = approvedRoles.find(function(r) { return r.id === profile.active_role_id; });
         if (active) {
+            var activeRoleDef = typeof getRoleByKey === 'function' ? getRoleByKey(active.role_key) : null;
             return {
                 name:        active.role_name,
+                baseName:    typeof getRoleBaseName === 'function' ? getRoleBaseName(active) : active.role_name,
                 department:  active.department,
                 clearance:   active.clearance_level || 0,
+                roleKey:     active.role_key || null,
+                roleTitle:   activeRoleDef ? activeRoleDef.title : null,
                 isSecondary: true,
                 roleId:      active.id
             };
         }
     }
+    var primaryRoleDef = typeof getRoleByKey === 'function' ? getRoleByKey(profile.role_key) : null;
     return {
         name:        profile.full_name,
+        baseName:    typeof getProfileBaseName === 'function' ? getProfileBaseName(profile) : profile.full_name,
         department:  profile.department,
         clearance:   profile.clearance_level,
+        roleKey:     profile.role_key || null,
+        roleTitle:   primaryRoleDef ? primaryRoleDef.title : null,
         isSecondary: false,
         roleId:      null
     };

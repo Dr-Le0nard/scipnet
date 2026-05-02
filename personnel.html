@@ -81,12 +81,12 @@
 
             const [staffRes, rolesRes] = await Promise.all([
                 _supabase.from('profiles')
-                    .select('id, full_name, clearance_level, department, bio, is_admin, is_overseer, is_terminal_admin')
+                    .select('id, full_name, clearance_level, department, role_key, bio, is_admin, is_overseer, is_terminal_admin')
                     .eq('is_banned', false)
                     .eq('is_approved', true)
                     .order('clearance_level', { ascending: false }),
                 _supabase.from('profile_roles')
-                    .select('profile_id, role_name, department, bio')
+                    .select('profile_id, role_name, department, role_key, clearance_level, bio')
                     .eq('status', 'Approved')
             ]);
 
@@ -176,6 +176,7 @@
 
                 const line = document.createElement('p');
                 line.style.marginBottom = '6px';
+                const primaryRoleDef = getRoleByKey(p.role_key);
 
                 const badge = createSafeElement('span', cl.label, 'clearance-badge');
                 badge.style.fontSize = '0.72rem';
@@ -189,6 +190,13 @@
                 dept.style.color = 'var(--text-dim)';
                 dept.style.fontSize = '0.75rem';
                 line.appendChild(dept);
+                if (primaryRoleDef) {
+                    const title = createSafeElement('span', ` ${primaryRoleDef.title}`);
+                    title.style.color = 'var(--text-dim)';
+                    title.style.fontSize = '0.72rem';
+                    title.style.marginLeft = '6px';
+                    line.appendChild(title);
+                }
 
                 card.appendChild(line);
 
@@ -215,12 +223,20 @@
                         top.style.fontSize = '0.75rem';
                         top.style.color = 'var(--text-mid)';
 
+                        const roleDef = getRoleByKey(r.role_key);
                         top.appendChild(createSafeElement('span', r.role_name || 'UNKNOWN'));
                         const deptSpan = createSafeElement('span', `[${r.department || 'N/A'}]`);
                         deptSpan.style.color = 'var(--text-dim)';
                         deptSpan.style.fontSize = '0.68rem';
                         deptSpan.style.marginLeft = '6px';
                         top.appendChild(deptSpan);
+                        if (roleDef) {
+                            const roleTitle = createSafeElement('span', `${roleDef.title} CL${roleDef.clearanceLevel}`);
+                            roleTitle.style.color = 'var(--text-dim)';
+                            roleTitle.style.fontSize = '0.68rem';
+                            roleTitle.style.marginLeft = '6px';
+                            top.appendChild(roleTitle);
+                        }
 
                         role.appendChild(top);
 

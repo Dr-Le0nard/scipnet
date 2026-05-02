@@ -64,8 +64,8 @@
                 </div>`
             );
 
-            // Populate clearance dropdown capped to user's own level
-            populateClearanceSelect('clearance_level', 0, currentUserProfile.clearance_level);
+            // Populate clearance dropdown capped to the active role.
+            populateClearanceSelect('clearance_level', 0, active.clearance);
 
             setupExtraFields();
         }
@@ -91,7 +91,7 @@
             const content = document.getElementById('content').value.trim();
             const cl      = parseInt(document.getElementById('clearance_level').value);
             if (!title || !content) { toast('CRITICAL_ERROR: DATA_MISSING', 'error'); return; }
-            if (cl > currentUserProfile.clearance_level) { toast('ACCESS_DENIED: CLEARANCE_EXCEEDS_AUTHORIZATION', 'error'); return; }
+            if (cl > currentUserProfile._activeRole.clearance) { toast('ACCESS_DENIED: CLEARANCE_EXCEEDS_AUTHORIZATION', 'error'); return; }
 
             const clInfo = getClearanceByLevel(cl);
             const confirmed = await showModal(
@@ -115,7 +115,7 @@
             }]);
 
             if (error) { toast('TRANSMISSION_FAILED: ' + error.message, 'error'); return; }
-            await logAction(currentUserProfile, 'CREATED', title, `Dept: ${currentUserProfile.department} | CL: ${clInfo.short}`);
+            await logAction(currentUserProfile, 'CREATED', title, `Dept: ${currentUserProfile._activeRole.department} | CL: ${clInfo.short}`);
             toast('TRANSMISSION_SUCCESSFUL', 'success');
             setTimeout(() => window.location.href = 'archive.html', 1200);
         }

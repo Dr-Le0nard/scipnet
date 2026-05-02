@@ -253,7 +253,11 @@
             primaryName.style.fontFamily = 'var(--font-display)';
             primaryName.style.fontSize = '1rem';
             primaryName.style.letterSpacing = '1px';
-            const primarySub = createSafeElement('div', `[${myProfile.department || 'UNASSIGNED'}] — PRIMARY ROLE`);
+            const primaryRoleDef = getRoleByKey(myProfile.role_key);
+            const primarySubText = primaryRoleDef
+                ? `[${myProfile.department || 'UNASSIGNED'}] - ${primaryRoleDef.title} - CL${primaryRoleDef.clearanceLevel}`
+                : `[${myProfile.department || 'UNASSIGNED'}] - PRIMARY ROLE`;
+            const primarySub = createSafeElement('div', primarySubText);
             primarySub.style.fontSize = '0.7rem';
             primarySub.style.color = 'var(--text-dim)';
             primarySub.style.marginTop = '2px';
@@ -288,7 +292,8 @@
             myRoles.forEach(r => {
                 const isActive    = r.status === 'Approved' && activeRole.isSecondary && activeRole.roleId === r.id;
                 const statusClass = String(r.status || '').toLowerCase();
-                const rClInfo     = getClearanceByLevel(r.clearance_level || 0);
+                const rRoleDef    = getRoleByKey(r.role_key);
+                const rClInfo     = getClearanceByLevel((rRoleDef && rRoleDef.clearanceLevel) || r.clearance_level || 0);
 
                 const card = document.createElement('div');
                 card.className = `role-card ${isActive ? 'active' : statusClass}`.trim();
@@ -312,6 +317,7 @@
                 meta.style.color = 'var(--text-dim)';
                 meta.style.marginTop = '2px';
                 appendText(meta, `[${r.department || 'N/A'}]`);
+                if (rRoleDef) appendText(meta, ` | ${rRoleDef.title}`);
                 if (r.status === 'Approved') {
                     appendText(meta, ' | CL: ');
                     const clSpan = createSafeElement('span', rClInfo.short);
@@ -537,6 +543,7 @@
 
             const { data, error } = await _supabase.from('profile_roles').insert([{
                 profile_id:     myProfile.id,
+                base_name:      name,
                 role_name:      name,
                 department:     dept,
                 status:         'Pending',
